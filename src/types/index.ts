@@ -176,21 +176,9 @@ export interface CrmStage {
   position: number
   /** Entrar nesta etapa dispara o evento de conversão na Meta CAPI. */
   is_conversion: boolean
-  /**
-   * Papel da etapa no relatório de Jornada (060). null = etapa comum do
-   * meio do funil. Existe para o SQL não comparar NOME de etapa: renomear a
-   * coluna no kanban não pode mudar métrica nenhuma.
-   */
-  journey_role: CrmJourneyRole | null
   created_at: string
 }
 
-/**
- * Papéis que uma etapa pode ter na jornada. Só um por organização (índice
- * único na 060). A etapa de conversão continua marcada por is_conversion —
- * ganhar não é papel de jornada.
- */
-export type CrmJourneyRole = 'triagem' | 'orcamento' | 'remarketing' | 'perdido'
 
 /**
  * Regra de movimentação automática (050): quem fica parado em `from_stage_id`
@@ -302,8 +290,6 @@ export interface CrmSale {
   id: string
   organization_id: string
   contact_id: string
-  /** Quantidade de criativos vendidos. 0 = não informado. */
-  creatives: number
   value_cents: number
   /** null = não informada (vendas anteriores à 070 e as importadas). */
   payment_method: CrmPaymentMethod | null
@@ -444,7 +430,6 @@ export interface CrmSalesOverview {
   repeat_sales: number
   /** Clientes distintos com venda no período. */
   clients: number
-  creatives: number
   revenue_cents: number
   /** Receita ÷ VENDAS do período — quanto vale uma venda. */
   avg_ticket_cents: number
@@ -473,7 +458,6 @@ export interface CrmSalesDayRow {
   day: string
   sales: number
   revenue_cents: number
-  creatives: number
 }
 
 /** Uma linha da tabela "vendas por cliente". */
@@ -482,7 +466,6 @@ export interface CrmSalesContactRow {
   name: string
   channel: string | null
   sales: number
-  creatives: number
   revenue_cents: number
   first_sale_at: string
   last_sale_at: string
@@ -622,233 +605,6 @@ export interface CrmRepeatPendingRow {
 // pedia "respondeu", o dado é "avançou no funil" — está marcado no nome e
 // dito na tela.
 
-/** Topo da aba Jornada. */
-export interface CrmJourneyOverview {
-  total_leads: number
-  /** Leads em que alguém do time tocou (moveu de etapa ou lançou venda). */
-  human_leads: number
-  /** human_leads ÷ total: a taxa de transferência IA → atendente. */
-  transfer_rate: number | null
-  avg_hours_to_human: number | null
-  median_hours_to_human: number | null
-  converted: number
-  /**
-   * Converteu com toque humano registrado. Não existe o par
-   * "converteu sem humano": a IA não fecha venda, então conversão sem
-   * sessão é falha de registro (automação, importação, venda retroativa)
-   * e não vira métrica de resultado na tela.
-   */
-  human_converted: number
-  /** Nunca teve humano, não converteu e está na etapa de perda ou parado. */
-  abandoned_leads: number
-  abandon_rate: number | null
-  /**
-   * Andou para frente no funil depois do primeiro atendimento humano. É o
-   * substituto de "taxa de resposta": sem tabela de mensagens, movimentação
-   * é o único sinal de que a conversa continuou.
-   */
-  advanced_after_human: number
-  advance_rate: number | null
-  budget_leads: number
-  budget_converted: number
-  budget_conversion_rate: number | null
-  avg_hours_budget_to_conv: number | null
-  median_hours_budget_to_conv: number | null
-  /**
-   * Papéis de etapa configurados (journey_role). Sem eles as métricas de
-   * orçamento e de perda não têm de onde sair, e a tela pede a configuração
-   * em vez de mostrar zero.
-   */
-  has_triagem_stage: boolean
-  has_budget_stage: boolean
-  has_loss_stage: boolean
-  /** Dias de imobilidade que já contam como abandono. */
-  stale_days: number
-}
-
-/** Uma linha da tabela de conversão por atendente. */
-export interface CrmJourneyAssigneeRow {
-  /**
-   * O canal do contato, que aqui É o vendedor: cada um atende pelo próprio
-   * número. null = contato sem canal preenchido.
-   *
-   * Não vem de assigned_to nem de changed_by — o primeiro ninguém preenche e
-   * o segundo é nulo em tudo que a automação escreve.
-   */
-  vendedor: string | null
-  leads: number
-  converted: number
-  conversion_rate: number | null
-  revenue_cents: number
-  avg_hours_to_convert: number | null
-}
-
-/** Um motivo de perda deduzido do rastro do lead. */
-export interface CrmJourneyLossRow {
-  motivo: string
-  ord: number
-  leads: number
-  share: number | null
-  /** Destes, quantos caíram pela automação da 050 em vez de decisão humana. */
-  via_automacao: number
-  /** Etapa mais comum do balde: onde a perda acontece. */
-  etapa: string | null
-  avg_days: number | null
-  /** Total de perdas do período — igual em todas as linhas. */
-  total_perdas: number
-}
-
-/** Um degrau do funil do CRM, com o vazamento até o degrau seguinte. */
-export interface CrmJourneyStageFlowRow {
-  /** null no degrau que não é coluna do kanban (o do portfólio, 083). */
-  stage_id: string | null
-  stage_name: string
-  color: string
-  ord: number
-  is_conversion: boolean
-  reached: number
-  /**
-   * Nulo no degrau que não está na corrente do funil (o do portfólio, 084):
-   * ele não é etapa cumprida, então não há queda dele para o seguinte.
-   */
-  dropped: number | null
-  drop_rate: number | null
-  /**
-   * Nulo no degrau de etiqueta: a tabela do bot não carimba quando cada
-   * etiqueta entrou, então não há hora para medir.
-   */
-  avg_hours_to_reach: number | null
-  /** 'crm' = coluna do kanban; 'etiqueta' = degrau vindo do banco do bot. */
-  source: 'crm' | 'etiqueta'
-  /**
-   * Só no degrau de etiqueta: quantos receberam a etiqueta sem terem chegado
-   * ao degrau anterior da corrente — receberam o portfólio pulando a
-   * qualificação.
-   */
-  from_tag: number | null
-}
-
-/** Cruzamento de uma etapa de etiqueta com o CRM. */
-export interface CrmJourneyTagRow {
-  stage: string
-  /** Linhas de etiqueta nesta etapa. */
-  leads: number
-  /** Destas, quantas acharam contato no CRM. O resto é lead sem cadastro. */
-  matched: number
-  converted: number
-  conversion_rate: number | null
-  revenue_cents: number
-  human_leads: number
-  avg_hours_to_convert: number | null
-}
-
-/**
- * Métricas de conversa (061). Aqui mora o que a 060 não conseguia medir: a
- * tabela conversation_messages vive no MESMO banco do CRM, então é join.
- *
- * `sender_type` só separa 'client' de 'agent', e a IA e o time mandam pelo
- * mesmo número — nenhum número daqui afirma "o humano respondeu". Quem
- * fornece o instante em que o time assumiu é o CRM.
- */
-export interface CrmJourneyMessages {
-  cohort_leads: number
-  /** Leads da coorte com conversa casada por telefone. */
-  with_messages: number
-  /** Sem telefone não há como casar conversa nenhuma. */
-  leads_sem_telefone: number
-  client_replied: number
-  /** A conversa existe e o cliente nunca falou: mandaram, ninguém respondeu. */
-  never_replied: number
-  rmkt_leads: number
-  rmkt_replied: number
-  rmkt_reply_rate: number | null
-  /** Voltou E fechou: a conversão veio depois de cair no remarketing. */
-  rmkt_converted: number
-  converted_with_messages: number
-  avg_msgs_to_convert: number | null
-  median_msgs_to_convert: number | null
-  avg_client_msgs_to_convert: number | null
-  avg_agent_msgs_to_convert: number | null
-  avg_msgs_per_lead: number | null
-  /** Tempo até a 1ª saída depois da 1ª fala do lead — IA ou time. */
-  median_hours_first_reply: number | null
-  has_rmkt_stage: boolean
-  total_messages: number
-}
-
-/**
- * Visão geral pelo relógio da conversa (062).
- *
- * Substitui a família de métricas de "toque humano" da 060. Aqui o vendedor
- * não mexe no CRM — quem escreve é o n8n, pela service role — então
- * `changed_by` não distingue vendedor de IA e não serve de âncora. O que tem
- * hora confiável é a mensagem.
- *
- * Nenhum campo daqui afirma QUEM respondeu: `sender_type = 'agent'` cobre
- * IA e time no mesmo número. Afirma que houve resposta.
- */
-export interface CrmJourneyConversation {
-  cohort_leads: number
-  /** Sem telefone não há como casar conversa nenhuma. */
-  leads_sem_telefone: number
-  leads_sem_conversa: number
-  /** O cliente falou ao menos uma vez: o denominador de tudo que é resposta. */
-  leads_com_fala: number
-  /** Saiu resposta depois da 1ª fala do lead (disparo anterior não conta). */
-  answered_leads: number
-  answer_rate: number | null
-  unanswered_leads: number
-  /** Sem resposta E já esfriou: conversa de ontem ainda é fila, não perda. */
-  unanswered_stale: number
-  unanswered_rate: number | null
-  avg_hours_first_reply: number | null
-  median_hours_first_reply: number | null
-  /** O lead voltou a falar depois da nossa 1ª resposta. */
-  re_replied_leads: number
-  re_reply_rate: number | null
-  /** Andou no funil depois da 1ª resposta (etapa à frente ou venda). */
-  advanced_after_reply: number
-  advance_after_reply_rate: number | null
-  /** Dias de silêncio a partir dos quais "sem resposta" vira perda. */
-  stale_days: number
-}
-
-/** Um lead sem conversão em que a última mensagem foi nossa. */
-export interface CrmJourneySilentRow {
-  contact_id: string
-  name: string
-  phone: string | null
-  channel: string | null
-  origem: string | null
-  stage_name: string | null
-  /** Responsável cadastrado. Não é lido na tela: o vendedor sai do canal. */
-  assignee: string | null
-  /** Última saída nossa. A fila é de quem não voltou depois dela. */
-  last_agent_at: string
-  /** null = o lead nunca falou nada, só recebeu. */
-  last_client_at: string | null
-  days_silent: number | null
-  msgs: number
-  total: number
-}
-
-/** Um lead parado numa etapa da jornada. */
-export interface CrmJourneyTagContactRow {
-  /** Número da conversa, como está na tabela de etiquetas. */
-  numero: string
-  /** null = a conversa existe no bot e o contato não existe no CRM. */
-  contact_id: string | null
-  name: string | null
-  phone: string | null
-  channel: string | null
-  origem: string | null
-  stage_name: string | null
-  /** Responsável cadastrado. Não é lido na tela: o vendedor sai do canal. */
-  assignee: string | null
-  days_idle: number | null
-  converted: boolean
-  total: number
-}
 
 // ---------- Meta ADS: lado do CRM ----------
 // "Cliente de anúncio" = contato com ctwa_clid, com clique de mídia paga na
@@ -876,7 +632,6 @@ export interface CrmAdsOverview {
   sales: number
   first_sales: number
   repeat_sales: number
-  creatives: number
   revenue_cents: number
   /** Receita ÷ vendas da janela. */
   avg_ticket_cents: number

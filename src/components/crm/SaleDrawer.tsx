@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, Receipt, Search, UserPlus, X } from 'lucide-react'
 import { Combobox, type ComboOption } from './Combobox'
-import { avisarSistemasExternos } from './saleWebhook'
 import {
   canalLabel, channelKey, crmService, formatBRL, isAdContact, normalizePhone, parseBRL,
   PAYMENT_METHODS,
@@ -26,7 +25,7 @@ function phoneLabel(phone: string | null | undefined): string {
  * Lançamento de venda a partir da tela inicial do CRM.
  *
  * O caminho do vendedor que fechou negócio e não quer procurar o card no
- * kanban: acha o cliente pelo nome ou pelo número, informa valor e criativos,
+ * kanban: acha o cliente pelo nome ou pelo número, informa o valor,
  * e pronto. O contato que ainda não existe é criado aqui mesmo.
  *
  * A REGRA DE QUEM CONVERTE NÃO ESTÁ AQUI. Como no painel do contato, o front
@@ -60,7 +59,6 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
 
   // ---------- a venda ----------
   const [value, setValue] = useState('')
-  const [creatives, setCreatives] = useState('1')
   // Sem valor inicial de propósito: chutar "Pix" faria a maioria das vendas
   // nascer com a forma errada sem ninguém perceber. Vazio obriga a escolher.
   const [payment, setPayment] = useState<CrmPaymentMethod | ''>('')
@@ -77,7 +75,7 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
 
   const conversionStage = stages.find((s) => s.is_conversion)
   // A venda saiu por um WhatsApp diferente do que está no cadastro escolhido.
-  // Comparação pela chave do banco (069): "PH Creative" e "ph creative " são o
+  // Comparação pela chave do banco (069): "Loja Centro" e "loja centro " são o
   // mesmo canal, e tratá-los como dois abriria cadastro à toa.
   const trocouDeCanal = !!contact && !!channel.trim()
     && channelKey(channel) !== channelKey(contact.channel)
@@ -159,7 +157,6 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
 
   async function save() {
     const valueCents = parseBRL(value)
-    const qtd = Math.max(0, Math.round(Number(creatives.replace(/\D/g, '')) || 0))
 
     if (!contact && !creating) {
       toast.error('Escolha o cliente desta venda')
@@ -184,10 +181,8 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
     try {
       let contactId: string
       let contactName: string
-      // Esta venda é a primeira do cliente? Decide a mensagem e o que o n8n
-      // recebe; quem confere de verdade é o banco, no webhook.
+      // Esta venda é a primeira do cliente? Decide a mensagem de confirmação.
       let primeira: boolean
-      let isNewContact = false
 
       if (!contact) {
         // Procura-e-cria no banco: o número digitado pode já existir — o
@@ -221,7 +216,6 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
             stageId: null,
           }), copiedFrom: null as string | null }
 
-        isNewContact = alvo.created
         contactId = alvo.contactId
 
         if (alvo.created && !alvo.copiedFrom) {
@@ -257,7 +251,6 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
           stageId: null,
           origem: origem.trim(),
         })
-        isNewContact = alvo.created
         contactId = alvo.contactId
 
         if (alvo.contactId === contact.id) {
@@ -297,9 +290,8 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
       }
 
       const today = nowSPDatetimeLocal().slice(0, 10)
-      const sale = await crmService.addSale({
+      await crmService.addSale({
         contactId,
-        creatives: qtd,
         valueCents,
         // Venda de hoje guarda a hora real. De outro dia, meio-dia em São
         // Paulo: o relatório agrupa por dia nesse fuso, e meio-dia nunca
@@ -316,11 +308,6 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
           ? `Venda registrada — ${contactName} entrou em ${conversionStage.name}`
           : `Venda registrada para ${contactName}`,
       )
-
-      // O aviso vem depois da venda e não a desfaz: a venda já está gravada, e
-      // uma falha aqui é problema de integração, não de registro. Sempre
-      // enviado, aqui e no painel do contato — é o que o rodapé promete.
-      await avisarSistemasExternos(sale.id, { newContact: isNewContact })
 
       onSaved()
       onClose()
@@ -490,20 +477,10 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
                 placeholder="R$ 0,00"
               />
             </div>
-            <div className="field">
-              <label>Criativos</label>
-              <input
-                className="input"
-                inputMode="numeric"
-                value={creatives}
-                onChange={(e) => setCreatives(e.target.value.replace(/\D/g, ''))}
-                placeholder="0"
-              />
-            </div>
           </div>
 
-          {/* Data e pagamento andam com valor e criativos: são os campos do
-              dinheiro. Origem e canal, abaixo, são os da atribuição. */}
+          {/* Data e pagamento andam com o valor: são os campos do dinheiro.
+              Origem e canal, abaixo, são os da atribuição. */}
           <div className="drawer-grid">
             <div className="field">
               <label>Data da venda</label>

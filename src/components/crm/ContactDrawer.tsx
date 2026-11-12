@@ -8,7 +8,6 @@ import { MoveSalesChannelDialog } from './MoveSalesChannelDialog'
 import { RefundDetailDialog, refundTargetFromDetail } from './RefundDetailDialog'
 import { RefundEditDialog, type RefundTarget } from './RefundEditDialog'
 import { Modal } from '../ui'
-import { avisarSistemasExternos } from './saleWebhook'
 import {
   canalLabel, channelKey, crmService, formatBRL, hasAdClick, isAdOrigem, parseBRL, paymentLabel,
   PAYMENT_METHODS, STAGE_COLORS,
@@ -113,7 +112,6 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
   // sem mexer no funil — mas cada uma tem seu evento na Meta quando o
   // cliente veio de anúncio (regras no banco, 031/072).
   const [sales, setSales] = useState<CrmSale[] | null>(null)
-  const [saleCreatives, setSaleCreatives] = useState('1')
   const [saleValue, setSaleValue] = useState('')
   // Vazio obriga a escolher: chutar "Pix" faria a maioria das vendas nascer
   // com a forma errada sem ninguém perceber.
@@ -147,7 +145,6 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
   // Edição em linha de uma venda já registrada. null = ninguém editando.
   const [editingSale, setEditingSale] = useState<string | null>(null)
   const [editDate, setEditDate] = useState('')
-  const [editCreatives, setEditCreatives] = useState('')
   const [editValue, setEditValue] = useState('')
   // Na edição o vazio é permitido: venda antiga (anterior à 070) não tem forma
   // de pagamento, e corrigir o valor dela não pode exigir inventar uma.
@@ -279,15 +276,13 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
       toast.error('Escolha a forma de pagamento')
       return false
     }
-    const creatives = Math.max(0, Math.round(Number(saleCreatives.replace(/\D/g, '')) || 0))
     const isFirst = !hasSales
 
     setSavingSale(true)
     try {
       const today = nowSPDatetimeLocal().slice(0, 10)
-      const sale = await crmService.addSale({
+      await crmService.addSale({
         contactId: contact.id,
-        creatives,
         valueCents,
         // Venda de hoje guarda a hora real. De outro dia, meio-dia em São
         // Paulo: o relatório agrupa por dia nesse fuso, e meio-dia nunca
@@ -302,12 +297,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
           ? `Venda registrada — contato movido para ${conversionStage.name}`
           : 'Venda registrada',
       )
-      // Toda venda lançada à mão vai para os outros sistemas — é regra, não
-      // escolha. Depois da venda gravada, de propósito: falha de integração
-      // não pode desfazer nem atrapalhar o registro.
-      await avisarSistemasExternos(sale.id)
       setSaleValue('')
-      setSaleCreatives('1')
       setSaleDate(today)
       setSalePayment('')
       await syncAfterSale(contact.id)
@@ -325,7 +315,6 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
     // A data vem do instante gravado, lida no fuso de São Paulo — senão uma
     // venda das 21h viraria o dia seguinte no campo.
     setEditDate(spDatetimeLocal(sale.sold_at).slice(0, 10))
-    setEditCreatives(String(sale.creatives))
     setEditValue(formatBRL(sale.value_cents))
     setEditPayment(sale.payment_method ?? '')
   }
@@ -346,14 +335,12 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
       toast.error('Informe o valor da venda')
       return
     }
-    const creatives = Math.max(0, Math.round(Number(editCreatives.replace(/\D/g, '')) || 0))
     const original = sales?.find((s) => s.id === editingSale)
     const originalDate = original ? spDatetimeLocal(original.sold_at).slice(0, 10) : ''
 
     setSavingSale(true)
     try {
       await crmService.updateSale(editingSale, {
-        creatives,
         valueCents,
         // '' vira null: é o jeito de dizer "não informada" numa venda antiga.
         paymentMethod: editPayment || null,
@@ -374,9 +361,9 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
   }
 
   /**
-   * A lixeira pergunta o que fazer (101): excluir de verdade — a venda some e
-   * o webhook de exclusão (082) avisa o n8n — ou só marcar como reembolso, e
-   * a venda fica, sem aviso nenhum, descontando no líquido do relatório.
+   * A lixeira pergunta o que fazer (101): excluir de verdade — a venda some —
+   * ou só marcar como reembolso, e a venda fica, descontando no líquido do
+   * relatório.
    * Marcar e editar o reembolso é com o RefundEditDialog; aqui fica excluir
    * e o desfazer da lixeira.
    */
@@ -519,8 +506,8 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
       // VENDA PREENCHIDA E NÃO REGISTRADA. Quem muda a etapa para a conversão
       // e digita o valor costuma clicar neste Salvar, não no "Registrar" da
       // seção de vendas. Sem isto o formulário da venda era descartado: o
-      // contato entrava na conversão sem venda — valor zero, Purchase de R$ 0
-      // para a Meta e nenhum aviso ao n8n. Registra antes de salvar o
+      // contato entrava na conversão sem venda — valor zero e Purchase de R$ 0
+      // para a Meta. Registra antes de salvar o
       // contato, que é a ordem do botão Registrar.
       let stageFinal = stageId
       if (!isNew && saleValue.trim()) {
@@ -871,15 +858,6 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                                   />
                                 </label>
                                 <label>
-                                  <span>Criativos</span>
-                                  <input
-                                    className="input"
-                                    inputMode="numeric"
-                                    value={editCreatives}
-                                    onChange={(e) => setEditCreatives(e.target.value.replace(/\D/g, ''))}
-                                  />
-                                </label>
-                                <label>
                                   <span>Valor</span>
                                   <input
                                     className="input"
@@ -916,10 +894,6 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                                   <p className="sale-value">{formatBRL(s.value_cents)}</p>
                                   <p className="text-muted" style={{ fontSize: 11 }}>
                                     {formatSP(s.sold_at)}
-                                    {' · '}
-                                    {s.creatives > 0
-                                      ? `${s.creatives} criativo${s.creatives > 1 ? 's' : ''}`
-                                      : 'criativos não informados'}
                                     {/* Venda antiga não tem forma de pagamento:
                                         some em vez de mostrar um travessão. */}
                                     {s.payment_method && ` · ${paymentLabel(s.payment_method)}`}
@@ -969,8 +943,6 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                       <p className="sale-total">
                         {sales.length} venda{sales.length > 1 ? 's' : ''}
                         {' · '}
-                        {sales.reduce((a, s) => a + s.creatives, 0)} criativo(s)
-                        {' · '}
                         <strong>{formatBRL(sales.reduce((a, s) => a + s.value_cents, 0))}</strong>
                       </p>
                     </>
@@ -984,16 +956,6 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                         type="date"
                         value={saleDate}
                         onChange={(e) => setSaleDate(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      <span>Criativos</span>
-                      <input
-                        className="input"
-                        inputMode="numeric"
-                        value={saleCreatives}
-                        onChange={(e) => setSaleCreatives(e.target.value.replace(/\D/g, ''))}
-                        placeholder="0"
                       />
                     </label>
                     <label>

@@ -197,8 +197,8 @@ export function Pipeline({
     if (!localStages.some((s) => s.id === targetStageId)) return
 
     // CONVERSÃO SEM VENDA. Mover direto deixava o cliente na etapa de
-    // conversão sem venda nenhuma: valor zero, Purchase de R$ 0 para a Meta e
-    // nenhum aviso ao n8n. Agora o arrasto abre o lançamento, e é a venda
+    // conversão sem venda nenhuma: valor zero e Purchase de R$ 0 para a Meta.
+    // Agora o arrasto abre o lançamento, e é a venda
     // gravada que leva o card para a coluna (trigger da 031). Cancelou, o
     // card fica onde estava. Quem já comprou move como sempre: a venda dele
     // existe, e a Meta não recebe evento de etapa de quem já tem venda.

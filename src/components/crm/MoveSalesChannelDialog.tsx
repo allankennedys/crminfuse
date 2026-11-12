@@ -29,8 +29,6 @@ import type { CrmContact, CrmSale } from '@/types'
  *     o campo aparece travado, porque mudá-lo aqui contradiria o que a
  *     pessoa acabou de digitar no drawer.
  *
- * O AVISO AO n8n NÃO SAI DAQUI. É trigger de banco (088), disparada pelo
- * próprio update — um POST por venda movida, com o estado antes e depois.
  */
 export function MoveSalesChannelDialog({
   contact, sales, channelOptions, fixedChannel, onAllSelected, onClose, onMoved,
