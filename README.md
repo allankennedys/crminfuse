@@ -55,3 +55,4 @@ Atendimento · Vendas · Funil · Jornada · Recompra · Meta ADS. A Jornada usa
 ## Meta
 
 Configurações → Integrações: Pixel ID e token (conversões) e token/contas de anúncio (relatório Meta ADS).
+# crminfuse
