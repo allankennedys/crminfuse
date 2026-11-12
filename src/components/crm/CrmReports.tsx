@@ -14,7 +14,7 @@ import {
 import {
   SkelChart, SkelChartCard, SkelKpis, SkelRows, SkelValue,
 } from './skeletons'
-import { JourneyReport } from './JourneyReport'
+import { JourneyNative } from './JourneyNative'
 import { crmService, formatBRL } from '@/services/crmService'
 import { metaAdsService } from '@/services/metaAdsService'
 import type { DateRange } from '@/services/crmService'
@@ -103,7 +103,7 @@ const REPORT_TABS = [
   { id: 'atendimento', label: 'Atendimento', sub: 'Volume, tempos de resposta e de atendimento, motivos de conclusão e desempenho por atendente' },
   { id: 'vendas', label: 'Vendas', sub: 'Faturamento por data da venda, com recompras' },
   { id: 'funil', label: 'Funil', sub: 'Leads criados no período e o que fechou nele, por origem e canal' },
-  { id: 'jornada', label: 'Jornada', sub: 'O caminho do lead: quanto tempo até a resposta, onde ele para e por que se perde' },
+  { id: 'jornada', label: 'Jornada', sub: 'O caminho do lead: por quais etapas passou, como foi a conversa e se comprou' },
   { id: 'recompra', label: 'Recompra', sub: 'O cliente volta? Taxa de recompra, tempo até a 2ª compra e quem ainda não voltou' },
   { id: 'ads', label: 'Meta ADS', sub: 'Investimento da Meta contra a receita dos clientes de anúncio: ROAS, CAC, ticket e LTV' },
 ] as const
@@ -982,13 +982,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
       {tab === 'atendimento' && <AtendimentoReport label={label} range={range} />}
 
       {tab === 'jornada' && (
-        <JourneyReport
-          label={label}
-          range={range}
-          channel={channel}
-          origem={origem}
-          onOpenContact={podeAbrirContato ? openById : undefined}
-        />
+        <JourneyNative label={label} range={range} channel={channel} origem={origem} />
       )}
 
       {tab === 'recompra' && (
@@ -2731,10 +2725,6 @@ function SalesReport({
     revenue: r.revenue_cents / 100,
     sales: r.sales,
   }))
-  const perCreative = overview.creatives > 0
-    ? Math.round(overview.revenue_cents / overview.creatives)
-    : null
-
   return (
     <>
       <div className="page-header">
@@ -2815,20 +2805,6 @@ function SalesReport({
                 {overview.repeat_sales.toLocaleString('pt-BR')} recompra
                 {' · '}
                 {overview.clients.toLocaleString('pt-BR')} cliente(s)
-              </div>
-            </div>
-
-            <div className="kpi-card kpi-pattern-topo">
-              <div className="kpi-card-bg" aria-hidden="true" />
-              <div className="kpi-card-top">
-                <span className="kpi-icon"><Layers size={16} /></span>
-              </div>
-              <div className="kpi-title">Criativos vendidos</div>
-              <div className="kpi-value">{overview.creatives.toLocaleString('pt-BR')}</div>
-              <div className="kpi-desc">
-                {perCreative === null
-                  ? 'quantidade não informada nas vendas'
-                  : `${formatBRL(perCreative)} por criativo`}
               </div>
             </div>
 
@@ -3054,7 +3030,6 @@ function SalesReport({
                       <th>Cliente</th>
                       <th>Canal</th>
                       <th style={{ textAlign: 'right' }}>Vendas</th>
-                      <th style={{ textAlign: 'right' }}>Criativos</th>
                       <th style={{ textAlign: 'right' }}>Total</th>
                       <th style={{ textAlign: 'right' }}>Última venda</th>
                     </tr>
@@ -3072,7 +3047,6 @@ function SalesReport({
                         </td>
                         <td className="text-muted">{r.channel ?? '—'}</td>
                         <td style={{ textAlign: 'right' }}>{r.sales.toLocaleString('pt-BR')}</td>
-                        <td style={{ textAlign: 'right' }}>{r.creatives.toLocaleString('pt-BR')}</td>
                         <td style={{ textAlign: 'right' }}>{formatBRL(r.revenue_cents)}</td>
                         <td style={{ textAlign: 'right' }} className="text-muted">{formatSP(r.last_sale_at)}</td>
                       </tr>

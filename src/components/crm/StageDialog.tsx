@@ -4,7 +4,7 @@ import { Trash2, Trophy, X } from 'lucide-react'
 import { crmService, STAGE_COLORS } from '@/services/crmService'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
-import type { CrmJourneyRole, CrmStage } from '@/types'
+import type { CrmStage } from '@/types'
 
 /**
  * Criação/edição de etapa. `stage === null` cria uma nova.
@@ -32,7 +32,6 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
   const [color, setColor] = useState(stage?.color ?? STAGE_COLORS[1])
   const [isConversion, setIsConversion] = useState(stage?.is_conversion ?? false)
   // '' = etapa sem papel na jornada (o meio do funil, que é a maioria).
-  const [journeyRole, setJourneyRole] = useState<CrmJourneyRole | ''>(stage?.journey_role ?? '')
   // '' = ainda não escolheu; '__none__' = tirar do funil; uuid = mover
   const [moveTo, setMoveTo] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -72,7 +71,6 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
           // Conversão e papel de jornada não convivem: a escada do funil
           // (060) exclui os papéis de saída, e uma etapa de conversão
           // marcada como 'perdido' desapareceria do próprio funil.
-          journey_role: isConversion ? null : (journeyRole || null),
         })
         toast.success('Etapa atualizada')
       }
@@ -177,35 +175,6 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
             </p>
           </div>
 
-          {/* Papel na jornada. Só na edição: a etapa precisa existir para o
-              relatório apontar para ela, e criar uma coluna já com papel
-              tomado de outra seria efeito colateral escondido num "Nova
-              etapa". */}
-          {!isNew && (
-            <div className="field">
-              <label>Papel na jornada</label>
-              <select
-                className="input"
-                value={journeyRole}
-                onChange={(e) => setJourneyRole(e.target.value as CrmJourneyRole | '')}
-                disabled={isConversion}
-              >
-                <option value="">Nenhum — etapa comum do funil</option>
-                <option value="triagem">Triagem (qualificação pela IA)</option>
-                <option value="orcamento">Orçamento enviado</option>
-                <option value="remarketing">Remarketing (recuperação)</option>
-                <option value="perdido">Perdido</option>
-              </select>
-              <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
-                {isConversion
-                  ? 'A etapa de conversão não tem papel de jornada: ganhar é o fim do funil, '
-                    + 'não um degrau dele.'
-                  : 'É por aqui que o relatório de Jornada sabe qual coluna é qual — sem '
-                    + 'comparar nome de etapa, que muda. Cada papel pertence a uma etapa só: '
-                    + 'escolher um que já está em outra coluna transfere ele para esta.'}
-              </p>
-            </div>
-          )}
 
           {!isNew && (
             confirmingDelete ? (

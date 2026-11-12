@@ -107,7 +107,7 @@ input, select, textarea { font-family: inherit; }
   object-fit: contain;
 }
 
-/* Wordmark "ph creative" (sidebar e login): logo largo, altura fixa. */
+/* Logo largo (sidebar e login): altura fixa. */
 .brand-logo {
   height: 30px;
   width: auto;
@@ -1401,7 +1401,7 @@ input, select, textarea { font-family: inherit; }
 }
 .sale-edit .input { padding: 6px 8px; font-size: 12.5px; }
 
-/* Data / criativos / valor / botão. Quebra em duas linhas no drawer estreito. */
+/* Data / valor / forma de pagamento / botão. Quebra em duas linhas no drawer estreito. */
 .sale-form {
   display: flex;
   align-items: flex-end;
@@ -4203,3 +4203,21 @@ th.at-num, td.at-num { text-align: right; font-variant-numeric: tabular-nums; wh
 }
 .at-source-form { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 8px; }
 @media (max-width: 760px) { .at-source-form { grid-template-columns: 1fr; } }
+
+/* ---------- Jornada nativa (122) ---------- */
+.jn-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+.jn-stage-meta { font-size: 11.5px; margin-top: 3px; }
+.jn-stuck { display: flex; flex-direction: column; gap: 12px; }
+.jn-stuck > div {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.jn-stuck strong { font-size: 22px; color: var(--text); }
+.jn-stuck svg { color: var(--text-muted); }

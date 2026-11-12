@@ -17,9 +17,7 @@ import type {
   CrmAdsDayRow, CrmAdsOrigemRow, CrmAdsOverview, CrmApiKey, CrmContact,
   CrmRepeatBucket, CrmRepeatDayRow, CrmRepeatOverview, CrmRepeatPendingRow, CrmRepeatTopRow,
   CrmConversionsInPeriod, CrmConvertedContactRow, CrmExcludedCampaign,
-  CrmJourneyAssigneeRow, CrmJourneyConversation, CrmJourneyLossRow, CrmJourneyMessages,
-  CrmJourneyOverview, CrmJourneyRole, CrmJourneySilentRow,
-  CrmJourneyStageFlowRow, CrmJourneyTagContactRow, CrmJourneyTagRow, CrmMergeResult,
+  CrmMergeResult,
   CrmReportBreakdownRow, CrmReportOverview, CrmReportPeriodRow, CrmSale,
   CrmRefundDetail, CrmRefundFile, CrmRefundRow, CrmSalesBreakdownRow, CrmSalesContactRow, CrmSalesDayRow, CrmSalesOverview, CrmSettings,
   CrmStage, CrmStageAutomation, CrmStageHistory, UserProfile,
@@ -241,7 +239,7 @@ export function canalLabel(channel: string | null | undefined): string {
 
 /**
  * Espelha crm_channel_key() do banco (069): canal é texto digitado por gente,
- * então "PH Creative" e "ph creative " são o MESMO canal. Comparar as duas
+ * então "Loja Centro" e "loja centro " são o MESMO canal. Comparar as duas
  * grafias como se fossem canais diferentes faria a tela duplicar cadastro à
  * toa — e o banco, com o índice único na mesma chave, recusaria.
  */
@@ -262,9 +260,8 @@ export function phoneKey(phone: string): string {
 
 /**
  * Espelha crm_phone_id() do banco (069): o número local, de 10 ou 11
- * dígitos, ganha o 55 antes de virar phoneKey. É a coluna phone_id da tabela
- * de portfólio (091) — comparar por phoneKey deixaria de fora quem foi
- * registrado sem o 55.
+ * dígitos, ganha o 55 antes de virar phoneKey — comparar só por phoneKey
+ * deixaria de fora quem foi registrado sem o 55.
  */
 export function phoneId(phone: string): string {
   const d = normalizePhone(phone)
@@ -517,12 +514,11 @@ export const crmService = {
 
   async updateStage(
     id: string,
-    patch: Partial<Pick<CrmStage, 'name' | 'color' | 'is_conversion' | 'journey_role'>>,
+    patch: Partial<Pick<CrmStage, 'name' | 'color' | 'is_conversion'>>,
   ) {
     if (patch.is_conversion) await clearConversionFlag(id)
     // Papel de jornada também é único por organização (060): sem liberar o
     // anterior, o índice recusaria o update com erro de chave duplicada.
-    if (patch.journey_role) await clearJourneyRole(patch.journey_role, id)
 
     const { error } = await supabase.from('crm_stages').update(patch).eq('id', id)
     if (error) throw error
@@ -793,7 +789,6 @@ export const crmService = {
       first_sales: Number(r?.first_sales ?? 0),
       repeat_sales: Number(r?.repeat_sales ?? 0),
       clients: Number(r?.clients ?? 0),
-      creatives: Number(r?.creatives ?? 0),
       revenue_cents: Number(r?.revenue_cents ?? 0),
       avg_ticket_cents: Number(r?.avg_ticket_cents ?? 0),
       ltv_cents: Number(r?.ltv_cents ?? 0),
@@ -805,7 +800,7 @@ export const crmService = {
     }
   },
 
-  /** Série diária de vendas: quantidade, faturamento e criativos. */
+  /** Série diária de vendas: quantidade e faturamento. */
   async reportSalesTimeseries(range: DateRange, channel?: string): Promise<CrmSalesDayRow[]> {
     const { data, error } = await supabase.rpc('crm_report_sales_timeseries', { ...rangeArgs(range), p_channel: channel || null })
     if (error) throw error
@@ -813,7 +808,6 @@ export const crmService = {
       day: String(r.day),
       sales: Number(r.sales),
       revenue_cents: Number(r.revenue_cents),
-      creatives: Number(r.creatives),
     }))
   },
 
@@ -947,358 +941,15 @@ export const crmService = {
   // "avançou depois do atendimento" ocupa o lugar de "respondeu", e o nome
   // do campo diz isso.
 
-  async reportJourneyOverview(
-    range: DateRange,
-    channel?: string,
-    origem?: string,
-  ): Promise<CrmJourneyOverview> {
-    const { data, error } = await supabase.rpc('crm_report_journey_overview', {
-      ...rangeArgs(range),
-      p_channel: channel || null,
-      p_origem: origem || null,
-    })
-    if (error) throw error
-    const r = (data as Record<string, unknown>[] | null)?.[0]
-    // Taxas e médias podem ser null de verdade (ninguém foi atendido, nenhum
-    // orçamento no período) — vira '—' na tela, não zero.
-    const opt = (v: unknown) => (v == null ? null : Number(v))
-    return {
-      total_leads: Number(r?.total_leads ?? 0),
-      human_leads: Number(r?.human_leads ?? 0),
-      transfer_rate: opt(r?.transfer_rate),
-      avg_hours_to_human: opt(r?.avg_hours_to_human),
-      median_hours_to_human: opt(r?.median_hours_to_human),
-      converted: Number(r?.converted ?? 0),
-      human_converted: Number(r?.human_converted ?? 0),
-      abandoned_leads: Number(r?.abandoned_leads ?? 0),
-      abandon_rate: opt(r?.abandon_rate),
-      advanced_after_human: Number(r?.advanced_after_human ?? 0),
-      advance_rate: opt(r?.advance_rate),
-      budget_leads: Number(r?.budget_leads ?? 0),
-      budget_converted: Number(r?.budget_converted ?? 0),
-      budget_conversion_rate: opt(r?.budget_conversion_rate),
-      avg_hours_budget_to_conv: opt(r?.avg_hours_budget_to_conv),
-      median_hours_budget_to_conv: opt(r?.median_hours_budget_to_conv),
-      has_triagem_stage: Boolean(r?.has_triagem_stage),
-      has_budget_stage: Boolean(r?.has_budget_stage),
-      has_loss_stage: Boolean(r?.has_loss_stage),
-      stale_days: Number(r?.stale_days ?? 7),
-    }
-  },
 
-  async reportJourneyByAssignee(
-    range: DateRange,
-    channel?: string,
-    origem?: string,
-  ): Promise<CrmJourneyAssigneeRow[]> {
-    const { data, error } = await supabase.rpc('crm_report_journey_by_assignee', {
-      ...rangeArgs(range),
-      p_channel: channel || null,
-      p_origem: origem || null,
-    })
-    if (error) throw error
-    return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
-      vendedor: r.vendedor == null ? null : String(r.vendedor),
-      leads: Number(r.leads),
-      converted: Number(r.converted),
-      conversion_rate: r.conversion_rate == null ? null : Number(r.conversion_rate),
-      revenue_cents: Number(r.revenue_cents),
-      avg_hours_to_convert: r.avg_hours_to_convert == null ? null : Number(r.avg_hours_to_convert),
-    }))
-  },
 
-  /** Motivos de perda deduzidos — não há campo de motivo no banco. */
-  async reportJourneyLosses(
-    range: DateRange,
-    channel?: string,
-    origem?: string,
-  ): Promise<CrmJourneyLossRow[]> {
-    const { data, error } = await supabase.rpc('crm_report_journey_losses', {
-      ...rangeArgs(range),
-      p_channel: channel || null,
-      p_origem: origem || null,
-    })
-    if (error) throw error
-    return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
-      motivo: String(r.motivo),
-      ord: Number(r.ord),
-      leads: Number(r.leads),
-      share: r.share == null ? null : Number(r.share),
-      via_automacao: Number(r.via_automacao),
-      etapa: r.etapa == null ? null : String(r.etapa),
-      avg_days: r.avg_days == null ? null : Number(r.avg_days),
-      total_perdas: Number(r.total_perdas),
-    }))
-  },
 
-  /**
-   * Quem entrou no portfólio a partir do dia `from` (tabela da 091), como
-   * phone_id — a chave de telefone do banco, igual à de phoneId().
-   *
-   * Só o piso da data: o relatório olha os leads que ENTRARAM no período, e
-   * eles só podem ter chegado ao portfólio depois de entrar — mas podem ter
-   * chegado depois do fim do período, e isso conta. Paginado porque o
-   * PostgREST corta em mil linhas por resposta.
-   */
-  async listPortfolioPhoneIds(from: string): Promise<string[]> {
-    const PAGE = 1000
-    const ids: string[] = []
-    for (let page = 0; page < 50; page += 1) {
-      const { data, error } = await supabase
-        .from('crm_portfolio_entries')
-        .select('phone_id')
-        .gte('entered_at', spDayStartISO(from))
-        .order('entered_at')
-        .range(page * PAGE, page * PAGE + PAGE - 1)
-        .returns<{ phone_id: string }[]>()
-      if (error) throw asError(error)
-      const rows = data ?? []
-      for (const r of rows) ids.push(r.phone_id)
-      if (rows.length < PAGE) break
-    }
-    return ids
-  },
 
-  /**
-   * Degraus do funil com o vazamento de cada um.
-   *
-   * `portfolio` são os telefones que entraram no portfólio — desde a 091, os
-   * da tabela crm_portfolio_entries; antes, os da etiqueta da conversa. Eles
-   * viram um degrau que NÃO é coluna do kanban (083) — nenhum contato muda
-   * de etapa por causa disto.
-   *
-   * Se a 083 ainda não estiver aplicada, o Postgres não acha a função de
-   * cinco argumentos e devolve PGRST202. Aí a chamada é refeita sem os
-   * números: o funil aparece do jeito antigo, sem o degrau, em vez de a aba
-   * inteira cair por causa de uma migration pendente.
-   */
-  async reportJourneyStageFlow(
-    range: DateRange,
-    channel?: string,
-    origem?: string,
-    portfolio?: string[],
-  ): Promise<CrmJourneyStageFlowRow[]> {
-    const args = {
-      ...rangeArgs(range),
-      p_channel: channel || null,
-      p_origem: origem || null,
-    }
-    let { data, error } = portfolio?.length
-      ? await supabase.rpc('crm_report_journey_stage_flow', { ...args, p_portfolio: portfolio })
-      : await supabase.rpc('crm_report_journey_stage_flow', args)
 
-    if (error && (error as { code?: string }).code === 'PGRST202') {
-      ({ data, error } = await supabase.rpc('crm_report_journey_stage_flow', args))
-    }
-    if (error) throw error
-    return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
-      // Só o degrau de etiqueta vem sem id; String(null) daria a string
-      // 'null', que viraria uma chave de React tão válida quanto errada.
-      stage_id: r.stage_id == null ? null : String(r.stage_id),
-      stage_name: String(r.stage_name),
-      color: String(r.color),
-      ord: Number(r.ord),
-      is_conversion: Boolean(r.is_conversion),
-      reached: Number(r.reached),
-      dropped: r.dropped == null ? null : Number(r.dropped),
-      drop_rate: r.drop_rate == null ? null : Number(r.drop_rate),
-      avg_hours_to_reach: r.avg_hours_to_reach == null ? null : Number(r.avg_hours_to_reach),
-      // Ausentes enquanto a 083 não estiver aplicada: aí tudo é degrau do CRM.
-      source: r.source === 'etiqueta' ? 'etiqueta' : 'crm',
-      from_tag: r.from_tag == null ? null : Number(r.from_tag),
-    }))
-  },
 
-  /**
-   * Cruza as etiquetas da conversa (lidas do outro Supabase pelo
-   * jornadaService) com os contatos deste CRM. As linhas vão no corpo da
-   * chamada porque não existe JOIN entre dois bancos — é o único caminho.
-   */
-  async reportJourneyTags(
-    rows: { n: string; s: string; u: string }[],
-    channel?: string,
-  ): Promise<CrmJourneyTagRow[]> {
-    // Sem etiqueta não há o que cruzar: evita um POST de corpo vazio.
-    if (rows.length === 0) return []
-    const { data, error } = await supabase.rpc('crm_report_journey_tags', {
-      p_rows: rows,
-      p_channel: channel || null,
-    })
-    if (error) throw error
-    return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
-      stage: String(r.stage),
-      leads: Number(r.leads),
-      matched: Number(r.matched),
-      converted: Number(r.converted),
-      conversion_rate: r.conversion_rate == null ? null : Number(r.conversion_rate),
-      revenue_cents: Number(r.revenue_cents),
-      human_leads: Number(r.human_leads),
-      avg_hours_to_convert: r.avg_hours_to_convert == null ? null : Number(r.avg_hours_to_convert),
-    }))
-  },
 
-  /**
-   * Métricas de conversa (061): mensagens até a venda e retorno depois do
-   * remarketing. Mesmo banco do CRM — o join com conversation_messages é por
-   * telefone canônico.
-   *
-   * As colunas de "resposta depois de o time assumir" que a RPC ainda
-   * devolve não são lidas: elas ancoravam em crm_first_human_touch, que aqui
-   * mede quem abriu a tela, não quem atendeu. Quem responde isso agora é
-   * reportJourneyConversation (062).
-   */
-  async reportJourneyMessages(
-    range: DateRange,
-    channel?: string,
-    origem?: string,
-  ): Promise<CrmJourneyMessages> {
-    const { data, error } = await supabase.rpc('crm_report_journey_messages', {
-      ...rangeArgs(range),
-      p_channel: channel || null,
-      p_origem: origem || null,
-    })
-    if (error) throw error
-    const r = (data as Record<string, unknown>[] | null)?.[0]
-    // Médias e taxas podem ser null de verdade (ninguém atendido, nenhuma
-    // conversa casada) — vira '—' na tela, não zero.
-    const opt = (v: unknown) => (v == null ? null : Number(v))
-    return {
-      cohort_leads: Number(r?.cohort_leads ?? 0),
-      with_messages: Number(r?.with_messages ?? 0),
-      leads_sem_telefone: Number(r?.leads_sem_telefone ?? 0),
-      client_replied: Number(r?.client_replied ?? 0),
-      never_replied: Number(r?.never_replied ?? 0),
-      rmkt_leads: Number(r?.rmkt_leads ?? 0),
-      rmkt_replied: Number(r?.rmkt_replied ?? 0),
-      rmkt_reply_rate: opt(r?.rmkt_reply_rate),
-      rmkt_converted: Number(r?.rmkt_converted ?? 0),
-      converted_with_messages: Number(r?.converted_with_messages ?? 0),
-      avg_msgs_to_convert: opt(r?.avg_msgs_to_convert),
-      median_msgs_to_convert: opt(r?.median_msgs_to_convert),
-      avg_client_msgs_to_convert: opt(r?.avg_client_msgs_to_convert),
-      avg_agent_msgs_to_convert: opt(r?.avg_agent_msgs_to_convert),
-      avg_msgs_per_lead: opt(r?.avg_msgs_per_lead),
-      median_hours_first_reply: opt(r?.median_hours_first_reply),
-      has_rmkt_stage: Boolean(r?.has_rmkt_stage),
-      total_messages: Number(r?.total_messages ?? 0),
-    }
-  },
 
-  /**
-   * Visão geral pelo relógio da conversa (062): quantos leads receberam
-   * resposta, em quanto tempo, quantos voltaram a falar e quantos andaram no
-   * funil depois disso.
-   *
-   * Substitui as métricas de "toque humano" da 060 — com o n8n escrevendo
-   * pela service role, changed_by não separa vendedor de IA. Não afirma quem
-   * respondeu: sender_type 'agent' é qualquer saída.
-   */
-  async reportJourneyConversation(
-    range: DateRange,
-    channel?: string,
-    origem?: string,
-  ): Promise<CrmJourneyConversation> {
-    const { data, error } = await supabase.rpc('crm_report_journey_conversation', {
-      ...rangeArgs(range),
-      p_channel: channel || null,
-      p_origem: origem || null,
-    })
-    if (error) throw error
-    const r = (data as Record<string, unknown>[] | null)?.[0]
-    // Taxas e médias podem ser null de verdade (ninguém falou no período) —
-    // vira '—' na tela, não zero.
-    const opt = (v: unknown) => (v == null ? null : Number(v))
-    return {
-      cohort_leads: Number(r?.cohort_leads ?? 0),
-      leads_sem_telefone: Number(r?.leads_sem_telefone ?? 0),
-      leads_sem_conversa: Number(r?.leads_sem_conversa ?? 0),
-      leads_com_fala: Number(r?.leads_com_fala ?? 0),
-      answered_leads: Number(r?.answered_leads ?? 0),
-      answer_rate: opt(r?.answer_rate),
-      unanswered_leads: Number(r?.unanswered_leads ?? 0),
-      unanswered_stale: Number(r?.unanswered_stale ?? 0),
-      unanswered_rate: opt(r?.unanswered_rate),
-      avg_hours_first_reply: opt(r?.avg_hours_first_reply),
-      median_hours_first_reply: opt(r?.median_hours_first_reply),
-      re_replied_leads: Number(r?.re_replied_leads ?? 0),
-      re_reply_rate: opt(r?.re_reply_rate),
-      advanced_after_reply: Number(r?.advanced_after_reply ?? 0),
-      advance_after_reply_rate: opt(r?.advance_after_reply_rate),
-      stale_days: Number(r?.stale_days ?? 7),
-    }
-  },
 
-  /** Leads sem conversão em que a última mensagem foi nossa (062). */
-  async reportJourneySilent(
-    range: DateRange,
-    channel?: string,
-    limit = 15,
-    origem?: string,
-  ): Promise<{ rows: CrmJourneySilentRow[]; total: number }> {
-    const { data, error } = await supabase.rpc('crm_report_journey_silent', {
-      ...rangeArgs(range),
-      p_channel: channel || null,
-      p_limit: limit,
-      p_origem: origem || null,
-    })
-    if (error) throw error
-    const raw = (data as Record<string, unknown>[] | null) ?? []
-    return {
-      rows: raw.map((r) => ({
-        contact_id: String(r.contact_id),
-        name: String(r.name ?? ''),
-        phone: r.phone == null ? null : String(r.phone),
-        channel: r.channel == null ? null : String(r.channel),
-        origem: r.origem == null ? null : String(r.origem),
-        stage_name: r.stage_name == null ? null : String(r.stage_name),
-        assignee: r.assignee == null ? null : String(r.assignee),
-        // ?? '' porque a 062 pode não estar aplicada: a versão antiga da RPC
-        // devolve human_at no lugar, e a coluna não é exibida na tela.
-        last_agent_at: String(r.last_agent_at ?? ''),
-        last_client_at: r.last_client_at == null ? null : String(r.last_client_at),
-        days_silent: r.days_silent == null ? null : Number(r.days_silent),
-        msgs: Number(r.msgs),
-        total: Number(r.total),
-      })),
-      total: Number(raw[0]?.total ?? 0),
-    }
-  },
-
-  /** Fila de uma etapa da jornada, do mais parado para o mais recente. */
-  async reportJourneyTagContacts(opts: {
-    rows: { n: string; s: string; u: string }[]
-    stage: string
-    channel?: string
-    origem?: string
-    limit?: number
-  }): Promise<{ rows: CrmJourneyTagContactRow[]; total: number }> {
-    if (opts.rows.length === 0) return { rows: [], total: 0 }
-    const { data, error } = await supabase.rpc('crm_report_journey_tag_contacts', {
-      p_rows: opts.rows,
-      p_stage: opts.stage,
-      p_channel: opts.channel || null,
-      p_origem: opts.origem || null,
-      p_limit: opts.limit ?? 15,
-    })
-    if (error) throw error
-    const raw = (data as Record<string, unknown>[] | null) ?? []
-    return {
-      rows: raw.map((r) => ({
-        numero: String(r.numero),
-        contact_id: r.contact_id == null ? null : String(r.contact_id),
-        name: r.name == null ? null : String(r.name),
-        phone: r.phone == null ? null : String(r.phone),
-        channel: r.channel == null ? null : String(r.channel),
-        origem: r.origem == null ? null : String(r.origem),
-        stage_name: r.stage_name == null ? null : String(r.stage_name),
-        assignee: r.assignee == null ? null : String(r.assignee),
-        days_idle: r.days_idle == null ? null : Number(r.days_idle),
-        converted: Boolean(r.converted),
-        total: Number(r.total),
-      })),
-      total: Number(raw[0]?.total ?? 0),
-    }
-  },
 
   // ---------- Relatório de Meta ADS (lado do CRM) ----------
   // Só o que o banco sabe: leads, vendas e receita dos contatos que vieram
@@ -1324,7 +975,6 @@ export const crmService = {
       sales: Number(r?.sales ?? 0),
       first_sales: Number(r?.first_sales ?? 0),
       repeat_sales: Number(r?.repeat_sales ?? 0),
-      creatives: Number(r?.creatives ?? 0),
       revenue_cents: Number(r?.revenue_cents ?? 0),
       avg_ticket_cents: Number(r?.avg_ticket_cents ?? 0),
       ltv_period_cents: Number(r?.ltv_period_cents ?? 0),
@@ -1382,7 +1032,6 @@ export const crmService = {
       name: String(r.name ?? ''),
       channel: r.channel == null ? null : String(r.channel),
       sales: Number(r.sales),
-      creatives: Number(r.creatives),
       revenue_cents: Number(r.revenue_cents),
       first_sale_at: String(r.first_sale_at),
       last_sale_at: String(r.last_sale_at),
@@ -1773,8 +1422,7 @@ export const crmService = {
    *
    * O canal mora no CONTATO, não na venda (080), então mover de canal é
    * mover de cadastro: o de destino é criado na hora se não existir, e o de
-   * origem fica com as vendas que sobraram. O aviso ao n8n sai do banco,
-   * pela trigger da 088 — nada a disparar daqui.
+   * origem fica com as vendas que sobraram.
    *
    * Os dados de anúncio da origem acompanham quando o destino não tem os
    * dele: sem isso a venda movida sairia órfã de atribuição e não viraria
@@ -1997,7 +1645,6 @@ export const crmService = {
    */
   async addSale(opts: {
     contactId: string
-    creatives: number
     valueCents: number
     /** ISO date/datetime; ausente = agora. */
     soldAt?: string
@@ -2009,7 +1656,6 @@ export const crmService = {
       .from('crm_sales')
       .insert({
         contact_id: opts.contactId,
-        creatives: opts.creatives,
         value_cents: opts.valueCents,
         ...(opts.soldAt ? { sold_at: opts.soldAt } : {}),
         note: opts.note || null,
@@ -2022,7 +1668,6 @@ export const crmService = {
   },
 
   async updateSale(id: string, patch: {
-    creatives?: number
     valueCents?: number
     soldAt?: string
     note?: string | null
@@ -2030,7 +1675,6 @@ export const crmService = {
     paymentMethod?: CrmPaymentMethod | null
   }) {
     const row: Record<string, unknown> = {}
-    if (patch.creatives !== undefined) row.creatives = patch.creatives
     if (patch.valueCents !== undefined) row.value_cents = patch.valueCents
     if (patch.soldAt !== undefined) row.sold_at = patch.soldAt
     if (patch.note !== undefined) row.note = patch.note || null
@@ -2235,41 +1879,7 @@ export const crmService = {
     }
   },
 
-  /**
-   * Avisa o n8n de uma venda lançada à mão (RPC crm_sale_webhook, 068).
-   *
-   * Quem faz o POST é o banco, pelo pg_net: o webhook do n8n não responde
-   * CORS, então um fetch daqui morreria no preflight e a venda ficaria
-   * gravada sem ninguém do outro lado saber.
-   *
-   * Devolve o id da requisição do pg_net — o envio é assíncrono, então
-   * "chamou" não é "entregou". Quem responde isso é saleWebhookStatus().
-   */
-  async notifySaleWebhook(saleId: string, opts: { newContact?: boolean } = {}): Promise<number | null> {
-    const { data, error } = await supabase.rpc('crm_sale_webhook', {
-      p_sale_id: saleId,
-      p_new_contact: opts.newContact ?? false,
-    })
-    if (error) throw error
-    return data == null ? null : Number(data)
-  },
 
-  /** Resultado do POST. null = ainda em voo (ou já expurgado pelo pg_net). */
-  async saleWebhookStatus(requestId: number): Promise<{
-    status_code: number | null
-    timed_out: boolean
-    error_msg: string | null
-  } | null> {
-    const { data, error } = await supabase.rpc('crm_sale_webhook_status', { p_request_id: requestId })
-    if (error) throw error
-    const r = (data as Record<string, unknown>[] | null)?.[0]
-    if (!r) return null
-    return {
-      status_code: r.status_code == null ? null : Number(r.status_code),
-      timed_out: Boolean(r.timed_out),
-      error_msg: r.error_msg == null ? null : String(r.error_msg),
-    }
-  },
 
   /** Histórico de movimentações de um contato, do mais recente ao mais antigo. */
   async listHistory(contactId: string): Promise<CrmStageHistory[]> {
@@ -2446,15 +2056,6 @@ export const crmService = {
   },
 }
 
-/** Solta o papel de jornada das demais etapas (só um de cada por org). */
-async function clearJourneyRole(role: CrmJourneyRole, exceptId: string) {
-  const { error } = await supabase
-    .from('crm_stages')
-    .update({ journey_role: null })
-    .eq('journey_role', role)
-    .neq('id', exceptId)
-  if (error) throw error
-}
 
 /** Tira a marca de conversão das demais etapas (só uma por org). */
 async function clearConversionFlag(exceptId?: string) {
@@ -2462,4 +2063,37 @@ async function clearConversionFlag(exceptId?: string) {
   if (exceptId) query = query.neq('id', exceptId)
   const { error } = await query
   if (error) throw error
+}
+
+// ---------- Jornada nativa (122) ----------
+
+export interface CrmJourneyNative {
+  resumo: {
+    leads: number
+    convertidos: number
+    receita_cents: number
+    dias_ate_compra: number | null
+    dias_ate_compra_mediana: number | null
+    com_conversa: number
+    respondidos: number
+    tpr_min: number | null
+    msgs_ate_compra: number | null
+    aguardando_cliente: number
+    aguardando_equipe: number
+  }
+  etapas: { id: string; nome: string; cor: string; conversao: boolean; passaram: number; agora: number; dias_ate: number | null }[]
+  por_origem: { origem: string; leads: number; convertidos: number; receita_cents: number }[]
+}
+
+/** Jornada só com o que o CRM rastreia: etapas, conversas, vendas e origem. Só admin. */
+export async function reportJourneyNative(
+  range: { from: string; to: string },
+  channel?: string,
+  origem?: string,
+): Promise<CrmJourneyNative> {
+  const { data, error } = await supabase.rpc('crm_journey_native', {
+    p_from: range.from, p_to: range.to, p_channel: channel || null, p_origem: origem || null,
+  })
+  if (error) throw error
+  return data as CrmJourneyNative
 }

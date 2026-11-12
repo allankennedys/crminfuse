@@ -147,7 +147,7 @@ export function CRMPage() {
   // null = fechado; undefined = nova etapa; objeto = editando
   const [editingStage, setEditingStage] = useState<CrmStage | null | undefined>(null)
   // Lançamento rápido de venda a partir do funil: escolhe o cliente, informa
-  // valor e criativos, e o n8n é avisado depois de gravar (068).
+  // o valor e a forma de pagamento.
   // true = lançamento pelo botão, cliente a escolher; contato = card arrastado
   // para a conversão, já escolhido.
   const [launchingSale, setLaunchingSale] = useState<boolean | CrmContact>(false)
