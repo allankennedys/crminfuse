@@ -67,16 +67,6 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     ],
   },
   {
-    id: 'painel.numeros',
-    sistema: 'painel',
-    label: 'Números',
-    hint: 'Instâncias de WhatsApp: conectar, renomear, remover',
-    actions: [
-      { key: 'painel.numeros.ver', label: 'Ver' },
-      { key: 'painel.numeros.editar', label: 'Gerenciar' },
-    ],
-  },
-  {
     id: 'painel.mensagens',
     sistema: 'painel',
     label: 'Mensagens',
@@ -153,6 +143,19 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: 'atendimento.ver_todas', label: 'Ver todas' },
       { key: 'atendimento.atribuir', label: 'Atribuir' },
       { key: 'atendimento.configurar', label: 'Números' },
+    ],
+  },
+  {
+    // As chaves continuam 'painel.*' porque é o que a RLS de whatsapp_sessions
+    // e a Edge Function evolution perguntam. Mudou só o sistema: neste
+    // projeto não há painel de grupos, e os números moram no Atendimento.
+    id: 'painel.numeros',
+    sistema: 'crm',
+    label: 'Números de WhatsApp',
+    hint: 'Conectar pelo QR Code, desconectar e remover — sempre só os próprios números',
+    actions: [
+      { key: 'painel.numeros.ver', label: 'Ver' },
+      { key: 'painel.numeros.editar', label: 'Gerenciar' },
     ],
   },
   {

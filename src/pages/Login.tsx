@@ -18,7 +18,7 @@ export function LoginPage() {
       await signIn(username, password)
       // Serve os dois domínios sem alteração: na build do CRM não existe rota
       // /dashboard, então o catch-all do App redireciona para /crm.
-      navigate('/dashboard')
+      navigate('/crm')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha no login')
     } finally {
