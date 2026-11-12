@@ -1,0 +1,28 @@
+# Configuração mínima para o CLI publicar as Edge Functions.
+#   npx supabase functions deploy --project-ref <ref> --use-api
+#
+# verify_jwt = false: quem chama não é um usuário logado — o cron (header
+# x-worker-secret), a Evolution (token na URL) ou automações externas
+# (x-api-key). Cada função confere a própria credencial.
+project_id = "infuse-crm"
+
+[functions.worker]
+verify_jwt = false
+
+[functions.crm-worker]
+verify_jwt = false
+
+[functions.ads-daily]
+verify_jwt = false
+
+[functions.ads-campaigns]
+verify_jwt = false
+
+[functions.utmify-worker]
+verify_jwt = false
+
+[functions.crm-api]
+verify_jwt = false
+
+[functions.wa-webhook]
+verify_jwt = false

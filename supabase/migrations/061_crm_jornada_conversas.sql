@@ -42,10 +42,20 @@ begin
   if to_regprocedure('public.crm_first_human_touch(uuid)') is null then
     raise exception 'Aplique a migration 060 antes desta: crm_first_human_touch() não existe';
   end if;
-  if to_regclass('public.conversation_messages') is null then
-    raise exception 'Tabela public.conversation_messages não existe neste banco';
-  end if;
 end $$;
+
+-- Infuse: no banco da PH esta tabela é do robô de atendimento e já existia
+-- antes do CRM. Num banco novo ela não existe — cria vazia, com as três
+-- colunas que a Jornada lê. Sem robô gravando nela, as métricas de
+-- conversa da Jornada ficam zeradas (o resto do relatório funciona).
+create table if not exists public.conversation_messages (
+  id          bigserial primary key,
+  number      text not null,
+  sender_type text not null check (sender_type in ('client', 'agent')),
+  content     text,
+  sent_at     timestamptz not null default now()
+);
+alter table public.conversation_messages enable row level security;
 
 -- crm_phone_key é immutable (044), então serve de chave de índice. A ordem
 -- (chave, sent_at) atende os dois acessos desta migration: achar a conversa
