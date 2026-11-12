@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRightLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
-  Hand, Mic, Paperclip, RotateCcw, Send, Trash2, X as XIcon,
+  Hand, Mic, Paperclip, RotateCcw, Send, X as XIcon,
 } from 'lucide-react'
-import { useVoiceRecorder, VOICE_MAX_SECONDS } from './useVoiceRecorder'
+import { useVoiceRecorder } from './useVoiceRecorder'
+import { VoiceComposer } from './VoiceComposer'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { Loader, Modal } from '@/components/ui'
@@ -310,10 +311,9 @@ export function ChatThread({
     (e) => toast.error(
       e === 'sem-permissao' ? 'Permita o uso do microfone no navegador para gravar áudio.'
         : e === 'sem-suporte' ? 'Este navegador não grava áudio. Use Chrome, Edge ou Firefox atualizados.'
-        : 'Áudio muito curto — segure pelo menos 1 segundo.',
+        : 'Áudio muito curto — grave pelo menos 1 segundo.',
     ),
   )
-  const tempo = `${Math.floor(voice.seconds / 60)}:${String(voice.seconds % 60).padStart(2, '0')}`
   const podeGravar = !text.trim() && !file
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -526,32 +526,8 @@ export function ChatThread({
             </button>
           </div>
         )}
-        {voice.recording ? (
-          <div className="at-composer-row at-recording">
-            <button
-              type="button"
-              className="icon-btn btn-danger-ghost"
-              onClick={() => voice.stop(false)}
-              title="Descartar áudio"
-              aria-label="Descartar áudio"
-            >
-              <Trash2 size={17} />
-            </button>
-            <div className="at-rec-status" role="status" aria-live="polite">
-              <span className="at-rec-dot" aria-hidden="true" />
-              Gravando <strong>{tempo}</strong>
-              {voice.seconds >= VOICE_MAX_SECONDS - 30 && <span className="text-muted"> · limite de 5 min</span>}
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary at-send"
-              onClick={() => voice.stop(true)}
-              title="Enviar áudio"
-              aria-label="Enviar áudio"
-            >
-              <Send size={16} />
-            </button>
-          </div>
+        {voice.phase !== 'idle' ? (
+          <VoiceComposer voice={voice} />
         ) : (
           <div className="at-composer-row">
             <button

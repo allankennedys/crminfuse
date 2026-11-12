@@ -62,7 +62,7 @@ import {
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
 }
 
 const GRAPH = `https://graph.facebook.com/${META_API_VERSION}`

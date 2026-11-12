@@ -4415,6 +4415,65 @@ td.col-acao { width: 44px; text-align: right; }
 @keyframes at-rec-pulse { 50% { opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) { .at-rec-dot { animation: none; } }
 
+.at-rec-status { min-width: 0; overflow: hidden; }
+.at-rec-time { min-width: 34px; font-variant-numeric: tabular-nums; }
+.at-rec-limit { font-size: 12px; white-space: nowrap; }
+
+/* Onda da mensagem de voz: barras finas centradas na linha do meio. */
+.at-wave {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+}
+.at-wave i {
+  flex: none;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--text-muted);
+}
+/* Ao vivo: a barra nova entra pela direita, as antigas saem pela esquerda. */
+.at-wave-live { justify-content: flex-end; }
+.at-wave-live i { background: var(--primary-text); transition: height 0.09s linear; }
+@media (prefers-reduced-motion: reduce) { .at-wave-live i { transition: none; } }
+
+/* Revisão: o que já tocou fica azul. */
+.at-voice-preview { gap: 10px; padding-left: 6px; }
+.at-voice-play {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  cursor: pointer;
+}
+.at-voice-play:hover { filter: brightness(1.08); }
+.at-voice-play:focus-visible,
+.at-wave-preview:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.at-wave-preview { justify-content: space-between; cursor: pointer; border-radius: 4px; }
+.at-wave-preview i { opacity: 0.5; }
+.at-wave-preview i.on { background: var(--primary-text); opacity: 1; }
+
+/* Texto só para leitor de tela. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Mensagem que não saiu (envio otimista) */
 .at-failed {
   display: flex;
