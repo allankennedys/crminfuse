@@ -48,7 +48,7 @@ export function Layout() {
 
   // Título da aba do navegador para a área de gestão.
   useEffect(() => {
-    document.title = 'Infuse - Gestão de Grupos'
+    document.title = 'Infuse - CRM'
   }, [])
 
   // Fecha o menu mobile ao navegar
