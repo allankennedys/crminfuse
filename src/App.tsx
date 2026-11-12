@@ -39,7 +39,10 @@ export default function App() {
 
   // Usuário "apenas CRM" que entrou pelo domínio da gestão: o CRM mora em
   // outro subdomínio, então mandamos ele para lá em vez de servir a página aqui.
-  if (APP_MODE === 'groups' && profile?.role === 'sdr' && CRM_IS_EXTERNAL) {
+  // SDR e atendente só existem dentro do CRM.
+  const soCrm = profile?.role === 'sdr' || profile?.role === 'atendente'
+
+  if (APP_MODE === 'groups' && soCrm && CRM_IS_EXTERNAL) {
     window.location.replace(CRM_URL)
     return <div className="auth-page"><Loader /></div>
   }
@@ -48,7 +51,7 @@ export default function App() {
   // usuário só existe dentro dele. Não montamos o Layout do painel nem as
   // rotas internas — qualquer caminho cai no /crm, inclusive o /dashboard
   // para onde o login navega por padrão.
-  if (APP_MODE === 'crm' || profile?.role === 'sdr') {
+  if (APP_MODE === 'crm' || soCrm) {
     return (
       <>
         <Routes>

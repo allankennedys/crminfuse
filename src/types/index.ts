@@ -2,7 +2,7 @@
  * Renames feitos no enum do banco, não em coluna nova:
  * 'crm_only' → 'sdr' (054) e 'viewer' → 'gestor' (056).
  */
-export type UserRole = 'admin' | 'operator' | 'gestor' | 'sdr'
+export type UserRole = 'admin' | 'operator' | 'gestor' | 'sdr' | 'atendente'
 export type SessionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 export type MediaType = 'text' | 'image' | 'audio' | 'video' | 'document'
 export type QueueStatus = 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled'
@@ -1094,4 +1094,69 @@ export interface CrmApiKey {
   revoked_at: string | null
   created_by: string | null
   created_at: string
+}
+
+// ---------- Atendimento (WhatsApp, 116) ----------
+
+export type WaConversationStatus = 'aberta' | 'resolvida'
+
+export interface WaConversation {
+  id: string
+  organization_id: string
+  /** null = o número foi removido do painel; o histórico fica, sem resposta. */
+  session_id: string | null
+  remote_jid: string
+  lid_jid: string | null
+  /** Só dígitos, com DDI. null enquanto o WhatsApp só informou o LID. */
+  phone: string | null
+  push_name: string | null
+  contact_id: string | null
+  assigned_to: string | null
+  assigned_at: string | null
+  status: WaConversationStatus
+  last_message_at: string | null
+  last_message_preview: string | null
+  last_message_from_me: boolean | null
+  unread_count: number
+  created_at: string
+  updated_at: string
+  /** Embed do contato do CRM — null quando não há vínculo ou a RLS não deixa ver. */
+  crm_contacts?: { name: string } | null
+}
+
+export type WaMessageType =
+  | 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker'
+  | 'location' | 'contact' | 'reaction' | 'other'
+
+export type WaMessageStatus = 'received' | 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
+
+export interface WaMessage {
+  id: string
+  conversation_id: string
+  wa_message_id: string
+  from_me: boolean
+  sent_by: string | null
+  type: WaMessageType
+  body: string | null
+  media_path: string | null
+  media_mime: string | null
+  media_name: string | null
+  media_status: 'pendente' | 'ok' | 'falhou' | null
+  status: WaMessageStatus
+  wa_timestamp: string
+  created_at: string
+}
+
+export interface WaSession {
+  id: string
+  instance_name: string
+  phone_number: string | null
+  status: SessionStatus
+  chat_enabled: boolean
+}
+
+export interface WaAttendant {
+  id: string
+  name: string
+  role: UserRole
 }

@@ -1,0 +1,389 @@
+/**
+ * Edge Function: wa-webhook
+ *
+ * Recebe os eventos da Evolution API dos números ligados ao Atendimento e
+ * grava as conversas individuais em wa_conversations / wa_messages (116).
+ *
+ * DEPLOY SEM VERIFICAÇÃO DE JWT — quem chama é a Evolution, não um usuário:
+ *
+ *   npx supabase functions deploy wa-webhook --no-verify-jwt
+ *
+ * AUTENTICAÇÃO: cada número tem um token próprio (wa_session_secrets),
+ * criado pela wa-chat ao ativar o número e enviado na URL (?s=...). Token
+ * desconhecido = 401; número desligado do atendimento = ignorado.
+ *
+ * SÓ CONVERSA INDIVIDUAL: grupo (@g.us), status, lista de transmissão e
+ * canal (@newsletter) são descartados aqui, antes de tocar no banco.
+ *
+ * Eventos tratados (os mesmos que a wa-chat assina no /webhook/set):
+ *   messages.upsert ... mensagem recebida, ou enviada pelo próprio celular
+ *   send.message ...... mensagem enviada pela API (eco do envio do painel)
+ *   messages.update ... entregue / lida
+ *
+ * Gravar é idempotente (id do WhatsApp + conversa): a Evolution reenviar o
+ * mesmo evento, ou o eco chegar antes da resposta do envio, não duplica.
+ *
+ * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (automáticos),
+ *          EVOLUTION_API_URL, EVOLUTION_API_KEY
+ */
+
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
+const admin = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  { auth: { persistSession: false } },
+)
+
+const BUCKET = 'wa-media'
+
+interface Session {
+  id: string
+  organization_id: string
+  instance_name: string
+  chat_enabled: boolean
+}
+
+// deno-lint-ignore no-explicit-any
+type Json = any
+
+interface Parsed {
+  type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact' | 'reaction' | 'other'
+  body: string | null
+  media: boolean
+  mime?: string | null
+  name?: string | null
+}
+
+Deno.serve(async (req) => {
+  if (req.method !== 'POST') return new Response('ok')
+
+  const token = new URL(req.url).searchParams.get('s') ?? ''
+  if (!token) return new Response('token ausente', { status: 401 })
+
+  const { data: secret } = await admin
+    .from('wa_session_secrets')
+    .select('session_id')
+    .eq('webhook_token', token)
+    .maybeSingle()
+  if (!secret) return new Response('token inválido', { status: 401 })
+
+  const { data: session } = await admin
+    .from('whatsapp_sessions')
+    .select('id, organization_id, instance_name, chat_enabled')
+    .eq('id', secret.session_id)
+    .maybeSingle<Session>()
+  if (!session?.chat_enabled) return new Response('número fora do atendimento')
+
+  let payload: Json
+  try {
+    payload = await req.json()
+  } catch {
+    return new Response('json inválido', { status: 400 })
+  }
+
+  // O token é do número: evento de outra instância com ele é erro de
+  // configuração (ou alguém reaproveitando a URL) e não entra.
+  if (payload?.instance && payload.instance !== session.instance_name) {
+    return new Response('instância não confere', { status: 403 })
+  }
+
+  const event = String(payload?.event ?? '').toLowerCase().replace(/_/g, '.')
+
+  try {
+    if (event === 'messages.upsert' || event === 'send.message') {
+      const medias = await onMessages(session, payload.data)
+      // Baixar mídia pode levar segundos; a mensagem já está gravada e
+      // aparece na tela. O arquivo chega logo depois, em segundo plano.
+      if (medias.length) {
+        const pending = background(Promise.all(medias.map((m) => m().catch(logErr))))
+        if (pending) await pending
+      }
+    } else if (event === 'messages.update') {
+      await onStatus(session, payload.data)
+    }
+  } catch (err) {
+    logErr(err)
+    // 500 deixa a Evolution reenviar; a gravação é idempotente.
+    return new Response('erro ao processar', { status: 500 })
+  }
+
+  return new Response('ok')
+})
+
+// ---------------------------------------------------------------------------
+// Mensagens
+// ---------------------------------------------------------------------------
+
+async function onMessages(session: Session, data: Json): Promise<Array<() => Promise<void>>> {
+  const items: Json[] = Array.isArray(data) ? data : Array.isArray(data?.messages) ? data.messages : [data]
+  const medias: Array<() => Promise<void>> = []
+
+  for (const item of items) {
+    const key = item?.key
+    if (!key?.id || !key?.remoteJid) continue
+
+    const jids = resolveJids(key, item)
+    if (!jids) continue // grupo, status, canal…
+
+    const parsed = parseContent(item.message, item.messageType)
+    if (!parsed) continue // protocolo, edição, reação removida…
+
+    const fromMe = Boolean(key.fromMe)
+
+    const { data: row, error } = await admin.rpc('wa_ingest_message', {
+      p_session: session.id,
+      p_pn_jid: jids.pn,
+      p_lid_jid: jids.lid,
+      p_push_name: item.pushName ?? null,
+      p_wa_id: String(key.id),
+      p_from_me: fromMe,
+      p_type: parsed.type,
+      p_body: parsed.body,
+      p_media_mime: parsed.mime ?? null,
+      p_media_name: parsed.name ?? null,
+      p_has_media: parsed.media,
+      p_ts: toDate(item.messageTimestamp),
+      p_status: fromMe ? (mapStatus(item.status) ?? 'sent') : 'received',
+    }).single<{ conversation_id: string; message_id: string; inserted: boolean; organization_id: string }>()
+    if (error) throw error
+
+    // Só quem gravou a linha baixa o arquivo — o eco de um envio do painel
+    // já chega com o arquivo no lugar.
+    if (parsed.media && row?.inserted) {
+      medias.push(() => saveMedia(session, row, item, parsed))
+    }
+  }
+
+  return medias
+}
+
+/**
+ * Telefone e LID da conversa. O WhatsApp identifica parte dos chats pelo LID
+ * (id opaco, ...@lid); a Evolution manda o telefone ao lado quando sabe, em
+ * campos que mudaram de nome entre versões — por isso a lista.
+ */
+function resolveJids(key: Json, item: Json): { pn: string | null; lid: string | null } | null {
+  const rj = String(key.remoteJid)
+  const alts = [key.remoteJidAlt, key.senderPn, key.senderLid, item?.senderPn, key.participantAlt]
+    .filter((v) => typeof v === 'string' && v)
+    .map(String)
+
+  if (rj.endsWith('@s.whatsapp.net')) {
+    return { pn: rj, lid: alts.find((a) => a.endsWith('@lid')) ?? null }
+  }
+  if (rj.endsWith('@lid')) {
+    return { pn: alts.find((a) => a.endsWith('@s.whatsapp.net')) ?? null, lid: rj }
+  }
+  return null
+}
+
+function parseContent(message: Json, messageType?: string): Parsed | null {
+  if (!message || typeof message !== 'object') return null
+
+  // Envelopes: mensagem temporária, visualização única, documento com legenda.
+  let m: Json = message
+  for (let i = 0; i < 3; i++) {
+    const inner = m.ephemeralMessage?.message ?? m.viewOnceMessage?.message
+      ?? m.viewOnceMessageV2?.message ?? m.viewOnceMessageV2Extension?.message
+      ?? m.documentWithCaptionMessage?.message
+    if (!inner) break
+    m = inner
+  }
+
+  if (typeof m.conversation === 'string') return { type: 'text', body: m.conversation, media: false }
+  if (m.extendedTextMessage) return { type: 'text', body: m.extendedTextMessage.text ?? '', media: false }
+
+  if (m.imageMessage) {
+    return { type: 'image', body: m.imageMessage.caption ?? null, media: true, mime: m.imageMessage.mimetype }
+  }
+  if (m.videoMessage) {
+    return { type: 'video', body: m.videoMessage.caption ?? null, media: true, mime: m.videoMessage.mimetype }
+  }
+  if (m.audioMessage) {
+    return { type: 'audio', body: null, media: true, mime: m.audioMessage.mimetype }
+  }
+  if (m.documentMessage) {
+    const d = m.documentMessage
+    return { type: 'document', body: d.caption ?? null, media: true, mime: d.mimetype, name: d.fileName ?? d.title ?? null }
+  }
+  if (m.stickerMessage) {
+    return { type: 'sticker', body: null, media: true, mime: m.stickerMessage.mimetype ?? 'image/webp' }
+  }
+
+  const loc = m.locationMessage ?? m.liveLocationMessage
+  if (loc) {
+    const lat = loc.degreesLatitude, lng = loc.degreesLongitude
+    const label = [loc.name, loc.address].filter(Boolean).join(' — ')
+    return {
+      type: 'location',
+      body: `📍 ${label ? label + '\n' : ''}https://maps.google.com/?q=${lat},${lng}`,
+      media: false,
+    }
+  }
+
+  if (m.contactMessage) {
+    return { type: 'contact', body: `👤 ${m.contactMessage.displayName ?? 'Contato'}\n${vcardPhones(m.contactMessage.vcard)}`.trim(), media: false }
+  }
+  if (m.contactsArrayMessage) {
+    const list = (m.contactsArrayMessage.contacts ?? []) as Json[]
+    return { type: 'contact', body: list.map((c) => `👤 ${c.displayName ?? 'Contato'} ${vcardPhones(c.vcard)}`.trim()).join('\n'), media: false }
+  }
+
+  if (m.reactionMessage) {
+    const emoji = m.reactionMessage.text
+    // Reação vazia = a pessoa tirou a reação. Não vira mensagem.
+    return emoji ? { type: 'reaction', body: `Reagiu com ${emoji}`, media: false } : null
+  }
+
+  // Respostas de botão/lista e enquete: o que importa é o texto escolhido.
+  const choice = m.buttonsResponseMessage?.selectedDisplayText
+    ?? m.listResponseMessage?.title
+    ?? m.templateButtonReplyMessage?.selectedDisplayText
+  if (choice) return { type: 'text', body: choice, media: false }
+  const poll = m.pollCreationMessage ?? m.pollCreationMessageV2 ?? m.pollCreationMessageV3
+  if (poll) return { type: 'text', body: `📊 Enquete: ${poll.name ?? ''}`, media: false }
+
+  // Controle do protocolo (apagar, editar, chaves): não é conversa.
+  if (m.protocolMessage || m.editedMessage || m.senderKeyDistributionMessage || m.pollUpdateMessage) return null
+
+  const tipo = messageType && messageType !== 'unknown' ? messageType : 'mensagem'
+  return { type: 'other', body: `[${tipo} não suportada — veja no celular]`, media: false }
+}
+
+function vcardPhones(vcard?: string): string {
+  if (!vcard) return ''
+  return [...vcard.matchAll(/TEL[^:]*:([+\d\s()-]+)/g)].map((x) => x[1].trim()).join(', ')
+}
+
+async function saveMedia(
+  session: Session,
+  row: { conversation_id: string; message_id: string; organization_id: string },
+  item: Json,
+  parsed: Parsed,
+) {
+  let b64: string | null = item?.message?.base64 ?? item?.base64 ?? null
+  let mime = parsed.mime ?? null
+
+  // Sem base64 no evento (webhook sem a opção, ou versão que não manda):
+  // pede o arquivo à Evolution. Vai a mensagem inteira, não só o id — com
+  // só o id ela precisa ter guardado a mensagem no banco dela.
+  if (!b64) {
+    const { base64: _ignorado, ...semBase64 } = item.message ?? {}
+    const res = await evolution(`/chat/getBase64FromMediaMessage/${encodeURIComponent(session.instance_name)}`, {
+      message: { key: item.key, message: semBase64 },
+      convertToMp4: false,
+    })
+    b64 = res.ok ? res.data?.base64 ?? null : null
+    mime = mime || res.data?.mimetype || null
+  }
+
+  if (!b64) {
+    await admin.from('wa_messages').update({ media_status: 'falhou' }).eq('id', row.message_id)
+    return
+  }
+
+  const bytes = decodeBase64(b64)
+  const path = `${row.organization_id}/${row.conversation_id}/${row.message_id}.${extension(mime, parsed.name)}`
+  const contentType = (mime ?? 'application/octet-stream').split(';')[0].trim()
+
+  const { error } = await admin.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: true })
+
+  await admin.from('wa_messages')
+    .update(error ? { media_status: 'falhou' } : { media_path: path, media_status: 'ok', media_mime: mime })
+    .eq('id', row.message_id)
+
+  if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// Entregue / lida
+// ---------------------------------------------------------------------------
+
+async function onStatus(session: Session, data: Json) {
+  const items: Json[] = Array.isArray(data) ? data : [data]
+  for (const d of items) {
+    const waId = d?.keyId ?? d?.key?.id
+    const jid = String(d?.remoteJid ?? d?.key?.remoteJid ?? '')
+    const status = mapStatus(d?.status ?? d?.update?.status)
+    if (!waId || !status || jid.endsWith('@g.us')) continue
+
+    const { error } = await admin.rpc('wa_update_message_status', {
+      p_session: session.id,
+      p_wa_id: String(waId),
+      p_status: status,
+    })
+    if (error) throw error
+  }
+}
+
+/** Status da Evolution/Baileys (texto ou número) → o nosso. */
+function mapStatus(s: unknown): string | null {
+  const v = typeof s === 'number' ? s : String(s ?? '').toUpperCase()
+  switch (v) {
+    case 0: case 'ERROR': return 'failed'
+    case 1: case 'PENDING': return 'pending'
+    case 2: case 'SERVER_ACK': return 'sent'
+    case 3: case 'DELIVERY_ACK': return 'delivered'
+    case 4: case 5: case 'READ': case 'PLAYED': return 'read'
+    default: return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Utilidades
+// ---------------------------------------------------------------------------
+
+/** messageTimestamp vem em segundos — como número, texto ou Long {low, high}. */
+function toDate(ts: Json): string | null {
+  const n = typeof ts === 'object' && ts !== null ? Number(ts.low ?? 0) : Number(ts)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return new Date(n * 1000).toISOString()
+}
+
+function decodeBase64(b64: string): Uint8Array {
+  const clean = b64.includes(',') && b64.startsWith('data:') ? b64.slice(b64.indexOf(',') + 1) : b64
+  const bin = atob(clean)
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
+}
+
+const EXT: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+  'video/mp4': 'mp4', 'video/3gpp': '3gp', 'video/quicktime': 'mov',
+  'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/aac': 'aac', 'audio/amr': 'amr',
+  'application/pdf': 'pdf',
+}
+
+function extension(mime: string | null, name?: string | null): string {
+  const fromName = name?.match(/\.([a-z0-9]{1,8})$/i)?.[1]
+  if (fromName) return fromName.toLowerCase()
+  const base = (mime ?? '').split(';')[0].trim().toLowerCase()
+  return EXT[base] ?? 'bin'
+}
+
+async function evolution(path: string, body: unknown) {
+  const base = (Deno.env.get('EVOLUTION_API_URL') ?? '').replace(/\/+$/, '')
+  const res = await fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: Deno.env.get('EVOLUTION_API_KEY') ?? '' },
+    body: JSON.stringify(body),
+  }).catch(() => null)
+  if (!res) return { ok: false, status: 0, data: null as Json }
+  let data: Json = null
+  try { data = await res.json() } catch { /* sem corpo */ }
+  return { ok: res.ok, status: res.status, data }
+}
+
+/** Segundo plano quando o runtime oferece; senão devolve a promessa para esperar. */
+function background(p: Promise<unknown>): Promise<unknown> | null {
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime
+  if (rt?.waitUntil) { rt.waitUntil(p); return null }
+  return p
+}
+
+function logErr(err: unknown) {
+  console.error('[wa-webhook]', err instanceof Error ? err.message : err)
+}

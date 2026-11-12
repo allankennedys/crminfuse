@@ -141,6 +141,21 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     ],
   },
   {
+    // A regra mora na RLS de wa_conversations (116). Sem "Ver todas", a
+    // pessoa só enxerga as conversas atribuídas a ela — é o recorte do cargo
+    // Atendente.
+    id: 'atendimento',
+    sistema: 'crm',
+    label: 'Atendimento (WhatsApp)',
+    hint: 'Conversas individuais. Sem "Ver todas", a pessoa só vê as atribuídas a ela',
+    actions: [
+      { key: 'atendimento.ver', label: 'Responder as suas' },
+      { key: 'atendimento.ver_todas', label: 'Ver todas' },
+      { key: 'atendimento.atribuir', label: 'Atribuir' },
+      { key: 'atendimento.configurar', label: 'Números' },
+    ],
+  },
+  {
     id: 'crm.contatos',
     sistema: 'crm',
     label: 'Contatos',

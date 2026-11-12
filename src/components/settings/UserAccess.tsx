@@ -13,6 +13,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
   operator: 'Operador',
   gestor: 'Gestor',
   sdr: 'SDR',
+  atendente: 'Atendente',
 }
 
 /** Linha da visão global (todas as orgs) — retornada pela Edge Function admin-users. */

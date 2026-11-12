@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Contact, KanbanSquare, Settings2, Plus, BarChart3, CalendarRange, LogOut, Receipt, Search, X as XIcon } from 'lucide-react'
+import { Contact, KanbanSquare, Settings2, Plus, BarChart3, CalendarRange, LogOut, Receipt, Search, X as XIcon, MessageCircle } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import {
   crmService, type BoardFilters, type StageStats, type ChannelCount,
@@ -17,6 +17,7 @@ import { StageDialog } from '@/components/crm/StageDialog'
 import { CrmSettingsPanel } from '@/components/crm/CrmSettings'
 import { CrmReports } from '@/components/crm/CrmReports'
 import { PendingReceiptsButton } from '@/components/crm/PendingReceipts'
+import { Atendimento } from '@/components/atendimento/Atendimento'
 import logo from '@/assets/favicon.png'
 import type { CrmContact, CrmStage } from '@/types'
 
@@ -60,6 +61,8 @@ function inicioMesSP(): string {
 
 const TABS = [
   { id: 'funil', label: 'Funil', icon: KanbanSquare, perm: 'crm.funil.ver' },
+  // Também aparece para quem só tem "ver todas" (ver visibleTabs).
+  { id: 'atendimento', label: 'Atendimento', icon: MessageCircle, perm: 'atendimento.ver' },
   { id: 'contatos', label: 'Contatos', icon: Contact, perm: 'crm.contatos.ver' },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart3, perm: 'crm.relatorios.ver' },
   { id: 'config', label: 'Configurações', icon: Settings2, perm: 'crm.chaves.ver' },
@@ -87,7 +90,10 @@ export function CRMPage() {
   // useMemo porque `can` é uma função nova a cada render: sem ele o array
   // muda de identidade sempre e o efeito abaixo dispara em todo render.
   const visibleTabs = useMemo(
-    () => TABS.filter((t) => can(t.perm) || (t.id === 'config' && isAdmin)),
+    () => TABS.filter((t) =>
+      can(t.perm)
+      || (t.id === 'config' && isAdmin)
+      || (t.id === 'atendimento' && can('atendimento.ver_todas'))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [permissions, isAdmin],
   )
@@ -187,19 +193,25 @@ export function CRMPage() {
     document.title = 'Infuse - CRM'
   }, [])
 
+  // Quem só atende (cargo atendente) não enxerga nada do funil: carregar
+  // etapas e contatos só daria erro na tela dele.
+  const temCrm = permissions.some((p) => p.startsWith('crm.'))
+
   // Primeira visita da organização: cria o funil padrão antes de carregar.
   useEffect(() => {
+    if (!temCrm) { setStages([]); return }
     crmService.bootstrap()
       .catch(() => { /* já existe ou sem permissão — refresh mostra o estado real */ })
       .finally(refresh)
-  }, [refresh])
+  }, [refresh, temCrm])
 
   // Canais em uso — alimentam o filtro da barra do funil. Recarregam junto
   // com o board para um canal novo aparecer sem F5. (Origens e etiquetas são
   // carregadas pelo próprio drawer, que é quem as oferece.)
   useEffect(() => {
+    if (!temCrm) return
     crmService.listChannels().then(setChannels).catch(() => setChannels([]))
-  }, [contacts.length])
+  }, [contacts.length, temCrm])
 
   // Busca com debounce e piso de 2 caracteres: economiza consultas — sem
   // isso, cada tecla varreria a tabela. Só dispara ao parar de digitar.
@@ -279,6 +291,13 @@ export function CRMPage() {
     })
   })
 
+  // "CRM" no cabeçalho de uma conversa: abre o mesmo drawer do funil.
+  const openContactById = useCallback((id: string) => {
+    crmService.getContact(id)
+      .then((c) => setEditingContact(c))
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Contato não encontrado'))
+  }, [])
+
   // Contagem de todo o funil (não só do que foi carregado).
   const funnelCount = [...stats.values()].reduce((sum, st) => sum + Number(st.contact_count), 0)
 
@@ -334,8 +353,10 @@ export function CRMPage() {
         </div>
       </header>
 
-      <main className={tab === 'funil' ? 'crm-main crm-main-board' : 'crm-main'}>
-        {stages === null ? (
+      <main className={tab === 'funil' ? 'crm-main crm-main-board' : tab === 'atendimento' ? 'crm-main crm-main-chat' : 'crm-main'}>
+        {tab === 'atendimento' ? (
+          <Atendimento onOpenContact={openContactById} />
+        ) : stages === null ? (
           <Loader />
         ) : tab === 'funil' ? (
           stages.length === 0 ? (
