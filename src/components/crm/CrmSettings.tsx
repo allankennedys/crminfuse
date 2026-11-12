@@ -362,30 +362,6 @@ function AdAccountsSection({ canEdit }: { canEdit: boolean }) {
     }
   }
 
-  /**
-   * Liga e desliga a conta no relatório automático.
-   *
-   * Só isso vai na chamada: `token: undefined` mantém o token salvo, que é a
-   * regra de sempre. Desligar uma conta não pode custar a credencial dela —
-   * é o motivo de o toggle existir em vez de a operação remover e
-   * recadastrar (085).
-   */
-  async function toggleActive(account: CrmAdAccount) {
-    const ligando = !account.is_active
-    try {
-      await crmService.saveAdAccount({
-        id: account.id,
-        accountId: account.account_id,
-        label: account.label ?? '',
-        active: ligando,
-      })
-      toast.success(ligando ? 'Conta ligada no relatório' : 'Conta fora do relatório')
-      load()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Falha ao alterar a conta')
-    }
-  }
-
   async function clearToken(account: CrmAdAccount) {
     const ok = await confirmDialog({
       title: 'Usar o token padrão',
@@ -437,11 +413,6 @@ function AdAccountsSection({ canEdit }: { canEdit: boolean }) {
         Gerenciador de Anúncios; pode colar com ou sem o <code>act_</code>. O
         apelido é só para você reconhecer a conta aqui.
       </p>
-      <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 10 }}>
-        O botão <strong>Desligar</strong> tira a conta só do relatório de
-        campanhas que chega no WhatsApp de 2 em 2 horas. Ela continua
-        cadastrada, com o token, e continua somando nesta aba de Meta ADS.
-      </p>
 
       {accounts === null ? (
         <Loader />
@@ -464,24 +435,14 @@ function AdAccountsSection({ canEdit }: { canEdit: boolean }) {
                 temToken={a.has_token}
               />
             ) : (
-              <div className="ad-account-row" key={a.id} style={a.is_active ? undefined : { opacity: 0.55 }}>
+              <div className="ad-account-row" key={a.id}>
                 <div className="ad-account-id">
                   <span className="ad-account-label">{a.label ?? a.account_id}</span>
                   {a.label && <span className="mono text-muted">{a.account_id}</span>}
                 </div>
-                {!a.is_active && <span className="badge badge-gray">fora do relatório</span>}
                 {a.has_token && <span className="badge badge-green">token próprio</span>}
                 {canEdit && (
                   <div className="ad-account-actions">
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => toggleActive(a)}
-                      title={a.is_active
-                        ? 'Tirar esta conta do relatório automático de campanhas'
-                        : 'Voltar a incluir esta conta no relatório automático de campanhas'}
-                    >
-                      {a.is_active ? 'Desligar' : 'Ligar'}
-                    </button>
                     {a.has_token && (
                       <button
                         className="btn btn-ghost btn-sm"
