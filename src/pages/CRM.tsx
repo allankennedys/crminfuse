@@ -17,6 +17,8 @@ import { StageDialog } from '@/components/crm/StageDialog'
 import { CrmSettingsPanel } from '@/components/crm/CrmSettings'
 import { CrmReports } from '@/components/crm/CrmReports'
 import { Atendimento } from '@/components/atendimento/Atendimento'
+import { StartConversation } from '@/components/atendimento/StartConversation'
+import { useConversaStore } from '@/store/conversaStore'
 import logo from '@/assets/favicon.png'
 import type { CrmContact, CrmStage } from '@/types'
 
@@ -102,6 +104,11 @@ export function CRMPage() {
     [permissions, isAdmin],
   )
   const [tab, setTab] = useState<TabId>('atendimento')
+  // "Iniciar conversa" pedido de qualquer tela (126): a janela mora aqui e,
+  // iniciada a conversa, o Atendimento abre com ela.
+  const pedidoConversa = useConversaStore((s) => s.pedido)
+  const fecharPedido = useConversaStore((s) => s.fechar)
+  const abrirConversa = useConversaStore((s) => s.abrirConversa)
 
   // Modais e confirmações fazem portal para o <body>, fora do .crm-shell, e
   // .modal-page/.modal-overlay recuam pela largura da sidebar para não cobrir
@@ -474,6 +481,18 @@ export function CRMPage() {
           <CrmSettingsPanel />
         )}
       </main>
+
+      {pedidoConversa && (
+        <StartConversation
+          initialContact={pedidoConversa.contact}
+          onClose={fecharPedido}
+          onStarted={(id) => {
+            abrirConversa(id)
+            setEditingContact(null)
+            setTab('atendimento')
+          }}
+        />
+      )}
 
       {editingContact !== null && stages && (
         <ContactDrawer

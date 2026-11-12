@@ -4221,3 +4221,34 @@ th.at-num, td.at-num { text-align: right; font-variant-numeric: tabular-nums; wh
 }
 .jn-stuck strong { font-size: 22px; color: var(--text); }
 .jn-stuck svg { color: var(--text-muted); }
+
+/* ---------- Iniciar conversa (126) ---------- */
+td.col-acao { width: 44px; text-align: right; }
+.sc-escolhido {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.sc-escolhido > div { flex: 1; display: flex; flex-direction: column; font-size: 13px; }
+.sc-resultados { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 320px; overflow-y: auto; }
+.sc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+.sc-item:hover:not(:disabled) { border-color: var(--border-strong); background: var(--surface-hover); }
+.sc-item:disabled { opacity: 0.5; cursor: not-allowed; }

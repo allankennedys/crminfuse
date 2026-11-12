@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Plus, Users, ChevronLeft, ChevronRight, Filter, Download } from 'lucide-react'
+import { Search, Plus, Users, ChevronLeft, ChevronRight, Filter, Download, MessageCirclePlus } from 'lucide-react'
+import { useCan } from '@/store/authStore'
+import { useConversaStore } from '@/store/conversaStore'
 import {
   crmService, formatBRL, DEFAULT_PAGE_SIZE,
   type ContactSort, type ContactFilters, type ChannelCount, type OrigemCount,
@@ -26,6 +28,10 @@ export function ContactsTable({ stages, onChanged }: {
   stages: CrmStage[]
   onChanged: () => void
 }) {
+  const can = useCan()
+  // Iniciar conversa (126): para quem atende.
+  const podeConversar = can('atendimento.ver') || can('atendimento.ver_todas')
+  const pedirConversa = useConversaStore((st) => st.pedir)
   const [rows, setRows] = useState<CrmContact[] | null>(null)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -429,6 +435,7 @@ export function ContactsTable({ stages, onChanged }: {
                   <th>Canal</th>
                   <th>Etapa</th>
                   <th style={{ textAlign: 'right' }}>Vendas</th>
+                  {podeConversar && <th aria-label="Conversar" />}
                 </tr>
               </thead>
               <tbody>
@@ -482,6 +489,20 @@ export function ContactsTable({ stages, onChanged }: {
                           ? `${c.sales_count} · ${formatBRL(c.sales_total_cents)}`
                           : '—'}
                       </td>
+                      {podeConversar && (
+                        <td className="col-acao" onClick={(e) => e.stopPropagation()}>
+                          {c.phone && (
+                            <button
+                              className="icon-btn"
+                              title="Conversar no WhatsApp"
+                              aria-label={`Conversar com ${c.name} no WhatsApp`}
+                              onClick={() => pedirConversa({ id: c.id, name: c.name, phone: c.phone })}
+                            >
+                              <MessageCirclePlus size={15} />
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   )
                 })}

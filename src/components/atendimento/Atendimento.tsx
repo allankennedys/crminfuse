@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { MessageCircle, Search, Smartphone, X as XIcon } from 'lucide-react'
+import { MessageCircle, MessageCirclePlus, Search, Smartphone, X as XIcon } from 'lucide-react'
+import { useConversaStore } from '@/store/conversaStore'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore, useCan } from '@/store/authStore'
 import { EmptyState, Loader } from '@/components/ui'
@@ -150,6 +151,23 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     }
   }, [])
 
+  // Conversa pedida por outra tela (iniciada agora): abre assim que montar.
+  const abrirPedida = useConversaStore((s) => s.abrir)
+  const consumirPedida = useConversaStore((s) => s.consumir)
+  const pedirConversa = useConversaStore((s) => s.pedir)
+  useEffect(() => {
+    if (!abrirPedida) return
+    const id = abrirPedida
+    consumirPedida()
+    atendimentoService.getConversation(id).then((c) => {
+      if (!c) return
+      if (c.status !== status) setStatus(c.status)
+      setSelectedId(c.id)
+      setSelectedSnapshot(c)
+      load()
+    })
+  }, [abrirPedida, consumirPedida, load, status])
+
   const selected = useMemo(
     () => conversations?.find((c) => c.id === selectedId) ?? (selectedSnapshot?.id === selectedId ? selectedSnapshot : null),
     [conversations, selectedId, selectedSnapshot],
@@ -172,11 +190,16 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
         <div className="at-list-head">
           <div className="at-list-title">
             <span>Conversas</span>
-            {podeConfigurar && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowNumeros(true)} title="Números do atendimento">
-                <Smartphone size={14} /> Números
+            <div className="flex" style={{ gap: 6 }}>
+              {podeConfigurar && (
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowNumeros(true)} title="Números do atendimento">
+                  <Smartphone size={14} /> Números
+                </button>
+              )}
+              <button className="btn btn-primary btn-sm" onClick={() => pedirConversa()} title="Iniciar conversa com um cliente">
+                <MessageCirclePlus size={14} /> Nova
               </button>
-            )}
+            </div>
           </div>
 
           {veTudo && (

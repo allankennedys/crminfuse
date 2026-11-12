@@ -263,6 +263,29 @@ export const atendimentoService = {
     return data as { sale_id: string; from_ad: boolean }
   },
 
+  // ---------- Iniciar conversa (126) ----------
+
+  async searchContacts(term: string): Promise<{ id: string; name: string; phone: string | null; origem: string | null }[]> {
+    const { data, error } = await supabase.rpc('wa_search_contacts', { p_term: term })
+    if (error) throw error
+    return (data as { id: string; name: string; phone: string | null; origem: string | null }[] | null) ?? []
+  },
+
+  /** Números ligados ao atendimento — de onde dá para iniciar conversa. */
+  async startSessions(): Promise<{ id: string; instance_name: string; phone_number: string | null; status: string }[]> {
+    const { data, error } = await supabase.rpc('wa_start_sessions')
+    if (error) throw error
+    return (data as { id: string; instance_name: string; phone_number: string | null; status: string }[] | null) ?? []
+  },
+
+  /** Confere o número no WhatsApp e devolve a conversa (nova ou a que já existe). */
+  async startConversation(p: { sessionId: string; contactId?: string; phone?: string }): Promise<string> {
+    const r = await invokeChat<{ conversation_id: string }>({
+      action: 'start', session_id: p.sessionId, contact_id: p.contactId, phone: p.phone,
+    })
+    return r.conversation_id
+  },
+
   // ---------- Frases de origem (121) ----------
 
   async listSourceRules(): Promise<WaSourceRule[]> {

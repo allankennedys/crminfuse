@@ -16,6 +16,8 @@
  *       path = arquivo já enviado ao bucket wa-media, dentro da pasta da conversa
  *   { action: 'mark_read',  conversation_id }
  *   { action: 'session_info' | 'enable' | 'disable', session_id }
+ *   { action: 'start', session_id, contact_id? , phone? }
+ *       inicia conversa: confere o número na Evolution e devolve a conversa
  *
  * Secrets: EVOLUTION_API_URL, EVOLUTION_API_KEY (+ os automáticos do Supabase)
  */
@@ -74,6 +76,7 @@ Deno.serve(async (req) => {
       case 'session_info': return json(await sessionInfo(userClient, user.id, body))
       case 'enable': return json(await enable(userClient, user.id, body))
       case 'disable': return json(await disable(userClient, user.id, body))
+      case 'start': return json(await start(userClient, user.id, body))
       default: throw new HttpError(400, 'Ação desconhecida')
     }
   } catch (err) {
@@ -236,6 +239,75 @@ async function markRead(userClient: SupabaseClient, body: Json) {
   })().catch(() => {}))
 
   return { ok: true }
+}
+
+// ---------------------------------------------------------------------------
+// Iniciar conversa (126)
+// ---------------------------------------------------------------------------
+
+/** Dígitos com DDI; número brasileiro local (10/11 dígitos) ganha o 55. */
+function normalizePhone(raw: string): string {
+  const d = raw.replace(/\D/g, '')
+  return d.length === 10 || d.length === 11 ? `55${d}` : d
+}
+
+async function start(userClient: SupabaseClient, userId: string, body: Json) {
+  const [{ data: ver }, { data: todas }] = await Promise.all([
+    userClient.rpc('current_user_can', { p_perm: 'atendimento.ver' }),
+    userClient.rpc('current_user_can', { p_perm: 'atendimento.ver_todas' }),
+  ])
+  if (ver !== true && todas !== true) throw new HttpError(403, 'Seu perfil não atende conversas')
+
+  const { data: profile } = await userClient.from('users').select('organization_id').eq('id', userId).maybeSingle()
+  const org = profile?.organization_id
+  if (!org) throw new HttpError(403, 'Usuário sem organização')
+
+  const sessionId = String(body?.session_id ?? '')
+  const { data: s } = await admin
+    .from('whatsapp_sessions')
+    .select('id, organization_id, instance_name, chat_enabled')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (!s || s.organization_id !== org || !s.chat_enabled) {
+    throw new HttpError(404, 'Escolha um número ligado ao atendimento')
+  }
+
+  // Telefone: do contato (lido aqui com service role, conferindo a
+  // organização — o atendente não lê crm_contacts) ou o digitado.
+  let contactId: string | null = null
+  let name: string | null = null
+  let phone = ''
+  if (body?.contact_id) {
+    const { data: c } = await admin
+      .from('crm_contacts')
+      .select('id, organization_id, name, phone')
+      .eq('id', String(body.contact_id))
+      .maybeSingle()
+    if (!c || c.organization_id !== org) throw new HttpError(404, 'Contato não encontrado')
+    if (!c.phone) throw new HttpError(400, 'Este contato não tem telefone cadastrado')
+    contactId = c.id
+    name = c.name
+    phone = normalizePhone(c.phone)
+  } else {
+    phone = normalizePhone(String(body?.phone ?? ''))
+  }
+  if (phone.length < 10 || phone.length > 15) throw new HttpError(400, 'Número de telefone inválido')
+
+  // O WhatsApp diz se o número existe e qual é o jid certo (com ou sem o 9).
+  const check = await evolution('POST', `/chat/whatsappNumbers/${encodeURIComponent(s.instance_name)}`, { numbers: [phone] })
+  if (!check.ok) throw new HttpError(502, evolutionError(check, 'conferir o número'))
+  const hit = (Array.isArray(check.data) ? check.data : []).find((r: Json) => r?.exists)
+  if (!hit?.jid) throw new HttpError(400, 'Este número não tem WhatsApp')
+
+  const { data: conversationId, error } = await admin.rpc('wa_open_conversation', {
+    p_session: s.id,
+    p_jid: String(hit.jid),
+    p_name: name,
+    p_contact: contactId,
+    p_user: userId,
+  })
+  if (error) throw new HttpError(400, error.message)
+  return { conversation_id: conversationId }
 }
 
 // ---------------------------------------------------------------------------
