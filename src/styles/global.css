@@ -4027,3 +4027,7 @@ body.no-sidebar { --sidebar-w: 0px; }
   .at-bubble { max-width: 86%; }
   .at-thread-head { padding: 8px 10px; gap: 8px; }
 }
+
+/* Nome da organização no cabeçalho do CRM (118): nome longo não empurra as abas. */
+.crm-org-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 560px) { .crm-org-name { max-width: 140px; } }
