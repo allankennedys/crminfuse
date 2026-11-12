@@ -60,9 +60,10 @@ function inicioMesSP(): string {
 }
 
 const TABS = [
-  { id: 'funil', label: 'Funil', icon: KanbanSquare, perm: 'crm.funil.ver' },
-  // Também aparece para quem só tem "ver todas" (ver visibleTabs).
+  // Primeira aba e a que abre ao entrar. Também aparece para quem só tem
+  // "ver todas" (ver visibleTabs).
   { id: 'atendimento', label: 'Atendimento', icon: MessageCircle, perm: 'atendimento.ver' },
+  { id: 'funil', label: 'Funil', icon: KanbanSquare, perm: 'crm.funil.ver' },
   { id: 'contatos', label: 'Contatos', icon: Contact, perm: 'crm.contatos.ver' },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart3, perm: 'crm.relatorios.ver' },
   { id: 'config', label: 'Configurações', icon: Settings2, perm: 'crm.chaves.ver' },
@@ -97,7 +98,7 @@ export function CRMPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [permissions, isAdmin],
   )
-  const [tab, setTab] = useState<TabId>('funil')
+  const [tab, setTab] = useState<TabId>('atendimento')
 
   // Modais e confirmações fazem portal para o <body>, fora do .crm-shell, e
   // .modal-page/.modal-overlay recuam pela largura da sidebar para não cobrir
