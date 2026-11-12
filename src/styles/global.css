@@ -3818,7 +3818,9 @@ body.no-sidebar { --sidebar-w: 0px; }
   font: inherit;
 }
 .at-item:hover { background: var(--surface-hover); }
-.at-item.active { background: var(--primary-dim); border-left-color: var(--primary); }
+/* Selecionada: fundo sólido neutro + faixa azul (o azul translúcido ficava
+   com cara de lavado sobre o preto). */
+.at-item.active { background: #18181c; border-left-color: var(--primary); }
 
 .at-avatar {
   display: grid;
@@ -3827,8 +3829,8 @@ body.no-sidebar { --sidebar-w: 0px; }
   height: 40px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: var(--primary-dim);
-  color: var(--primary);
+  background: #26262c;
+  color: var(--text);
   font-weight: 700;
   font-size: 13.5px;
 }
