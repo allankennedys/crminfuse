@@ -58,8 +58,9 @@ import {
  * manual (068): é endereço de infraestrutura, não configuração de
  * organização. Mudou o fluxo do lado de lá? Muda aqui e republica.
  */
-const N8N_URL =
-  'https://n8n-n8n.40lgqg.easypanel.host/webhook/066c8477-db2c-4563-b0fd-52ee008bb337-relatorio-campanhas'
+const N8N_URL = Deno.env.get('N8N_ADS_CAMPAIGNS_URL') ?? ''
+// Infuse: a URL do fluxo vem do secret N8N_ADS_CAMPAIGNS_URL. Sem ele o relatório é
+// montado e NÃO é enviado a lugar nenhum (antes era o n8n da PH, fixo aqui).
 
 const GRAPH = `https://graph.facebook.com/${META_API_VERSION}`
 
@@ -510,6 +511,11 @@ Deno.serve(async (req) => {
       fora_do_relatorio: arredonda(foraDoRelatorio),
       contas_com_falha: falhas,
       gerado_em: agora.toISOString(),
+    }
+
+    if (!N8N_URL) {
+      enviados.push({ organizacao: orgId, dia, http: 0, entregue: false, motivo: 'sem_url' })
+      continue
     }
 
     const res = await fetch(N8N_URL, {

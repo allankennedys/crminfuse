@@ -82,8 +82,8 @@ security definer
 set search_path = public
 as $$
 declare
-  v_url constant text :=
-    'https://n8n-n8n.40lgqg.easypanel.host/webhook/e63d74e5-4011-4957-87f3-f7cd5d787c02-reembolso';
+  -- Infuse: a URL vem de integration_urls (041); sem cadastro, não envia.
+  v_url constant text := public.integration_url('n8n_venda_excluida');
   v_stage    public.crm_stages;
   v_event    public.crm_events;
   v_seq      int;
@@ -213,6 +213,10 @@ begin
       'sales_total', round(p_contact.sales_total_cents::numeric / 100, 2)
     )
   );
+
+  if v_url is null then
+    return;
+  end if;
 
   perform net.http_post(
     url := v_url,

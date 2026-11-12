@@ -241,8 +241,8 @@ security definer
 set search_path = public
 as $$
 declare
-  v_url constant text :=
-    'https://n8n-n8n.40lgqg.easypanel.host/webhook/687f320b-6797-44b1-b578-cc41001bccb0-atualizar-venda';
+  -- Infuse: a URL vem de integration_urls (041); sem cadastro, não envia.
+  v_url constant text := public.integration_url('n8n_venda_atualizada');
   v_event public.crm_events;
   v_actor text;
   v_body  jsonb;
@@ -301,6 +301,10 @@ begin
       'ad_source', v_event.payload->>'ad_source'
     ) end
   );
+
+  if v_url is null then
+    return;
+  end if;
 
   perform net.http_post(
     url := v_url,

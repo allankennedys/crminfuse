@@ -46,8 +46,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
  * endereço de infraestrutura, não configuração de organização. Mudou o fluxo
  * do lado de lá? Muda aqui e republica.
  */
-const N8N_URL =
-  'https://n8n-n8n.40lgqg.easypanel.host/webhook/7863c897-0aa4-4835-ab99-c832feaf70a9-relatorio-ads'
+const N8N_URL = Deno.env.get('N8N_ADS_DAILY_URL') ?? ''
+// Infuse: a URL do fluxo vem do secret N8N_ADS_DAILY_URL. Sem ele o relatório é
+// montado e NÃO é enviado a lugar nenhum (antes era o n8n da PH, fixo aqui).
 
 /** Mesma versão das outras funções: cada uma guarda a sua para poderem subir
     separadas, como a crm-worker já faz. */
@@ -316,6 +317,11 @@ Deno.serve(async (req) => {
       fora_do_relatorio_crm: arredonda(foraDoCrm),
       contas_com_falha: falhas,
       gerado_em: new Date().toISOString(),
+    }
+
+    if (!N8N_URL) {
+      enviados.push({ organizacao: orgId, dia, http: 0, entregue: false, motivo: 'sem_url' })
+      continue
     }
 
     const res = await fetch(N8N_URL, {

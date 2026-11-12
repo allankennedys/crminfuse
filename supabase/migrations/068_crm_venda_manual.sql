@@ -62,8 +62,8 @@ as $$
 declare
   -- URL fixa, como a do worker da Meta na 043: é endereço de infraestrutura,
   -- não configuração de organização. Mudou o fluxo no n8n? Muda aqui.
-  v_url  constant text :=
-    'https://n8n-n8n.40lgqg.easypanel.host/webhook/187a732f-81df-4cdb-903d-887f2591aed3-venda-manual';
+  -- Infuse: a URL vem de integration_urls (041); sem cadastro, não envia.
+  v_url  constant text := public.integration_url('n8n_venda_manual');
   v_sale     public.crm_sales;
   v_contact  public.crm_contacts;
   v_stage    public.crm_stages;
@@ -158,6 +158,10 @@ begin
       'sales_total', round(v_contact.sales_total_cents::numeric / 100, 2)
     )
   );
+
+  if v_url is null then
+    return null;
+  end if;
 
   return net.http_post(
     url := v_url,
