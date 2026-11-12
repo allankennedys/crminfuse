@@ -232,7 +232,7 @@ begin
     '* * * * *',
     format($job$
       select net.http_post(
-        url := 'https://djtpkyvvrntyagmivjqr.supabase.co/functions/v1/utmify-worker',
+        url := 'https://__SUPABASE_REF__.supabase.co/functions/v1/utmify-worker',
         headers := %L::jsonb,
         body := '{}'::jsonb
       )
