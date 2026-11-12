@@ -26,6 +26,9 @@ interface AuthState {
   profile: UserProfile | null
   /** Já resolvidas: personalizadas, ou o preset do cargo vindo do banco. */
   permissions: string[]
+  /** Nome da organização — aparece no cabeçalho do CRM, ao lado da logo. */
+  organizationName: string | null
+  setOrganizationName: (name: string) => void
   loading: boolean
   initialize: () => Promise<void>
   signIn: (username: string, password: string) => Promise<void>
@@ -40,6 +43,16 @@ interface AuthState {
 export function useCan(): (perm: string) => boolean {
   const permissions = useAuthStore((s) => s.permissions)
   return (perm: string) => permissions.includes(perm)
+}
+
+async function fetchOrganizationName(profile: UserProfile | null): Promise<string | null> {
+  if (!profile) return null
+  const { data } = await supabase
+    .from('organizations')
+    .select('name')
+    .eq('id', profile.organization_id)
+    .maybeSingle<{ name: string }>()
+  return data?.name ?? null
 }
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
@@ -76,16 +89,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   profile: null,
   permissions: [],
+  organizationName: null,
+  setOrganizationName: (name) => set({ organizationName: name }),
   loading: true,
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession()
     const profile = session ? await fetchProfile(session.user.id) : null
-    set({ session, profile, permissions: await resolvePermissions(profile), loading: false })
+    const [permissions, organizationName] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile)])
+    set({ session, profile, permissions, organizationName, loading: false })
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
       const profile = session ? await fetchProfile(session.user.id) : null
-      set({ session, profile, permissions: await resolvePermissions(profile) })
+      const [permissions, organizationName] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile)])
+      set({ session, profile, permissions, organizationName })
     })
   },
 
@@ -99,6 +116,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut()
-    set({ session: null, profile: null, permissions: [] })
+    set({ session: null, profile: null, permissions: [], organizationName: null })
   },
 }))

@@ -81,6 +81,7 @@ type TabId = (typeof TABS)[number]['id']
  */
 export function CRMPage() {
   const { profile, signOut } = useAuthStore()
+  const organizationName = useAuthStore((s) => s.organizationName)
   // Sem link de volta ao painel: os dois sistemas vivem em domínios
   // separados e sem SSO, então o "atalho" levava a uma tela de login.
   const can = useCan()
@@ -328,7 +329,9 @@ export function CRMPage() {
       <header className="topbar crm-topbar">
         <div className="flex">
           <img src={logo} alt="Infuse" className="logo-img" style={{ width: 24, height: 24 }} />
-          <span className="topbar-title">CRM</span>
+          <span className="topbar-title crm-org-name" title={organizationName ?? undefined}>
+            {organizationName || 'CRM'}
+          </span>
         </div>
 
         <nav className="crm-tabs">

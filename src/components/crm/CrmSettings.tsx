@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Megaphone, Plus, Copy, Check, ShieldCheck, Trash2, Webhook, Users as UsersIcon } from 'lucide-react'
+import { KeyRound, Megaphone, Plus, Copy, Check, ShieldCheck, Trash2, Webhook, Users as UsersIcon, Building2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import { crmService } from '@/services/crmService'
 import { useAuthStore } from '@/store/authStore'
 import { UserAccess } from '@/components/settings/UserAccess'
@@ -12,6 +13,7 @@ import type { CrmAdAccount, CrmApiKey, CrmSettings as Settings } from '@/types'
 const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/crm-api`
 
 const SETTINGS_TAB_ALL = [
+  { id: 'org', label: 'Organização', icon: Building2 },
   { id: 'users', label: 'Usuários', icon: UsersIcon },
   { id: 'integrations', label: 'Integrações', icon: ShieldCheck },
   { id: 'keys', label: 'Chaves de API', icon: KeyRound },
@@ -36,8 +38,8 @@ export function CrmSettingsPanel() {
   // aqui os campos só ficam desabilitados para não oferecer o que não vai dar.
   const canEditMeta = isAdmin
   // Aba de usuários só existe para admin — mesma regra que já escondia a seção.
-  const settingsTabs = SETTINGS_TAB_ALL.filter((t) => t.id !== 'users' || isAdmin)
-  const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'users' : 'integrations')
+  const settingsTabs = SETTINGS_TAB_ALL.filter((t) => (t.id !== 'users' && t.id !== 'org') || isAdmin)
+  const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'org' : 'integrations')
 
   const [settings, setSettings] = useState<Settings | null>(null)
   const [pixel, setPixel] = useState('')
@@ -163,6 +165,8 @@ export function CrmSettingsPanel() {
       {/* ---------- Usuários e acessos ----------
           Só para admin da organização. Usuários "crm_only" nunca são admin,
           então a gestão de acessos não aparece para eles (a aba nem existe). */}
+      {tab === 'org' && isAdmin && <OrganizationSection />}
+
       {tab === 'users' && isAdmin && (
         <section className="card">
           <UserAccess crm />
@@ -800,3 +804,68 @@ function AdAccountForm({ draft, setDraft, onSave, onCancel, saving, temToken }: 
     </div>
   )
 }
+
+/**
+ * Nome da organização — o que aparece ao lado da logo no cabeçalho. Só
+ * admin (a aba nem existe para os outros; a RPC org_rename recusa de novo).
+ */
+function OrganizationSection() {
+  const current = useAuthStore((s) => s.organizationName)
+  const setOrganizationName = useAuthStore((s) => s.setOrganizationName)
+  const [name, setName] = useState(current ?? '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { setName(current ?? '') }, [current])
+
+  const trimmed = name.trim()
+  const valid = trimmed.length >= 2 && trimmed.length <= 60
+
+  async function save() {
+    if (!valid) return
+    setSaving(true)
+    try {
+      const { data, error } = await supabase.rpc('org_rename', { p_name: trimmed })
+      if (error) throw error
+      setOrganizationName((data as string | null) ?? trimmed)
+      toast.success('Nome da organização atualizado')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao salvar o nome')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="card">
+      <h3 className="card-title"><Building2 size={15} /> Organização</h3>
+      <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
+        O nome aparece no topo do CRM, ao lado da logo, para todos os usuários da organização.
+      </p>
+      <form
+        className="field"
+        onSubmit={(e) => { e.preventDefault(); save() }}
+        style={{ maxWidth: 420 }}
+      >
+        <label htmlFor="org-name">Nome</label>
+        <div className="flex">
+          <input
+            id="org-name"
+            className="input"
+            value={name}
+            maxLength={60}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ex.: Infuse"
+          />
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={saving || !valid || trimmed === (current ?? '')}
+          >
+            {saving ? <span className="spinner" /> : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </section>
+  )
+}
+
