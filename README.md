@@ -96,6 +96,37 @@ Supabase Realtime assina `message_queue`, `message_logs` e `whatsapp_sessions` �
 
 ---
 
+## 💬 Atendimento (chat de WhatsApp no CRM)
+
+Aba **Atendimento** do CRM: conversas individuais (grupos ficam de fora) dos números ligados, com atendente por conversa. Cada atendente só enxerga as conversas atribuídas a ele — a regra é a RLS de `wa_conversations` (migration 116), não a tela.
+
+| Permissão | O que libera |
+|---|---|
+| `atendimento.ver` | ver e responder **só as suas** conversas (cargo **Atendente** tem só isto) |
+| `atendimento.ver_todas` | ver todas, inclusive a **Fila** (sem atendente) |
+| `atendimento.atribuir` | atribuir / transferir / devolver à fila |
+| `atendimento.configurar` | ligar e desligar números no atendimento |
+
+Presets: admin tudo · operator ver + ver todas + atribuir · sdr ver · atendente ver.
+
+### Colocar no ar
+
+1. Aplicar as migrations **115** e depois **116** (execuções separadas: a 115 cria o cargo `atendente`).
+2. Publicar as funções (a `wa-webhook` é chamada pela Evolution, por isso **sem JWT**):
+   ```bash
+   npx supabase functions deploy wa-chat --project-ref SEU-REF
+   npx supabase functions deploy wa-webhook --no-verify-jwt --project-ref SEU-REF
+   npx supabase secrets set EVOLUTION_API_URL=https://sua-evolution EVOLUTION_API_KEY=... --project-ref SEU-REF
+   ```
+3. No CRM → Atendimento → **Números** → *Ligar ao atendimento*. Isso aponta o webhook da instância na Evolution para a `wa-webhook` (token próprio por número). A Evolution aceita **um** webhook por instância: se o número já mandava eventos para outro lugar (n8n, bot), a tela avisa, e *Desligar* devolve o webhook anterior.
+4. Criar os usuários com o cargo **Atendente** em Configurações → Usuários.
+
+Mídias ficam no bucket privado `wa-media` (links assinados de 1 h). Mensagens chegam ao vivo pelo Realtime.
+
+## 🔌 Integrações externas (desligadas por padrão)
+
+Os avisos de venda para o n8n e o aviso de reembolso para o sistema de comissão leem a URL da tabela `integration_urls` (migration 041). Sem linha cadastrada, **nada é enviado**. Os relatórios de anúncios (`ads-daily`, `ads-campaigns`) leem os secrets `N8N_ADS_DAILY_URL` e `N8N_ADS_CAMPAIGNS_URL`.
+
 ## 📦 Deploy (Vercel)
 
 ```bash
@@ -111,4 +142,3 @@ Configure as 4 variáveis `VITE_*` no painel da Vercel. O `vercel.json` já trat
 - [ ] Upload de mídia para Supabase Storage
 - [ ] Automation rules na UI (trigger → ação)
 - [ ] Analytics avançado
-# grupos-ph

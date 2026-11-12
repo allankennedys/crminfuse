@@ -24,9 +24,9 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const AUTH_EMAIL_DOMAIN = 'phgroups.local'
+const AUTH_EMAIL_DOMAIN = 'infuse.local'
 // Renames no enum do banco: 'crm_only' → 'sdr' (054), 'viewer' → 'gestor' (056).
-const VALID_ROLES = ['admin', 'operator', 'gestor', 'sdr'] as const
+const VALID_ROLES = ['admin', 'operator', 'gestor', 'sdr', 'atendente'] as const
 
 /**
  * Dono da plataforma: única conta que pode criar admins donos de NOVAS

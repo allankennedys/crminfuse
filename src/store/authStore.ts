@@ -5,7 +5,7 @@ import type { UserProfile } from '@/types'
 import type { Session } from '@supabase/supabase-js'
 
 /** Domínio interno usado para transformar username em email do Supabase Auth. */
-export const AUTH_EMAIL_DOMAIN = 'phgroups.local'
+export const AUTH_EMAIL_DOMAIN = 'infuse.local'
 
 // Nota: quem é o "dono da plataforma" é decidido no servidor (Edge Function
 // admin-users, secret OWNER_EMAIL). O cliente descobre via action 'whoami' —
