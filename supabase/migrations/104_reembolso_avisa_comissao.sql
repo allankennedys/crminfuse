@@ -77,13 +77,18 @@ security definer
 set search_path = public
 as $$
 declare
-  v_url constant text := 'https://phcreative.site/api/public/refund-commission';
+  -- Infuse: a URL vem de integration_urls (041); sem cadastro, não envia.
+  v_url constant text := public.integration_url('comissao_reembolso');
   v_token   text;
   v_sale    public.crm_sales;
   v_contact public.crm_contacts;
   v_body    jsonb;
   v_req     bigint;
 begin
+  if v_url is null then
+    return;
+  end if;
+
   if p_action = 'delete' then
     v_body := jsonb_build_object('action', 'delete', 'refund_id', p_sale_id);
   else

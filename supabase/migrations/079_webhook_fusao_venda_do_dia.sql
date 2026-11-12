@@ -65,7 +65,7 @@
 -- pela URL do webhook do n8n (o painel do n8n mostra a de produção no nó
 -- "Webhook"), no mesmo formato da 070:
 --
---   https://n8n-n8n.40lgqg.easypanel.host/webhook/<id>-<nome-do-fluxo>
+--   https://SEU-N8N/webhook/<id>-<nome-do-fluxo>  (Infuse: cadastre em integration_urls, 041)
 -- ------------------------------------------------------------
 
 create or replace function public.crm_merge_conversion_webhook()
@@ -75,7 +75,8 @@ security definer
 set search_path = public
 as $$
 declare
-  v_url constant text := 'https://n8n-n8n.40lgqg.easypanel.host/webhook/3d9b5586-b1f6-4a8d-8821-b4db1ed57ba0';
+  -- Infuse: a URL vem de integration_urls (041); sem cadastro, não envia.
+  v_url constant text := public.integration_url('n8n_fusao_venda_do_dia');
   v_sale     public.crm_sales;
   v_contact  public.crm_contacts;
   v_stage    public.crm_stages;
@@ -166,6 +167,10 @@ begin
       'sales_total', round(v_contact.sales_total_cents::numeric / 100, 2)
     )
   );
+
+  if v_url is null then
+    return null;
+  end if;
 
   perform net.http_post(
     url := v_url,
