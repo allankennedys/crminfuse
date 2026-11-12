@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRightLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
-  Hand, Paperclip, RotateCcw, Send, X as XIcon,
+  Hand, Mic, Paperclip, RotateCcw, Send, Trash2, X as XIcon,
 } from 'lucide-react'
+import { useVoiceRecorder, VOICE_MAX_SECONDS } from './useVoiceRecorder'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { Loader, Modal } from '@/components/ui'
@@ -237,6 +238,30 @@ export function ChatThread({
 
   const onSubmit = (e: FormEvent) => { e.preventDefault(); send() }
 
+  // Mensagem de voz: grava no navegador e manda como arquivo de áudio — a
+  // wa-chat envia áudio como mensagem de voz (PTT).
+  const voice = useVoiceRecorder(
+    async (audio) => {
+      setSending(true)
+      try {
+        const msg = await atendimentoService.sendFile(conv, audio)
+        stickRef.current = true
+        if (msg) merge(msg)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Não foi possível enviar o áudio')
+      } finally {
+        setSending(false)
+      }
+    },
+    (e) => toast.error(
+      e === 'sem-permissao' ? 'Permita o uso do microfone no navegador para gravar áudio.'
+        : e === 'sem-suporte' ? 'Este navegador não grava áudio. Use Chrome, Edge ou Firefox atualizados.'
+        : 'Áudio muito curto — segure pelo menos 1 segundo.',
+    ),
+  )
+  const tempo = `${Math.floor(voice.seconds / 60)}:${String(voice.seconds % 60).padStart(2, '0')}`
+  const podeGravar = !text.trim() && !file
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter envia, Shift+Enter quebra a linha — e nada durante a composição
     // de acentos/IME, senão o "Enter" do teclado do celular manda pela metade.
@@ -444,47 +469,88 @@ export function ChatThread({
             </button>
           </div>
         )}
-        <div className="at-composer-row">
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() => fileRef.current?.click()}
-            disabled={semNumero || sending}
-            title="Anexar arquivo"
-            aria-label="Anexar arquivo"
-          >
-            <Paperclip size={17} />
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            hidden
-            onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = '' }}
-          />
-          <textarea
-            ref={inputRef}
-            className="at-input"
-            rows={1}
-            value={text}
-            disabled={semNumero}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onKeyDown}
-            onPaste={(e) => {
-              const f = e.clipboardData.files?.[0]
-              if (f) { e.preventDefault(); pickFile(f) }
-            }}
-            placeholder={semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem'}
-            aria-label="Mensagem"
-          />
-          <button
-            type="submit"
-            className="btn btn-primary at-send"
-            disabled={semNumero || sending || (!text.trim() && !file)}
-            aria-label="Enviar"
-          >
-            {sending ? <span className="spinner" /> : <Send size={16} />}
-          </button>
-        </div>
+        {voice.recording ? (
+          <div className="at-composer-row at-recording">
+            <button
+              type="button"
+              className="icon-btn btn-danger-ghost"
+              onClick={() => voice.stop(false)}
+              title="Descartar áudio"
+              aria-label="Descartar áudio"
+            >
+              <Trash2 size={17} />
+            </button>
+            <div className="at-rec-status" role="status" aria-live="polite">
+              <span className="at-rec-dot" aria-hidden="true" />
+              Gravando <strong>{tempo}</strong>
+              {voice.seconds >= VOICE_MAX_SECONDS - 30 && <span className="text-muted"> · limite de 5 min</span>}
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary at-send"
+              onClick={() => voice.stop(true)}
+              title="Enviar áudio"
+              aria-label="Enviar áudio"
+            >
+              <Send size={16} />
+            </button>
+          </div>
+        ) : (
+          <div className="at-composer-row">
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => fileRef.current?.click()}
+              disabled={semNumero || sending}
+              title="Anexar arquivo"
+              aria-label="Anexar arquivo"
+            >
+              <Paperclip size={17} />
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = '' }}
+            />
+            <textarea
+              ref={inputRef}
+              className="at-input"
+              rows={1}
+              value={text}
+              disabled={semNumero}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={onKeyDown}
+              onPaste={(e) => {
+                const f = e.clipboardData.files?.[0]
+                if (f) { e.preventDefault(); pickFile(f) }
+              }}
+              placeholder={semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem'}
+              aria-label="Mensagem"
+            />
+            {podeGravar && !sending ? (
+              <button
+                type="button"
+                className="btn btn-primary at-send"
+                onClick={voice.start}
+                disabled={semNumero}
+                title="Gravar mensagem de voz"
+                aria-label="Gravar mensagem de voz"
+              >
+                <Mic size={16} />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="btn btn-primary at-send"
+                disabled={semNumero || sending || (!text.trim() && !file)}
+                aria-label="Enviar"
+              >
+                {sending ? <span className="spinner" /> : <Send size={16} />}
+              </button>
+            )}
+          </div>
+        )}
       </form>
       {showConclude && (
         <ConcludeDialog
