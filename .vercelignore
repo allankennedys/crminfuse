@@ -1,0 +1,11 @@
+# Backend / infra — nunca precisa ir para o deploy do front
+supabase/
+*.sql
+
+# Coleções de API e docs que expõem estrutura interna
+*.postman_collection.json
+
+# Ambiente e afins
+.env
+.env.*
+!.env.example
