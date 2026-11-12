@@ -1,0 +1,3721 @@
+/* ============================================================
+   Infuse Groups — Design System
+   Dark premium · verde neon · glassmorphism
+   ============================================================ */
+
+:root {
+  /* Grafite em vez de preto puro: tira a cara "sci-fi/IA" e dá base mais
+     urbana, preservando o verde neon da identidade. */
+  /* Preto sólido (não pto puro), cards em cinza-escuro chapado bem
+     destacado — no espírito do dashboard de referência do cliente:
+     escuro e colorido, porém sólido, sem glass/glow. */
+  --bg: #0a0a0b;
+  --bg-elevated: #161619;
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Azul de ação: botões, item ativo de menu, links, foco, seleção — tudo
+     que é "clique aqui". O texto sobre ele é sempre #030b1a (azul quase
+     preto): sobre neon, texto claro não tem contraste. */
+  --primary: #2f8cff;
+  --primary-dim: rgba(47, 140, 255, 0.12);
+  --primary-glow: rgba(47, 140, 255, 0.22);
+
+  /* Azul de dinheiro/conversão: receita, valor do negócio, "Convertido". */
+  --money: #5aa9ff;
+  --money-dim: rgba(90, 169, 255, 0.12);
+
+  /* Cinza-azulado neutro: métricas informativas (Leads, tempo até converter). */
+  --metric: #8b93a7;
+
+  --text: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
+
+  --danger: #ff4d6a;
+  --danger-dim: rgba(255, 77, 106, 0.12);
+  --warning: #ffb020;
+  --warning-dim: rgba(255, 176, 32, 0.12);
+  --info: #38bdf8;
+  --info-dim: rgba(56, 189, 248, 0.12);
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --sidebar-w: 248px;
+
+  --font: 'Montserrat', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* Fundo preto chapado, sem textura nem brilho ambiente: sólido, como o
+     dashboard de referência. A cor vem dos cards e dos números, não do fundo. */
+}
+
+::selection { background: var(--primary-glow); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+a { color: var(--primary); text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+
+/* ---------- Layout ---------- */
+.app-shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: var(--sidebar-w);
+  position: fixed;
+  inset: 0 auto 0 0;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  z-index: 40;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 22px;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.sidebar-logo .logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+/* Wordmark "ph creative" (sidebar e login): logo largo, altura fixa. */
+.brand-logo {
+  height: 30px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.nav-section-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  padding: 14px 10px 6px;
+  font-weight: 600;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all 0.15s ease;
+  margin-bottom: 2px;
+}
+
+.nav-item:hover { background: var(--surface-hover); color: var(--text); }
+
+.nav-item.active {
+  background: var(--primary);
+  color: #030b1a;
+  font-weight: 600;
+}
+
+.nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+.sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.main-area {
+  flex: 1;
+  margin-left: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.topbar-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+
+.page-content {
+  padding: 28px;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  animation: fadeUp 0.35s ease backwards;
+}
+
+/* backwards, NUNCA both/forwards: com fill para a frente o navegador mantém o
+   transform do último keyframe aplicado, e `transform: none` vira a matriz
+   identidade no estilo computado. Matriz — mesmo identidade — faz o elemento
+   virar containing block de qualquer `position: fixed` descendente, que passa
+   a se ancorar nele em vez da viewport. Era esse o bug do drawer do CRM
+   sumindo para cima em telas longas. Como o estado final destes keyframes é
+   igual ao estilo natural do elemento, nada se perde ao não preservá-lo. */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   CRM — página externa, sem sidebar
+
+   Mantém a identidade do painel (fundo escuro, verde neon, vidro),
+   mas com respiro maior e contraste mais baixo nos elementos de apoio:
+   o funil precisa que o olho encontre os cards, não a moldura.
+   ============================================================ */
+
+.crm-shell {
+  display: flex;
+  flex-direction: column;
+  /* dvh (viewport dinâmica) com 100vh de reserva para navegador antigo: no
+     celular a barra de endereço faz 100vh ficar MAIOR que a área visível, e
+     como aqui o overflow é hidden a última faixa da tela — o fim da lista, os
+     botões do rodapé — ficava fora do alcance, sem rolagem que a trouxesse. */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.crm-topbar {
+  gap: 20px;
+  padding: 0 22px;
+  flex-shrink: 0;
+}
+
+.crm-back {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.crm-back:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.crm-total {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--money);
+  font-weight: 600;
+}
+
+.crm-user { font-size: 13px; }
+
+/* ---------- Abas ---------- */
+.crm-tabs {
+  display: flex;
+  gap: 2px;
+  margin-right: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.crm-tabs::-webkit-scrollbar { display: none; }
+
+.crm-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.crm-tab:hover { color: var(--text); background: var(--surface-hover); }
+.crm-tab.active { color: #030b1a; background: var(--primary); font-weight: 600; }
+
+/* ---------- Área principal ---------- */
+.crm-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  /* backwards pelo motivo explicado no @keyframes fadeUp: este é o elemento
+     que rola, então um containing block aqui joga o drawer para fora da tela. */
+  animation: fadeUp 0.3s ease backwards;
+}
+
+/* No funil o scroll é horizontal e mora dentro do board. */
+.crm-main-board {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px 0 0;
+}
+
+.crm-panel { max-width: 1400px; margin: 0 auto; width: 100%; }
+
+/* Contatos, Configurações e o drawer são telas densas de texto: sobre o fundo
+   escuro os tons secundário/apagado ficavam ilegíveis. Sobem um degrau APENAS
+   aqui — as outras telas seguem como estão.
+
+   O .drawer aparece nomeado porque vive num portal no body: fora de
+   .crm-contacts, ele não herdaria mais nada daqui. Nomeá-lo também acerta uma
+   inconsistência antiga — o mesmo drawer clareava o texto quando aberto pela
+   tela de Contatos e não clareava quando aberto pelo funil. */
+.crm-contacts .text-secondary,
+.crm-settings .text-secondary,
+.drawer .text-secondary { color: #cbcbd2; }
+.crm-contacts .text-muted,
+.crm-settings .text-muted,
+.drawer .text-muted { color: #8d8d96; }
+.crm-settings .card-title { color: #e6e6ea; }
+
+/* Quebra em duas linhas quando não couber. Antes a barra era uma linha só e o
+   que sobrava era espremido: com o botão de lançar venda somado aos filtros,
+   a contagem do funil virava três linhas de duas palavras numa tela de 1280. */
+.crm-board-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  row-gap: 10px;
+  padding: 0 24px 14px;
+  flex-shrink: 0;
+}
+/* A contagem é curta: espremer não a faz caber, só a deixa ilegível. */
+.board-count { font-size: 12px; white-space: nowrap; }
+
+/* ---------- Barra de ferramentas (contatos) ---------- */
+.crm-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* Na toolbar de contatos o campo estica; o resto do visual vem da definição
+   única de .crm-search, mais abaixo. */
+.crm-toolbar .crm-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+/* Precisa vencer `select.input { width: 100% }`, declarado mais abaixo —
+   sem isso o seletor ocupa a linha inteira e quebra a barra em três. */
+.crm-toolbar select.crm-sort { width: auto; min-width: 180px; flex-shrink: 0; }
+
+/* Campo de busca fora do CRM (Grupos, Comprovantes, seletor de grupos).
+   Aqui o input mantém a moldura padrão de .input, então a lupa é sobreposta
+   em vez de entrar no fluxo — mas fica no fim, igual à do CRM. O padding à
+   direita reserva o espaço para o texto digitado não passar por baixo dela.
+
+   Existe para os três usos não repetirem o mesmo bloco de estilo inline: era
+   assim que a lupa tinha acabado em lados diferentes de cada tela. */
+.search-field { position: relative; }
+.search-field > svg {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.search-field .input { padding-right: 34px; }
+
+.btn-active {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+.filter-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--primary);
+  color: #030b1a;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.crm-filters {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.crm-filters .field { margin: 0; min-width: 200px; }
+
+.crm-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.row-clickable { cursor: pointer; }
+.row-clickable:hover { background: var(--surface-hover); }
+
+/* ---------- Campo com lista (Canal, Origem, Etiquetas) ----------
+   Substitui o <datalist>: o navegador o desenhava como um balão próprio,
+   fora do alinhamento do campo e imune ao CSS. Aqui a lista tem a largura
+   exata do campo, cola nele e usa os mesmos tokens do resto do painel.
+
+   A lista em si vive num portal no body (position: fixed), então .combo-list
+   NÃO pode depender de herança do .combo — as medidas vêm do JS. */
+.combo { position: relative; }
+
+/* Espaço à direita para a seta não passar por cima do texto digitado. */
+.combo-input { padding-right: 34px; }
+
+.combo-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, transform 0.15s;
+}
+.combo-toggle:hover { color: var(--text); background: var(--surface-hover); }
+.combo-toggle.open { color: var(--primary); transform: translateY(-50%) rotate(180deg); }
+
+.combo-list {
+  position: fixed;
+  /* Acima de TODOS os contêineres que podem hospedar um combobox: drawer
+     (61), modal-page e modal-overlay (100). A lista vive num portal no
+     body, então quem estiver acima dela a esconde por inteiro — e sem
+     erro nenhum, porque o elemento existe e está posicionado certo.
+     Abaixo dos toasts (1000), que precisam aparecer sobre tudo.
+     ESTE NÚMERO ACOMPANHA O MAIOR DELES: já ficou para trás uma vez,
+     quando o modal-page subiu de 39 para 100. */
+  z-index: 110;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: comboIn 0.12s ease both;
+}
+@keyframes comboIn { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
+
+.combo-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+/* Um destaque só: o teclado e o mouse movem o mesmo `active`, então não há
+   como a seta marcar uma linha e o hover pintar outra. */
+.combo-option.active { background: var(--surface-hover); }
+
+.combo-option-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.combo-option-hint {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.combo-option-check { flex-shrink: 0; color: var(--primary); }
+
+/* Sugestão de etiqueta: mostra o chip como ele vai ficar no contato. O chip
+   é decoração — quem recebe o clique é a linha inteira. */
+.combo-option .tag-chip { pointer-events: none; }
+.combo-option:has(.tag-chip) { padding: 5px 8px; }
+
+.combo-option-create { color: var(--primary); }
+.combo-option-create.active { background: var(--primary-dim); }
+
+.combo-empty {
+  padding: 9px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- Etiquetas ---------- */
+.tag-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 10px;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s;
+  cursor: text; /* a caixa inteira foca o campo, não só o pedaço do input */
+}
+.tag-input:focus-within { border-color: var(--primary); }
+.tag-input input {
+  flex: 1;
+  min-width: 110px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13.5px;
+  outline: none;
+}
+.tag-input input::placeholder { color: var(--text-muted); }
+
+.tag-list { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.tag-chip button {
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0;
+}
+.tag-chip button:hover { opacity: 1; color: var(--danger); }
+
+.tag-chip-sm { padding: 2px 7px; font-size: 11px; }
+.tag-chip-more { color: var(--text-muted); }
+
+.tag-chip-btn { cursor: pointer; font-family: inherit; }
+.tag-chip-btn:hover { border-color: var(--border-strong); color: var(--text); }
+.tag-chip-btn.active {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.tag-filter-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- Pílula de etapa ---------- */
+.stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--stage) 14%, transparent);
+  color: var(--stage);
+  border: 1px solid color-mix(in srgb, var(--stage) 32%, transparent);
+  white-space: nowrap;
+}
+
+.stage-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--stage);
+  flex-shrink: 0;
+}
+
+/* ---------- Kanban ---------- */
+.kanban {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 24px 24px;
+  /* Convida a arrastar o fundo para rolar (ver startPan em Pipeline.tsx). */
+  cursor: grab;
+}
+/* Enquanto arrasta: sem seleção de texto acidental e cursor de "mão fechada". */
+.kanban.panning {
+  cursor: grabbing;
+  user-select: none;
+}
+/* Os filhos mantêm o cursor normal — só o fundo é a área de arrasto. */
+.kanban > * { cursor: default; }
+.kanban .kanban-card { cursor: grab; }
+.kanban .kanban-grip { cursor: grab; }
+.kanban button, .kanban select, .kanban a { cursor: pointer; }
+
+.kanban-col {
+  display: flex;
+  flex-direction: column;
+  width: 292px;
+  flex-shrink: 0;
+  max-height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 0.15s, border-color 0.15s;
+}
+/* Coluna sob o card arrastado: destaque discreto, sem "pular" o layout. */
+.kanban-col.over {
+  background: color-mix(in srgb, var(--stage) 7%, transparent);
+  border-color: color-mix(in srgb, var(--stage) 40%, transparent);
+}
+.kanban-col-conversion {
+  background: var(--money-dim);
+  border-color: color-mix(in srgb, var(--money) 35%, var(--border));
+}
+.kanban-col-conversion .kanban-count {
+  background: var(--money-dim);
+  color: var(--money);
+}
+.kanban-col-conversion .kanban-col-total {
+  color: var(--money);
+  font-weight: 700;
+}
+.kanban-col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  flex-shrink: 0;
+}
+.kanban-col-head h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Linha sob o cabeçalho: total à esquerda, filtro de origem à direita. */
+.kanban-col-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 8px;
+  flex-shrink: 0;
+}
+.kanban-col-meta .kanban-col-total { padding: 0; margin-right: auto; }
+.kanban-col-meta .channel-filter {
+  margin-left: auto;
+  min-width: 0;
+  padding: 2px 8px;
+}
+.kanban-col-meta .channel-filter select {
+  max-width: 150px;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+}
+
+
+.kanban-grip {
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: grab;
+  padding: 2px;
+  margin-left: -4px;
+  touch-action: none;
+}
+.kanban-grip:active { cursor: grabbing; }
+.kanban-grip:hover { color: var(--text-secondary); }
+
+.kanban-count {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.conversion-flag { color: var(--money); display: grid; place-items: center; }
+
+.kanban-col-total {
+  padding: 0 12px 8px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.kanban-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px 12px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 90px;
+}
+
+.kanban-empty {
+  padding: 20px 8px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.kanban-card {
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  cursor: grab;
+  touch-action: none;
+  /* Sem isto, clicar e arrastar em cima do nome/telefone/canal selecionava
+     o texto em vez de iniciar o arrasto — só sobrava a área sem texto
+     (ícone, respiro vazio) como ponto confiável para pegar o card. */
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.kanban-card:hover { border-color: var(--border-strong); }
+.kanban-card:active { cursor: grabbing; }
+
+/* Versão que segue o cursor */
+.kanban-card.dragging {
+  cursor: grabbing;
+  border-color: var(--primary);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  transform: rotate(1.5deg);
+}
+
+.kanban-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.kanban-card h4 {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+.kanban-value {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--money);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.kanban-phone {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.kanban-channel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  /* Branco, porém um pouco mais apagado que o nome do cliente (--text). */
+  color: rgba(255, 255, 255, 0.72);
+  margin-bottom: 5px;
+}
+
+/* Cliente com recompra: o valor do card já é o total, aqui vai a contagem. */
+.kanban-sales {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--money);
+  margin-bottom: 5px;
+}
+
+.channel-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.channel-filter:hover { border-color: var(--border-strong); }
+.channel-filter select {
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12.5px;
+  outline: none;
+  cursor: pointer;
+}
+.channel-filter select option { background: var(--bg-elevated); }
+
+/* Campo de busca do CRM — mesmo visual do filtro de canal.
+
+   A lupa fica no FIM do campo em todas as telas. Ela é decoração, não a
+   primeira coisa a ler: à esquerda, disputava o começo da linha com o texto
+   digitado e com o placeholder. Como o container é flex e o ícone entra no
+   fluxo, quem manda na posição é a ordem do JSX — a lupa é sempre o último
+   filho. Antes havia duas definições disputando aqui, e a do kanban precisava
+   de uma exceção (.crm-board-bar .crm-search svg) para desfazer o ícone
+   absoluto da outra. */
+.crm-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+/* A lupa é empurrada para a direita mesmo quando o input não estica. */
+.crm-search > svg:last-child { margin-left: auto; flex-shrink: 0; opacity: 0.55; }
+.crm-search:focus-within { border-color: var(--border-strong); }
+.crm-search input {
+  border: none;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  outline: none;
+  width: 190px;
+}
+/* Variante em bloco (dentro de card): o campo ocupa a largura disponível,
+   em vez dos 190px fixos da barra do kanban. */
+.crm-search-block { display: flex; width: 100%; }
+.crm-search-block input { flex: 1; width: auto; min-width: 0; }
+
+.crm-search-clear {
+  display: flex;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+.crm-search-clear:hover { color: var(--text-secondary); }
+
+.kanban-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin-bottom: 7px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kanban-card footer { margin-top: 6px; }
+
+.kanban-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.kanban-more:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-hover); }
+.kanban-more:disabled { opacity: 0.5; cursor: default; }
+
+.kanban-add-stage {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 18px;
+  flex-shrink: 0;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.kanban-add-stage:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--primary-dim);
+}
+
+/* ---------- Drawer do contato ---------- */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 60;
+  animation: fadeIn 0.2s ease both;
+}
+
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideIn { from { transform: translateX(100%) } to { transform: none } }
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* Elemento fixo é dimensionado pela viewport GRANDE no celular: com só
+     top/bottom, o rodapé do drawer (Salvar/Excluir) cai atrás da barra de
+     endereço e não há rolagem que chegue nele, porque quem rola é o corpo.
+     Com height a altura passa a ser a visível e o rodapé volta. */
+  height: 100dvh;
+  width: min(480px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border);
+  z-index: 61;
+  animation: slideIn 0.25s cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.drawer-head h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.drawer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.drawer-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.drawer-history { margin-top: 8px; }
+.drawer-history h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* Abas internas dos relatórios. Controle segmentado (com moldura), para não
+   virar uma segunda barra igual à navegação do topo. */
+.report-tabs {
+  display: inline-flex;
+  gap: 2px;
+  margin-bottom: 18px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.report-tab {
+  padding: 6px 15px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.report-tab:hover { color: var(--text); background: var(--surface-hover); }
+.report-tab.active {
+  background: var(--primary);
+  color: #030b1a;
+  font-weight: 600;
+}
+
+/* Rodapé de tabela paginada nos relatórios: contagem à esquerda, "mostrar
+   mais" à direita. */
+.table-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* Separador de assunto dentro de um mesmo card de configurações: divide as
+   credenciais de ENVIO (Conversion API) das de LEITURA (Marketing API) sem
+   partir a seção em dois formulários com dois botões de salvar. */
+.settings-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 26px 0 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #e6e6ea;
+}
+
+/* ---------- Aba Meta ADS ---------- */
+
+/* Identificação da conta de anúncios, no cabeçalho da aba. Fica ao lado do
+   título porque todo número da tela depende de qual conta está conectada —
+   ler "R$ 4.000" sem saber de onde não ajuda ninguém. */
+.ads-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-width: 100%;
+  overflow: hidden;
+}
+.ads-account > span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ads-account-sep {
+  color: var(--text-muted);
+  font-size: 11px;
+  padding-left: 7px;
+  border-left: 1px solid var(--border);
+}
+
+/* Seletor de contas, quando a org tem mais de uma. Fica no lugar da
+   etiqueta de conta única — mesma posição, mesma pergunta respondida ("de
+   onde vêm estes números?"), só que agora dá para trocar. */
+.ads-accounts-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.ads-account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.ads-account-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.ads-account-chip.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-dim);
+}
+
+/* Nome da conta na tabela de quebra, com espaço para os selos de estado. */
+.ads-account-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ads-account-cell > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Contas de anúncios nas configurações ---------- */
+.ad-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ad-account-row,
+.ad-account-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.ad-account-form { flex-wrap: wrap; }
+.ad-account-id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.ad-account-label {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ad-account-id .mono { font-size: 11px; }
+.ad-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+/* Três campos numa linha em tela larga; empilhados no celular, onde lado a
+   lado o input do token ficaria estreito demais para conferir o que colou. */
+.ad-account-form-fields {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(150px, 1.2fr) minmax(150px, 1.2fr);
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .ad-account-form-fields { grid-template-columns: 1fr; }
+  .ad-account-row { flex-wrap: wrap; }
+}
+
+/* Aviso de configuração pendente ou recusa da Meta. Âmbar por padrão: é
+   pendência, não falha do sistema. Vermelho só quando a Meta recusou de
+   fato uma consulta que deveria funcionar. */
+.ads-notice {
+  border-color: rgba(255, 176, 32, 0.35);
+  background: linear-gradient(180deg, var(--warning-dim), transparent 70%);
+}
+.ads-notice .card-title { color: var(--warning); }
+.ads-notice-error {
+  border-color: rgba(255, 77, 106, 0.35);
+  background: linear-gradient(180deg, var(--danger-dim), transparent 70%);
+}
+.ads-notice-error .card-title { color: var(--danger); }
+/* Campanhas tiradas do relatório: rodapé da aba, recolhido. Não é card —
+   card competiria com os números, e isto é acerto de configuração, não
+   leitura do dia. Fechado ocupa uma linha e ainda diz quantas são e quanto
+   gastaram, que é o mínimo para o investimento não encolher sem explicação. */
+.ads-ignored {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.ads-ignored > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+/* Sem o triângulo nativo: ele destoa do resto e não segue a cor do tema. */
+.ads-ignored > summary::-webkit-details-marker { display: none; }
+.ads-ignored > summary::after {
+  content: '›';
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 0.15s;
+}
+.ads-ignored[open] > summary::after { transform: rotate(90deg); }
+.ads-ignored > summary:hover { color: var(--text-secondary); }
+.ads-ignored > summary .text-muted { font-size: 11.5px; }
+
+.ads-ignored-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ads-ignored-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.ads-ignored-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+  font-size: 12.5px;
+}
+.ads-ignored-name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ads-ignored-name > span:last-child { font-size: 11px; }
+.ads-ignored-row .btn { flex-shrink: 0; }
+
+/* Faixa de entrega da Meta: muitos números pequenos e do mesmo peso. São
+   contexto para os KPIs de cima, não KPIs — daí não usarem .kpi-card. */
+.ads-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.ads-stat {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.ads-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+}
+.ads-stat-body { min-width: 0; }
+.ads-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ads-stat-label {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+.ads-stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* Período personalizado dos relatórios: aparece sob o cabeçalho da aba. */
+.crm-range {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.crm-range label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.crm-range label span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.crm-range .input {
+  padding: 7px 9px;
+  font-size: 12.5px;
+}
+
+/* ---------- Vendas do contato ---------- */
+/* Mesmo cabeçalho do histórico: são duas seções irmãs no fim do drawer. */
+.drawer-sales { margin-top: 8px; }
+.drawer-sales h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.sale-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.sale-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.sale-info { min-width: 0; margin-right: auto; }
+.sale-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--money);
+  font-variant-numeric: tabular-nums;
+}
+.sale-total {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.sale-total strong { color: var(--money); }
+
+/* Venda em edição: os três campos ocupam a linha inteira do item. */
+.sale-edit {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+.sale-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 90px;
+  min-width: 0;
+}
+.sale-edit label span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.sale-edit .input { padding: 6px 8px; font-size: 12.5px; }
+
+/* Data / criativos / valor / botão. Quebra em duas linhas no drawer estreito. */
+.sale-form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+.sale-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 90px;
+  min-width: 0;
+}
+.sale-form > label span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.sale-form .input { padding: 7px 9px; font-size: 12.5px; }
+.sale-form .btn { flex-shrink: 0; height: 34px; }
+
+/* ---------- Lançar venda (escolha do cliente) ---------- */
+/* Sugestões da busca. Teto de altura com rolagem própria: com o resultado
+   inteiro empurrando, os campos da venda saíam da primeira dobra do drawer. */
+/* Escolha de quais vendas mudam de canal (089). Lista curta com rolagem
+   própria: contato de recompra tem dezenas de vendas, e sem o teto o botão
+   de mover sairia da tela. */
+.move-sales-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.move-sales-head label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.move-sales-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.move-sales-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+}
+.move-sales-list li:hover { background: rgba(255, 255, 255, 0.03); }
+/* A caixa ocupa a linha toda para o clique pegar em qualquer ponto dela — a
+   badge da 1ª venda fica de fora, encostada à direita. */
+.move-sales-list .checkbox-row { flex: 1; min-width: 0; }
+.move-sales-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+.move-sales-info .text-muted { font-size: 11px; }
+
+.sale-pick-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  max-height: 232px;
+  overflow-y: auto;
+}
+.sale-pick-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.sale-pick-list button:hover { background: var(--surface-hover); }
+.sale-pick-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; margin-right: auto; }
+.sale-pick-name { font-size: 13px; font-weight: 600; }
+.sale-pick-msg { font-size: 12px; margin-top: 8px; }
+.sale-create-btn { margin-top: 8px; }
+
+/* Cliente já escolhido: o cartão que substitui a busca. */
+.sale-picked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.sale-picked-info { min-width: 0; margin-right: auto; display: flex; flex-direction: column; gap: 2px; }
+.sale-picked-name { font-size: 13.5px; font-weight: 600; }
+
+.sale-new-head { display: flex; align-items: center; gap: 8px; }
+
+/* Aviso do que muda no cadastro: cola no campo que o gerou, mas sem encostar
+   no rótulo do campo seguinte. */
+.sale-hint { font-size: 11px; margin-bottom: 12px; }
+/* O que vai acontecer ao salvar — duas frases que precisam ler como duas. */
+.sale-outcome { font-size: 11.5px; margin-top: 8px; line-height: 1.45; }
+
+.timeline { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.timeline li { display: flex; gap: 10px; align-items: flex-start; }
+.timeline li p { font-size: 12.5px; }
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+
+.btn-danger-ghost { color: var(--danger) !important; }
+.btn-danger-ghost:hover { background: var(--danger-dim) !important; }
+
+/* ---------- Diálogo de etapa ---------- */
+.color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.color-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.color-dot:hover { transform: scale(1.12); }
+.color-dot.active { border-color: var(--text); transform: scale(1.12); }
+
+.checkbox-row {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.checkbox-row input { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; }
+.checkbox-row span { display: inline-flex; align-items: center; gap: 5px; }
+
+.danger-zone {
+  padding: 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-dim);
+  margin-top: 8px;
+}
+
+/* ---------- Configurações ---------- */
+.crm-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.fresh-key {
+  padding: 14px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--primary-dim);
+  margin-bottom: 16px;
+}
+.fresh-key-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fresh-key-row code {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.endpoint-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.endpoint-row code {
+  flex: 1;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  word-break: break-all;
+}
+
+.endpoint-h {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 14px 0 4px;
+}
+
+.code-block {
+  padding: 13px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 900px) {
+  .crm-topbar { flex-wrap: wrap; height: auto; padding: 10px 14px; gap: 10px; }
+  .crm-tabs { order: 3; width: 100%; margin-right: 0; }
+  .crm-user, .crm-total { display: none; }
+  .crm-main { padding: 16px 14px; }
+  .crm-board-bar { padding: 0 14px 12px; }
+  .kanban { padding: 0 14px 16px; }
+  .drawer-grid { grid-template-columns: 1fr; }
+  .crm-toolbar { gap: 8px; }
+  .crm-sort { width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .kanban-col { width: 82vw; }
+}
+
+/* ---------- Cards ---------- */
+.card {
+  /* Fundo sólido elevado (não translúcido): garante o degrau de contraste
+     sobre o grafite e não deixa a granulação do fundo vazar pelo card. */
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover { border-color: var(--border-strong); }
+
+/* Destaque do card sem o brilho neon "cintilante": só borda + sombra neutra. */
+.card.glow {
+  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.6);
+  border-color: var(--border-strong);
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-value.green { color: var(--money); }
+.stat-value.neutral { color: var(--metric); }
+.stat-value.red { color: var(--danger); }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ============================================================
+   CRM — KPI cards premium (Relatórios)
+
+   Sistema à parte de .stats-grid/.card/.stat-value (usados no Dashboard e
+   resto do app) — escopado só nos 6 cards de métricas do CrmReports, com
+   paleta própria pedida pelo cliente (não reaproveita --money/--primary,
+   pra não recolorir badge/kanban/toast que também usam esses tokens).
+   Cada card tem um elemento gráfico de fundo diferente: nenhum se repete.
+   ============================================================ */
+.crm-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(165deg, #101113 0%, #0b0b0d 70%);
+  box-shadow: 0 20px 45px -30px rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 28px 60px -28px rgba(0, 0, 0, 0.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kpi-card { transition: none; }
+  .kpi-card:hover { transform: none; }
+}
+
+/* Grade com card largo fora da primeira posição (Recompra): sem o dense, em
+   três colunas o card de duas não cabe no fim da fileira e deixa um buraco. */
+.crm-kpis-dense { grid-auto-flow: row dense; }
+
+.kpi-card-featured {
+  grid-column: span 2;
+  padding: 26px 28px;
+}
+@media (max-width: 560px) {
+  .kpi-card-featured { grid-column: span 1; }
+}
+
+/* KPI que abre uma lista. É um <button> de verdade (teclado e leitor de tela
+   ganham o clique de graça), então precisa desmontar o visual padrão de botão
+   e devolver o alinhamento à esquerda dos cards vizinhos. */
+.kpi-card-click {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.kpi-card-click:hover:not(:disabled) {
+  border-color: rgba(77, 163, 255, 0.35);
+}
+.kpi-card-click:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* Zero parado no pagamento: nada para listar, e o card fica só informando. */
+.kpi-card-click:disabled {
+  cursor: default;
+}
+.kpi-card-click:disabled:hover {
+  transform: none;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Card que encolhe ----------
+   Só as seções de lista usam. O cabeçalho é um button: aqui ele volta a
+   parecer o cabeçalho de card que era, com a seta como única pista de que
+   é clicável. */
+.collapsible-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.collapsible-head:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.collapsible-head .card-title { flex: 1; min-width: 0; }
+.collapsible-hint {
+  font-size: 11.5px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.collapsible-caret {
+  flex-shrink: 0;
+  color: #8d8d96;
+  transition: transform 0.2s ease;
+}
+.collapsible.is-closed .collapsible-caret { transform: rotate(-90deg); }
+.collapsible-head:hover .collapsible-caret { color: #e6e6ea; }
+/* Fechado, o card vira uma faixa: sem o corpo, a altura é a do cabeçalho. */
+.collapsible.is-closed { padding-bottom: 18px; }
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-caret { transition: none; }
+}
+
+/* KPI com a lista aberta: fica marcado enquanto o painel logo abaixo mostra
+   as linhas dele, senão nada na tela liga um ao outro. */
+.kpi-card-open {
+  border-color: rgba(77, 163, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.18);
+}
+
+/* Camada decorativa: sempre atrás do conteúdo (isolation + z-index). */
+.kpi-card-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.kpi-card-top, .kpi-title, .kpi-value, .kpi-desc,
+.kpi-sparkline, .kpi-bars, .kpi-featured-row { position: relative; z-index: 1; }
+
+.kpi-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: #a1a1aa;
+}
+.kpi-icon-money {
+  background: rgba(31, 122, 235, 0.12);
+  border-color: rgba(31, 122, 235, 0.24);
+  color: #1f7aeb;
+}
+.kpi-icon-lg { width: 44px; height: 44px; }
+
+.kpi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.kpi-badge-up { background: rgba(31, 122, 235, 0.14); color: #1f7aeb; }
+.kpi-badge-down { background: rgba(255, 77, 106, 0.16); color: #ff4d6a; }
+
+/* Cabeçalho com dois adornos (escopo + variação) — sem o agrupamento o
+   space-between jogaria o selo para o meio do card. */
+.kpi-top-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* ---------- Escopo do período: coorte (entrada) x fluxo (conversão) ----------
+   Duas populações diferentes na mesma tela. O selo é o que evita a leitura de
+   que os cards se contradizem; a cor é o atalho, o texto é a garantia. */
+.kpi-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: help;
+}
+.kpi-scope-entrada {
+  background: rgba(255, 255, 255, 0.06);
+  color: #8d8d96;
+}
+.kpi-scope-conversao {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+}
+/* Terceira marca, usada na aba Recompra: o card ignora o período. Âmbar
+   porque é a exceção à regra da tela — todo o resto obedece ao filtro, e
+   quem não obedece precisa saltar aos olhos. */
+.kpi-scope-base {
+  background: rgba(255, 176, 32, 0.14);
+  color: var(--warning);
+}
+
+/* ---------- Legenda geral da aba ----------
+   Uma frase acima dos cards no lugar da quebra que cada card de conversão
+   trazia embaixo: a regra do recorte é a mesma para todos eles, e repeti-la
+   card a card ocupava mais espaço do que o próprio número. */
+.report-legend {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.07);
+}
+.report-legend > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #38bdf8;
+}
+.report-legend p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #a1a1aa;
+}
+.report-legend b { color: #e6e6ea; font-weight: 700; }
+
+/* ---------- Divisão do total: coorte do período x leads anteriores ----------
+   A barra é a leitura instantânea (que fatia é da coorte); os dois números
+   abaixo são o dado. Substitui dois cards que mostravam as parcelas soltas. */
+.kpi-split {
+  position: relative;
+  z-index: 1;
+  margin-top: 12px;
+}
+.kpi-split-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+.kpi-split-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1f7aeb, #5aa9ff);
+}
+.kpi-split-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: #6b7280;
+}
+.kpi-split-legend b {
+  color: #e6e6ea;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-split-older b { color: #8d8d96; }
+
+/* Card destacado sem o gráfico ao lado: o bloco ocupa a largura toda em vez
+   de encolher no canto esquerdo do flex. */
+.kpi-featured-row > :only-child { flex: 1; min-width: 0; }
+
+.kpi-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #a1a1aa;
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.kpi-value-money { color: #1f7aeb; }
+/* ROI negativo: gastou mais do que voltou. Mesmo vermelho do badge de queda,
+   para "está no prejuízo" não depender só do sinal de menos. */
+.kpi-value-loss { color: #ff4d6a; }
+.kpi-value-lg { font-size: 42px; }
+
+.kpi-desc {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 5px;
+}
+
+/* ---------- 1. Leads — grid de pontos suave ---------- */
+.kpi-pattern-grid .kpi-card-bg {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+  background-size: 14px 14px;
+  mask-image: radial-gradient(ellipse 100% 90% at 100% 0%, #000 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 90% at 100% 0%, #000 30%, transparent 75%);
+}
+
+/* ---------- 2. Taxa de conversão — anéis tipo radar ---------- */
+.kpi-pattern-radar .kpi-card-bg {
+  background: repeating-radial-gradient(
+    circle at 100% 0%,
+    rgba(31, 122, 235, 0.16) 0px, rgba(31, 122, 235, 0.16) 1px,
+    transparent 1px, transparent 16px
+  );
+  mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 65%);
+  -webkit-mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 65%);
+}
+
+/* ---------- 3. Convertidos — barras verticais reais (dado, não decoração) ---------- */
+.kpi-pattern-bars { padding-bottom: 58px; }
+.kpi-bars {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  height: 34px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  opacity: 0.9;
+}
+.kpi-bars span {
+  flex: 1;
+  min-height: 4px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, rgba(31, 122, 235, 0.55), rgba(31, 122, 235, 0.08));
+}
+
+/* ---------- 4. Receita convertida (destaque) — mesh + glow + onda + sparkline ----------
+   Discreto de propósito: era pra ser um detalhe no fundo, não tingir o
+   card inteiro de verde. */
+.kpi-pattern-mesh .kpi-card-bg {
+  background:
+    radial-gradient(420px circle at 10% 10%, rgba(31, 122, 235, 0.07), transparent 60%),
+    radial-gradient(320px circle at 90% 100%, rgba(31, 122, 235, 0.05), transparent 60%);
+}
+.kpi-pattern-mesh .kpi-card-bg::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 56px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 60' preserveAspectRatio='none'%3E%3Cpath d='M0 40 C 60 10, 120 55, 200 30 C 280 5, 340 50, 400 20 L400 60 L0 60 Z' fill='%2300C75D' fill-opacity='0.05'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+}
+.kpi-pattern-mesh::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  width: 200px;
+  height: 200px;
+  left: -70px;
+  bottom: -110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(31, 122, 235, 0.14), transparent 70%);
+  filter: blur(14px);
+  pointer-events: none;
+}
+.kpi-featured-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+.kpi-sparkline { display: block; width: 130px; height: 46px; flex-shrink: 0; }
+
+/* ---------- 5. Ticket médio — círculos desfocados (neutros, sem tingir de verde) ---------- */
+.kpi-pattern-blur .kpi-card-bg::before,
+.kpi-pattern-blur .kpi-card-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(22px);
+}
+.kpi-pattern-blur .kpi-card-bg::before {
+  width: 90px;
+  height: 90px;
+  right: -20px;
+  top: -20px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.kpi-pattern-blur .kpi-card-bg::after {
+  width: 70px;
+  height: 70px;
+  right: 40px;
+  bottom: -30px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ---------- 6. Tempo até converter — linhas topográficas ---------- */
+.kpi-pattern-topo .kpi-card-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='140' viewBox='0 0 220 140'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='0.08' stroke-width='1'%3E%3Cpath d='M-10 20 C 40 0, 80 40, 130 15 S 220 25, 260 10'/%3E%3Cpath d='M-10 45 C 40 25, 90 65, 140 40 S 230 50, 260 35'/%3E%3Cpath d='M-10 70 C 50 50, 90 90, 150 65 S 230 75, 260 60'/%3E%3Cpath d='M-10 95 C 50 75, 100 115, 150 90 S 230 100, 260 85'/%3E%3C/g%3E%3C/svg%3E");
+  background-position: right -10px bottom -10px;
+  background-repeat: no-repeat;
+  background-size: 75% auto;
+  mask-image: linear-gradient(to left, #000 0%, transparent 70%);
+  -webkit-mask-image: linear-gradient(to left, #000 0%, transparent 70%);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn svg { width: 15px; height: 15px; }
+
+.btn-primary {
+  background: var(--primary);
+  color: #030b1a;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+
+.btn-danger { background: var(--danger-dim); color: var(--danger); border-color: rgba(255,77,106,0.25); }
+.btn-danger:hover { background: rgba(255,77,106,0.2); }
+
+.btn-sm { padding: 6px 11px; font-size: 12.5px; }
+
+/* Ação secundária no meio de um texto: parece link, mas é <button> porque
+   executa algo em vez de navegar. */
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.link-button:hover { filter: brightness(1.15); }
+.link-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- Forms ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+
+.field label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.input, select.input, textarea.input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 13px;
+  color: var(--text);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+}
+
+.input:focus {
+  border-color:var(--primary) ;
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.input::placeholder { color: var(--text-muted); }
+
+select.input option { background: var(--bg-elevated); }
+
+textarea.input { resize: vertical; min-height: 90px; }
+
+/* Checkboxes: escuros no tema dark, com marcação verde */
+input[type="checkbox"] {
+  color-scheme: dark;
+  accent-color: var(--primary);
+}
+
+/* ---------- Toasts ---------- */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+  width: min(380px, calc(100vw - 40px));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: toastIn 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  pointer-events: auto;
+}
+
+.toast-success { border-left-color: var(--money); }
+.toast-error { border-left-color: var(--danger); }
+.toast-info { border-left-color: var(--info); }
+
+.toast-icon { width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; }
+.toast-success .toast-icon { color: var(--money); }
+.toast-error .toast-icon { color: var(--danger); }
+.toast-info .toast-icon { color: var(--info); }
+
+.toast-msg {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.45;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.toast-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.toast-close:hover { color: var(--text); }
+.toast-close svg { width: 14px; height: 14px; display: block; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Badges ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.badge-green { background: var(--money-dim); color: var(--money); }
+.badge-red { background: var(--danger-dim); color: var(--danger); }
+.badge-yellow { background: var(--warning-dim); color: var(--warning); }
+.badge-blue { background: var(--info-dim); color: var(--info); }
+.badge-gray { background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+
+.badge-green .dot { box-shadow: 0 0 8px var(--money); animation: pulse 2s infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ---------- Tables ---------- */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+}
+
+td:first-child, th:first-child { padding-left: 20px; }
+tr:last-child td { border-bottom: none; }
+tbody tr { transition: background 0.12s ease; }
+tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+.mono { font-family: var(--mono); font-size: 12px; }
+
+/* ---------- Modal ----------
+   Os modais vivem em portal no <body> e recuam pela sidebar para não cobrir o
+   menu do painel. Telas sem sidebar (o CRM) marcam `body.no-sidebar`: zerar a
+   variável aqui vale para .modal-overlay, .modal-page e qualquer coisa futura
+   que use o mesmo recuo. */
+body.no-sidebar { --sidebar-w: 0px; }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  left: var(--sidebar-w);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  /* flex + margin:auto centraliza quando cabe; align-items:flex-start ancora
+     o topo quando o modal é mais alto que a tela (notebooks 15/16"), evitando
+     que o topo suma acima da área visível e fique inacessível na rolagem. */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  /* idem .drawer/.modal-page: sem height o overlay mede a viewport grande e a
+     caixa centralizada nele nasce empurrada para baixo da área visível. */
+  height: 100dvh;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+  padding: 20px;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  padding: 26px;
+  width: 100%;
+  max-width: 480px;
+  /* centraliza no overlay; o teto desconta o padding (20px de cada lado) e
+     usa dvh (viewport dinâmica) para caber sempre, em qualquer zoom/altura. */
+  margin: auto;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  animation: modalIn 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.94) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; letter-spacing: -0.01em; }
+
+/* ---------- Modal como página (tela cheia) ---------- */
+.modal-page {
+  position: fixed;
+  inset: 0;
+  left: var(--sidebar-w);
+  /* Mesmo motivo do .drawer: sem height a última faixa da página-modal fica
+     atrás da barra de endereço no celular. */
+  height: 100dvh;
+  background: var(--bg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease;
+}
+.modal-page-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 15px 26px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+.modal-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.modal-back:hover { background: var(--surface-hover); color: var(--text); }
+.modal-page-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+/* corpo rola por conta própria; nunca há caixa flutuante para desalinhar */
+.modal-page-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px 26px 64px;
+}
+.modal-page-content {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+/* Conteúdo em duas colunas (formulário + prévia): 600px caberia só na
+   prévia. O teto novo dá ~615px ao formulário, perto do que ele tem sozinho. */
+.modal-page-content-wide { max-width: 1040px; }
+
+/* ---------- Auth ---------- */
+.auth-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 36px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+
+/* ---------- Misc ---------- */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.page-header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.page-header p { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state svg { width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.4; }
+
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0.85;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Loader de página (fora de botão): mantém o verde da marca */
+.spinner.lg {
+  width: 32px; height: 32px;
+  border-color: rgba(90, 169, 255, 0.2);
+  border-top-color: var(--primary);
+  opacity: 1;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.center-loader { display: grid; place-items: center; min-height: 200px; }
+
+/* ---------- Skeletons ----------
+   Ocupam o lugar do dado enquanto ele carrega. O brilho atravessa a barra da
+   direita para a esquerda: sem movimento nenhum a tela parece travada, e o
+   usuário clica no filtro de novo achando que não pegou.
+
+   O gradiente é de baixo contraste de propósito — é um vazio esperando, não
+   um elemento pedindo atenção. */
+.skel {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.10) 37%,
+    rgba(255, 255, 255, 0.05) 63%
+  );
+  background-size: 400% 100%;
+  animation: skelShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skelShimmer {
+  from { background-position: 100% 50%; }
+  to   { background-position: 0 50%; }
+}
+
+/* Quem pediu menos movimento no sistema recebe a barra parada: ela continua
+   dizendo "está vindo" pela forma, que é o essencial. */
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; background: rgba(255, 255, 255, 0.055); }
+}
+
+.error-text { color: var(--danger); font-size: 12.5px; margin-top: 4px; }
+
+.qr-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  place-items: center;
+  margin: 12px auto;
+  width: fit-content;
+}
+
+.qr-box img { display: block; width: 240px; height: 240px; }
+
+.flex { display: flex; align-items: center; gap: 10px; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* 1fr = minmax(auto, 1fr): sem isto, um conteúdo sem quebra (texto nowrap,
+   URL longa) estica a coluna até caber e vaza a página para o lado, em vez
+   de ser cortado com reticências dentro do card. */
+.grid-2 > * { min-width: 0; }
+.mt-16 { margin-top: 16px; }
+.mb-16 { margin-bottom: 16px; }
+
+/* ---------- Relatórios do CRM: célula de taxa com barra ---------- */
+.rate-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.rate-bar {
+  flex: 1;
+  max-width: 70px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.rate-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--money);
+}
+.rate-num { min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+/* Barra de fatia de PERDA: mesma forma, cor de dano. Verde numa tabela de
+   motivos de perda leria como coisa boa. */
+.rate-bar-loss > span { background: var(--danger); }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+
+/* ============================================================
+   Aba Jornada do cliente
+   ============================================================ */
+
+/* A escada do funil. Uma barra por degrau e, entre duas, a linha do
+   vazamento — é a queda entre vizinhos que se lê aqui, não a área. */
+.journey-funnel { display: flex; flex-direction: column; }
+
+.jf-step { padding: 2px 0; }
+
+.jf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.jf-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.jf-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.jf-count { display: inline-flex; align-items: baseline; gap: 7px; }
+.jf-count b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.jf-share { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.jf-bar {
+  height: 26px;
+  border-radius: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.jf-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  opacity: 0.85;
+  transition: width 0.35s ease;
+}
+
+/* Degrau para degrau: recuada e com fio à esquerda, para ler como "o que
+   aconteceu no caminho" e não como mais um degrau. */
+.jf-leak {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 4px 18px;
+  padding: 4px 10px;
+  border-left: 2px dashed var(--border-strong);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.jf-leak b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.jf-leak-worst {
+  border-left-color: var(--danger);
+  background: var(--danger-dim);
+  border-radius: 0 7px 7px 0;
+  color: var(--danger);
+}
+.jf-leak-worst b { color: var(--danger); }
+
+.jf-badge {
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #1a0006;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------------------
+   A mesma escada, deitada: uma coluna por degrau, da esquerda para a
+   direita, e a queda no vão entre duas.
+
+   COLUNA, NÃO TRAPÉZIO. O funil em cone é o desenho óbvio de jornada e é
+   o errado aqui: nele a queda entre dois degraus vira ÁREA, e ninguém
+   compara área de olho. Altura de barra contra uma mesma base se compara.
+
+   POR QUE AS COLUNAS SÃO UM GRID E O FIO É UM SVG SÓ
+
+   O fio que liga o topo de uma barra ao da seguinte precisa encostar no
+   centro das barras. Com um vão de largura fixa entre as colunas isso não
+   fecha: a distância da borda da barra até a borda do vão depende da
+   largura disponível, e o fio nasce solto. Com todas as colunas de largura
+   IGUAL (o grid), o centro da coluna i cai sempre em (i + 0,5)/N da faixa —
+   uma conta que o viewBox do SVG faz sozinho, sem medir nada em pixel.
+   Por isso o vão não existe como elemento: a queda é uma etiqueta posta
+   por cima, na fronteira entre duas colunas.
+   ------------------------------------------------------------------ */
+.jj-wrap { overflow-x: auto; padding-bottom: 2px; }
+
+/* min-content: com muitas etapas o bloco rola dentro do card em vez de
+   espremer as colunas até o nome não caber. */
+.jj { position: relative; min-width: min-content; }
+
+.jj-cols { display: grid; }
+.jj-step { display: flex; flex-direction: column; min-width: 0; }
+
+.jj-plot { height: 132px; display: flex; align-items: flex-end; justify-content: center; }
+
+/* A trilha é o 100%: dá a leitura de proporção sem precisar de eixo. */
+.jj-track {
+  width: 34px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: var(--surface);
+  border-radius: 7px;
+}
+
+.jj-fill {
+  display: block;
+  width: 100%;
+  border-radius: 6px 6px 5px 5px;
+  opacity: 0.85;
+  transition: height 0.35s ease;
+}
+
+/* Linha de base sólida e de um tom só acima da superfície: régua, não grade. */
+.jj-baseline { border-top: 1px solid var(--border); }
+
+.jj-meta { padding: 9px 4px 0; text-align: center; }
+.jj-val { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.jj-share { font-size: 10.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.jj-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+/* A camada do percurso, exatamente sobre a faixa das barras. */
+.jj-overlay { position: absolute; top: 0; left: 0; right: 0; height: 132px; pointer-events: none; }
+
+.jj-link { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* non-scaling-stroke: sem ele o esticão do viewBox engorda o fio na
+   diagonal e ele sai mais grosso em umas quedas do que em outras. */
+.jj-link polyline { fill: none; stroke: var(--border-strong); stroke-width: 2; stroke-linejoin: round; }
+
+.jj-drop {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.jj-drop b { color: var(--text); font-variant-numeric: tabular-nums; font-size: 12px; }
+.jj-drop em { font-style: normal; font-size: 9.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.jj-drop-worst { border-color: var(--danger); background: var(--danger-dim); color: var(--danger); }
+.jj-drop-worst b, .jj-drop-worst em { color: var(--danger); }
+
+/* O par de botões que troca a visão, no cabeçalho do card. */
+.jf-switch { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+/* A frase que responde a pergunta do bloco, antes de qualquer gráfico. */
+.journey-callout {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 77, 106, 0.28);
+  border-radius: var(--radius-sm);
+  background: var(--danger-dim);
+}
+.journey-callout > svg { color: var(--danger); flex-shrink: 0; margin-top: 1px; }
+.journey-callout strong { font-size: 13px; color: var(--text); display: block; }
+.journey-callout p { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+
+/* ---------- Funil de perdas (visual de 11/09/2026) ----------
+   Ênfase: tudo no cinza do --metric e só o pedaço perdido da pior etapa em
+   --danger. As classes .jj-* / .jf-* acima continuam servindo o visual
+   anterior (JourneyFunnelLegacy). Texto secundário em --text-secondary,
+   nunca --text-muted: o muted dá 2,3:1 no card e some em corpo pequeno. */
+.jl { margin-top: 4px; }
+
+/* A frase do topo substitui o quadro com ícone: é o título da resposta. */
+.jl-lead { padding: 2px 0 18px; }
+.jl-lead-kicker { font-size: 12px; color: var(--text-secondary); }
+.jl-lead-main {
+  margin-top: 4px;
+  font-size: 19px;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.jl-lead-main strong { font-weight: 700; }
+.jl-lead-sep { margin: 0 8px; color: var(--text-secondary); }
+.jl-lead-rate { color: var(--text-secondary); }
+.jl-lead-sub { margin-top: 4px; font-size: 12.5px; color: var(--text-secondary); }
+
+.jl-table { border-top: 1px solid var(--border); padding-top: 10px; }
+.jl-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 200px) minmax(0, 1fr) 76px 92px;
+  align-items: center;
+  column-gap: 18px;
+  padding: 10px 10px;
+  border-radius: var(--radius-sm);
+}
+.jl-row:not(.jl-head):hover { background: var(--surface); }
+.jl-head { padding-top: 0; padding-bottom: 6px; font-size: 11.5px; color: var(--text-secondary); }
+
+.jl-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.jl-legend > span { display: inline-flex; align-items: center; }
+.jl-key { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; flex-shrink: 0; }
+.jl-key-on { background: var(--metric); }
+.jl-key-off { background: #4b5060; }
+
+.jl-name { font-size: 13px; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+/* 12px de espessura, ponta arredondada e base reta, 2px de vão entre o que
+   seguiu e o que parou — o vão separa, nenhuma borda é desenhada. */
+.jl-barcell { display: flex; align-items: center; min-width: 0; }
+.jl-bar { display: flex; gap: 2px; height: 12px; min-width: 3px; }
+.jl-seg { flex: 1 1 0; min-width: 2px; background: var(--metric); }
+.jl-seg:last-child { border-radius: 0 4px 4px 0; }
+/* 2,25:1 no card: recua, mas continua visível contra o fundo. */
+.jl-seg-off { background: #4b5060; }
+.jl-seg-worst { background: var(--danger); }
+
+.jl-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jl-count { font-size: 14px; font-weight: 600; color: var(--text); }
+.jl-drop { font-size: 13px; color: var(--text-secondary); }
+.jl-drop small { margin-left: 6px; font-size: 11.5px; color: var(--text-secondary); }
+.jl-drop-worst, .jl-drop-worst small { color: var(--text); font-weight: 600; }
+.jl-na { color: var(--text-secondary); }
+
+/* Celular: a barra desce para uma linha própria, com o nome e os números em
+   cima — espremida entre os dois ela viraria um traço. */
+@media (max-width: 640px) {
+  .jl-lead-main { font-size: 17px; }
+  .jl-row { grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 14px; row-gap: 8px; }
+  .jl-barcell { grid-column: 1 / -1; grid-row: 2; }
+  .jl-head .jl-legend { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* Configuração pendente ou leitura parcial: âmbar, não vermelho — é aviso
+   de "falta algo", não de erro. */
+.journey-warn {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 176, 32, 0.3);
+  border-radius: var(--radius-sm);
+  background: var(--warning-dim);
+}
+.journey-warn > svg { color: var(--warning); flex-shrink: 0; margin-top: 1px; }
+.journey-warn strong { font-size: 13px; color: var(--text); display: block; }
+.journey-warn p { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+
+.journey-sql {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+/* Números secundários do bloco de etiquetas. */
+.journey-mini {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.journey-mini-card {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.journey-mini-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.journey-mini-card b {
+  display: block;
+  margin: 6px 0 2px;
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.journey-mini-card small { font-size: 11px; color: var(--text-muted); line-height: 1.45; }
+.journey-mini-card code,
+.journey-callout code,
+.journey-warn code,
+.crm-reports code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+}
+
+.journey-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Segunda linha dentro de uma célula: o "onde" de um motivo de perda. */
+.journey-sub { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+
+.journey-chip {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+/* ---------- Mobile nav ---------- */
+.menu-toggle {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 7px 9px;
+  line-height: 0;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 39;
+  animation: fadeIn 0.2s ease;
+}
+
+@media (max-width: 860px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);
+    box-shadow: 12px 0 48px rgba(0, 0, 0, 0.5);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .main-area { margin-left: 0; }
+  .menu-toggle { display: inline-flex; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .page-content { padding: 18px 14px; }
+  .topbar { padding: 0 14px; }
+  .stat-value { font-size: 24px; }
+  .modal-overlay { left: 0; }
+  .modal { padding: 20px; border-radius: 14px; }
+  .modal-page { left: 0; }
+  .modal-page-bar { padding: 13px 16px; gap: 12px; }
+  .modal-page-body { padding: 20px 16px 48px; }
+  .qr-box img { width: 200px; height: 200px; }
+}
+
+/* ============================================================
+   CRM — segue o mesmo tema dark do restante do app.
+
+   O CRM tinha um tema claro próprio (navbar índigo, corpo branco, acento
+   violeta) escopado sob .crm-shell. Removido a pedido: o sistema todo
+   agora é dark nativamente, sem toggle — o CRM herda os tokens do :root
+   e as mesmas regras de .card, .kanban-card, .btn, .input etc. já usadas
+   no painel principal.
+   ============================================================ */
+
+/* Datas do período personalizado do kanban: ficam ao lado do seletor, na
+   mesma barra. Inline (não .crm-range, que é bloco) porque a barra do board
+   já enrola sozinha quando falta espaço. */
+.board-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.board-range .input {
+  width: auto;
+  padding: 6px 9px;
+  font-size: 12.5px;
+}
+.board-range .text-muted { font-size: 12px; }
+
+/* ---------- Tabela de usuários ---------- */
+
+/* Nome e usuário podem ser longos; sem o corte eles esticavam a tabela e
+   empurravam a coluna de ações para fora do card. */
+.cell-trunc {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ações em ícones. Enrola em telas estreitas em vez de alargar a célula —
+   .flex é nowrap e era isso que estourava a largura. */
+.row-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.icon-btn-danger:hover { color: var(--danger); }
+
+/* ---------- Editor de permissões por usuário ---------- */
+
+.perm-head { margin-bottom: 18px; }
+.perm-head > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 4px;
+}
+.perm-head strong { font-size: 15px; }
+.perm-head > span { font-size: 12px; display: block; line-height: 1.4; }
+
+/* Não existe mais interruptor de "personalizar": as caixas são editáveis
+   direto. O que sobrou é dizer em qual dos dois estados o usuário está —
+   preset do cargo ou lista própria — e oferecer a volta. */
+.perm-state { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+
+.perm-note {
+  font-size: 11.5px;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.perm-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
+  font-size: 12px;
+}
+.perm-bar-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Lista, não grade de cartões: são poucas áreas e a leitura que interessa é
+   "área → o que está liberado", que uma linha por área entrega melhor. */
+.perm-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.perm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.perm-row:last-child { border-bottom: none; }
+.perm-row-info { min-width: 0; }
+.perm-row-info strong { font-size: 13px; display: block; }
+.perm-row-info span { font-size: 11px; line-height: 1.35; display: block; margin-top: 1px; }
+
+.perm-row-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Checkbox com o rótulo ao lado: é a forma que todo mundo lê como "ligado /
+   desligado" sem precisar interpretar cor. A caixa marcada usa o verde da
+   marca (accent-color), então o estado continua legível de longe — que é
+   como o admin confere a tela inteira de uma vez. */
+.perm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+.perm-check input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: inherit;
+}
+.perm-check:hover:not(.disabled) { background: var(--surface-hover); color: var(--text); }
+.perm-check.on { color: var(--text); font-weight: 600; }
+.perm-check.disabled { cursor: not-allowed; }
+
+@media (max-width: 620px) {
+  .perm-row { flex-direction: column; align-items: stretch; }
+  .perm-row-actions { justify-content: flex-start; }
+}
+
+/* ============================================================
+   PRÉVIA DO WHATSAPP
+   ------------------------------------------------------------
+   As cores são as do app no tema escuro: fundo do chat #0b141a, bolha de
+   saída #1d4f91, tique de lido #53bdeb. Ficam literais, sem var(--…), de
+   propósito — são a identidade de OUTRO produto, e amarrá-las ao tema
+   daqui faria a prévia mentir no dia em que o painel mudar de paleta.
+
+   O papel de parede oficial é arte protegida: aqui vai uma textura própria
+   de bolinhas, na mesma família de cor, que cumpre o papel de não deixar o
+   fundo chapado.
+   ============================================================ */
+.wa-preview {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Proporção de aparelho, não do conteúdo: a tela inteira aparece mesmo
+     com uma mensagem de duas palavras. É o vazio em volta que mostra quanto
+     do celular a mensagem ocupa. */
+  max-width: 400px;
+  width: 100%;
+  height: 660px;
+  margin: 0 auto;
+}
+
+.wa-topbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  background: #202c33;
+  color: #e9edef;
+  flex-shrink: 0;
+}
+.wa-topbar-back { flex-shrink: 0; color: #e9edef; }
+.wa-topbar-acoes {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #aebac1;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+.wa-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #6a7175;
+  color: #cfd5d8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.wa-topbar-name {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-topbar-sub { font-size: 11.5px; color: #8696a0; }
+
+.wa-chat {
+  flex: 1;
+  padding: 16px 14px;
+  background-color: #0b141a;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.022) 1.5px, transparent 1.6px),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.018) 1.5px, transparent 1.6px);
+  background-size: 44px 44px, 66px 66px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+/* A pílula de data que o WhatsApp põe no começo do dia. */
+.wa-dia {
+  align-self: center;
+  margin-bottom: auto;
+  background: #182229;
+  color: #8696a0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+}
+
+.wa-hint {
+  margin: auto auto;
+  font-size: 12.5px;
+  color: #8696a0;
+  text-align: center;
+  max-width: 220px;
+  line-height: 1.5;
+}
+
+.wa-bubble {
+  position: relative;
+  max-width: 85%;
+  min-width: 92px;
+  background: #1d4f91;
+  color: #e9edef;
+  border-radius: 7.5px 0 7.5px 7.5px;
+  padding: 6px 7px 8px 9px;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  font-size: 14.2px;
+  line-height: 19px;
+}
+/* O rabicho: triângulo colado no canto superior direito, como no app. */
+.wa-bubble::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -8px;
+  width: 8px;
+  height: 13px;
+  background: #1d4f91;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.wa-bubble-media { padding: 3px 3px 8px; }
+
+.wa-text {
+  margin: 0;
+  padding: 0 2px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wa-text code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+/* Reserva a última linha para o horário não sentar em cima do texto. */
+.wa-text::after {
+  content: '';
+  display: inline-block;
+  width: 66px;
+}
+
+.wa-stamp {
+  display: block;
+  text-align: right;
+  margin-top: -14px;
+  padding: 0 2px;
+  pointer-events: none;
+}
+.wa-stamp-float {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  margin: 0;
+}
+/* Áudio e documento sem legenda: linha própria, sem o puxão negativo que
+   existe para o horário sentar na última linha do texto. */
+.wa-stamp-below { margin-top: 2px; }
+.wa-stamp-float .wa-meta {
+  background: rgba(11, 20, 26, 0.5);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+.wa-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: rgba(233, 237, 239, 0.6);
+  white-space: nowrap;
+}
+/* Os dois tiques do WhatsApp são sobrepostos, não lado a lado. */
+.wa-ticks {
+  display: inline-flex;
+  color: #53bdeb;
+  margin-left: 1px;
+}
+.wa-ticks svg:last-child { margin-left: -9px; }
+
+.wa-media {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.wa-video { position: relative; }
+.wa-video video {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  border-radius: 6px;
+  background: #000;
+}
+.wa-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(11, 20, 26, 0.55);
+  color: #e9edef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wa-video-dur {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 11px;
+  color: #e9edef;
+  background: rgba(11, 20, 26, 0.5);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
+.wa-audio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px 2px;
+  min-width: 240px;
+}
+.wa-audio-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #6a7175;
+  color: #cfd5d8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.wa-play-sm {
+  position: static;
+  transform: none;
+  width: 22px;
+  height: 22px;
+  background: none;
+  color: #e9edef;
+  flex-shrink: 0;
+}
+.wa-wave {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  min-width: 0;
+}
+.wa-wave i {
+  flex: 1;
+  min-width: 2px;
+  max-width: 3px;
+  border-radius: 2px;
+  background: rgba(233, 237, 239, 0.45);
+}
+.wa-audio-dur {
+  font-size: 11.5px;
+  color: rgba(233, 237, 239, 0.6);
+  flex-shrink: 0;
+}
+
+.wa-doc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(11, 20, 26, 0.28);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 4px;
+  min-width: 200px;
+}
+.wa-doc-icon { color: #cfd5d8; flex-shrink: 0; display: flex; }
+.wa-doc-name {
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-doc-sub { font-size: 11.5px; color: rgba(233, 237, 239, 0.6); }
+
+/* Modal de agendamento: formulário à esquerda, prévia à direita.
+   A prévia gruda no topo porque o formulário é mais alto que ela — sem o
+   sticky, quem rola até a data e hora perde a bolha de vista. */
+.schedule-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+  gap: 24px;
+  align-items: start;
+}
+.schedule-preview { position: sticky; top: 0; }
+
+@media (max-width: 900px) {
+  .schedule-form-grid { grid-template-columns: 1fr; }
+  .schedule-preview { position: static; }
+}
+
+/* Barra de digitar do WhatsApp — cenário, não campo. */
+.wa-barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #0b141a;
+  flex-shrink: 0;
+}
+.wa-campo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #202c33;
+  border-radius: 22px;
+  padding: 9px 13px;
+  color: #8696a0;
+  min-width: 0;
+}
+.wa-campo-texto {
+  flex: 1;
+  font-size: 14px;
+  color: #8696a0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-botao-mic {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #2f8cff;
+  color: #0b141a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   UNIFICAR CADASTROS (077)
+
+   Dois cartões lado a lado, um clicável cada. Não são cards de leitura: o
+   clique é a decisão de quem fica, e é irreversível — por isso o escolhido
+   ganha borda de destaque e a etiqueta "Fica"/"Sai" em vez de um radio
+   discreto, que num par de cartões grandes ninguém vê.
+   ============================================================ */
+.merge-intro { font-size: 12.5px; line-height: 1.55; margin-bottom: 14px; }
+
+.merge-sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.merge-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 13px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  /* `button` no reset só herda a fonte, não a cor: sem isto o nome do
+     cliente sai na cor padrão do navegador — quase invisível no tema escuro,
+     e mais apagado que o telefone abaixo dele. */
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.merge-side:hover { background: var(--surface-hover); }
+.merge-side.active {
+  border-color: var(--primary);
+  background: linear-gradient(180deg, var(--primary-dim), transparent 70%);
+}
+
+.merge-side-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.merge-side.active .merge-side-tag { color: var(--primary); }
+
+.merge-side-name {
+  font-size: 14px;
+  font-weight: 650;
+  /* Nome longo não pode empurrar a coluna: os dois cartões têm que continuar
+     do mesmo tamanho, senão a comparação lado a lado se desfaz. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.merge-side-phone { font-size: 12px; }
+
+.merge-side-facts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.merge-side-meta { font-size: 11px; line-height: 1.45; }
+
+.merge-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.merge-warn { margin-top: 12px; }
+
+.merge-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+@media (max-width: 620px) {
+  .merge-sides { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ============================================================
+   SELEÇÃO DE CONTATOS PARA EXPORTAR
+
+   A coluna das caixas é estreita e não cresce: ela não é dado, é controle.
+   `accent-color` alinha a marca com o verde do painel, como no .checkbox-row.
+   ============================================================ */
+.col-check {
+  width: 34px;
+  padding-right: 0 !important;
+  text-align: center;
+}
+.col-check input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+/* Linha marcada continua legível no hover: o fundo da seleção é mais forte
+   que o de passar o mouse, senão a linha "perde" a marca ao ser apontada. */
+.row-selected { background: var(--primary-dim); }
+.row-clickable.row-selected:hover { background: var(--surface-hover); }
+
+.crm-selecao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--primary-dim);
+  font-size: 12.5px;
+}
+.crm-selecao .text-muted { font-size: 11.5px; }
+.crm-selecao button { margin-left: auto; }
+
+/* Números: os mesmos números atendem outras automações fora deste painel.
+   Âmbar, não vermelho — nada está quebrado, é consequência a considerar
+   antes de desconectar. Fica fora do .page-header de propósito: ali dentro
+   dividiria a linha com o botão "Conectar número" e encolheria. */
+.sessions-warn {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 176, 32, 0.3);
+  border-radius: var(--radius-sm);
+  background: var(--warning-dim);
+}
+.sessions-warn > svg { width: 16px; height: 16px; color: var(--warning); flex-shrink: 0; margin-top: 1px; }
+.sessions-warn strong { font-size: 13px; color: var(--text); display: block; }
+.sessions-warn p { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+
+/* Barra fina dentro da célula da trilha de remarketing. Fina de propósito:
+   o número já está na coluna ao lado, a barra só dá a comparação de
+   relance entre um disparo e o seguinte. */
+.rmkt-bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.rmkt-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #6366f1;
+  opacity: 0.85;
+}
+
+/* Ícone girando enquanto carrega (anexos do reembolso, 103). */
+.spin { animation: spin 0.9s linear infinite; }
+
+/* Link dentro de texto livre (nota do reembolso): discreto, sem a URL inteira. */
+.note-link {
+  color: var(--primary);
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  text-underline-offset: 3px;
+  word-break: break-all;
+}
+.note-link:hover { text-decoration-style: solid; }
+.note-link svg { opacity: 0.6; margin-left: 3px; vertical-align: -1px; }
+
+/* ---------- Comprovantes aguardando aprovação (CRM) ----------
+   Âmbar como os outros avisos de "falta algo": é pendência, não erro. */
+.receipts-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 176, 32, 0.35);
+  border-radius: 999px;
+  background: var(--warning-dim);
+  color: var(--warning);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.receipts-alert:hover { border-color: var(--warning); }
+.receipts-alert svg { flex-shrink: 0; }
+
+.receipts-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.receipts-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.receipts-item:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+.receipts-item-name {
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.receipts-item-meta { font-size: 12px; margin-top: 2px; }
+.receipts-item-side { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+.receipts-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+.receipts-facts .text-muted { font-size: 11.5px; }
+
+.receipts-contact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.receipts-contact > div:first-child { flex: 1; }
+.receipts-search { margin-top: 8px; }
+
+.receipts-products {
+  white-space: pre-line;
+  font-size: 13px;
+  color: var(--text);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.receipts-preview {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* Aba Contatos, busca de 4 dígitos: final do telefone que casou. */
+.fim-match { background: none; color: inherit; font-weight: 700; }
