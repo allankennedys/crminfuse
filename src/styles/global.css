@@ -4387,3 +4387,28 @@ td.col-acao { width: 44px; text-align: right; }
 /* Botão de tema na tela de login */
 .auth-page { position: relative; }
 .auth-theme { position: absolute; top: 16px; right: 16px; }
+
+/* ---------- Mensagem de voz ---------- */
+.at-recording { align-items: center; }
+.at-rec-status {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.at-rec-status strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.at-rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: at-rec-pulse 1.2s ease-in-out infinite;
+}
+@keyframes at-rec-pulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .at-rec-dot { animation: none; } }

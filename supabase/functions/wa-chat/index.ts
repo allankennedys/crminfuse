@@ -166,7 +166,9 @@ async function sendMedia(userClient: SupabaseClient, userId: string, body: Json)
 
   // Áudio vai como mensagem de voz (a Evolution converte); o resto, como mídia.
   const res = kind === 'audio'
-    ? await evolution('POST', `/message/sendWhatsAppAudio/${instance}`, { number: target(conv), audio: signed.signedUrl })
+    // encoding: a Evolution converte o áudio do navegador (webm/ogg/mp4)
+    // para o formato de mensagem de voz do WhatsApp.
+    ? await evolution('POST', `/message/sendWhatsAppAudio/${instance}`, { number: target(conv), audio: signed.signedUrl, encoding: true })
     : await evolution('POST', `/message/sendMedia/${instance}`, {
       number: target(conv),
       mediatype: kind,
