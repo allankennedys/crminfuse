@@ -137,12 +137,13 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     id: 'atendimento',
     sistema: 'crm',
     label: 'Atendimento (WhatsApp)',
-    hint: 'Conversas individuais. Sem "Ver todas", a pessoa só vê as atribuídas a ela',
+    hint: 'Conversas individuais. Se a restrição estiver ligada em Configurações → Atendimento, quem não tem "Ver todas" só vê as atribuídas a si',
     actions: [
       { key: 'atendimento.ver', label: 'Responder as suas' },
+      { key: 'atendimento.transferir', label: 'Transferir as suas' },
       { key: 'atendimento.ver_todas', label: 'Ver todas' },
-      { key: 'atendimento.atribuir', label: 'Atribuir' },
-      { key: 'atendimento.configurar', label: 'Números' },
+      { key: 'atendimento.atribuir', label: 'Atribuir qualquer uma' },
+      { key: 'atendimento.configurar', label: 'Configurar' },
     ],
   },
   {
@@ -192,13 +193,9 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     hint: 'Aprovação final dos comprovantes de pagamento pelo CRM',
     actions: [{ key: 'crm.comprovantes.aprovar', label: 'Aprovar' }],
   },
-  {
-    id: 'crm.relatorios',
-    sistema: 'crm',
-    label: 'Relatórios',
-    hint: 'Funil, Vendas, Recompra e Meta ADS — inclui faturamento',
-    actions: [{ key: 'crm.relatorios.ver', label: 'Ver' }],
-  },
+  // Relatórios saiu do catálogo: neste projeto a aba é só do admin (decisão,
+  // não preset), e uma caixa marcável daria a impressão de que dá para
+  // delegar. A chave crm.relatorios.ver continua no banco para as RPCs.
   {
     id: 'crm.automacoes',
     sistema: 'crm',

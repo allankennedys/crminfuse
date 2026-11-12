@@ -92,10 +92,13 @@ export function CRMPage() {
   // useMemo porque `can` é uma função nova a cada render: sem ele o array
   // muda de identidade sempre e o efeito abaixo dispara em todo render.
   const visibleTabs = useMemo(
-    () => TABS.filter((t) =>
-      can(t.perm)
-      || (t.id === 'config' && isAdmin)
-      || (t.id === 'atendimento' && can('atendimento.ver_todas'))),
+    () => TABS.filter((t) => {
+      // Relatórios é só do admin, inclusive o de atendimento (wa_report).
+      if (t.id === 'relatorios') return isAdmin
+      return can(t.perm)
+        || (t.id === 'config' && (isAdmin || can('atendimento.configurar')))
+        || (t.id === 'atendimento' && can('atendimento.ver_todas'))
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [permissions, isAdmin],
   )

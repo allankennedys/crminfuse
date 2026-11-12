@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Megaphone, Plus, Copy, Check, ShieldCheck, Trash2, Webhook, Users as UsersIcon, Building2 } from 'lucide-react'
+import { KeyRound, Megaphone, Plus, Copy, Check, ShieldCheck, Trash2, Webhook, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
+import { AtendimentoSettings } from '@/components/atendimento/AtendimentoSettings'
 import { supabase } from '@/lib/supabase'
 import { crmService } from '@/services/crmService'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, useCan } from '@/store/authStore'
 import { UserAccess } from '@/components/settings/UserAccess'
 import { Loader } from '@/components/ui'
 import { toast } from '@/store/toastStore'
@@ -14,6 +15,7 @@ const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/crm-ap
 
 const SETTINGS_TAB_ALL = [
   { id: 'org', label: 'Organização', icon: Building2 },
+  { id: 'atendimento', label: 'Atendimento', icon: MessageCircle },
   { id: 'users', label: 'Usuários', icon: UsersIcon },
   { id: 'integrations', label: 'Integrações', icon: ShieldCheck },
   { id: 'keys', label: 'Chaves de API', icon: KeyRound },
@@ -38,8 +40,15 @@ export function CrmSettingsPanel() {
   // aqui os campos só ficam desabilitados para não oferecer o que não vai dar.
   const canEditMeta = isAdmin
   // Aba de usuários só existe para admin — mesma regra que já escondia a seção.
-  const settingsTabs = SETTINGS_TAB_ALL.filter((t) => (t.id !== 'users' && t.id !== 'org') || isAdmin)
-  const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'org' : 'integrations')
+  const can = useCan()
+  const podeConfigurarAtendimento = can('atendimento.configurar')
+  const settingsTabs = SETTINGS_TAB_ALL.filter((t) => {
+    if (t.id === 'atendimento') return podeConfigurarAtendimento
+    if (t.id === 'users' || t.id === 'org') return isAdmin
+    // Integrações e chaves: quem enxerga as chaves (o painel já exigia).
+    return isAdmin || can('crm.chaves.ver')
+  })
+  const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'org' : podeConfigurarAtendimento ? 'atendimento' : 'integrations')
 
   const [settings, setSettings] = useState<Settings | null>(null)
   const [pixel, setPixel] = useState('')
@@ -79,7 +88,14 @@ export function CrmSettingsPanel() {
     crmService.listApiKeys().then(setKeys).catch(() => setKeys([]))
   }, [])
 
-  useEffect(() => { loadSettings(); loadKeys() }, [loadSettings, loadKeys])
+  // Meta e chaves só para quem vê essas abas: quem só configura o
+  // atendimento não tem acesso e veria um erro à toa.
+  const veIntegracoes = isAdmin || can('crm.chaves.ver')
+  useEffect(() => {
+    if (!veIntegracoes) return
+    loadSettings()
+    loadKeys()
+  }, [loadSettings, loadKeys, veIntegracoes])
 
   async function saveSettings() {
     setSavingSettings(true)
@@ -146,8 +162,6 @@ export function CrmSettingsPanel() {
       .catch(() => toast.error('Não foi possível copiar'))
   }
 
-  if (settings === null) return <Loader />
-
   return (
     <div className="crm-settings">
       <div className="crm-tabs" style={{ marginBottom: 4 }}>
@@ -167,6 +181,8 @@ export function CrmSettingsPanel() {
           então a gestão de acessos não aparece para eles (a aba nem existe). */}
       {tab === 'org' && isAdmin && <OrganizationSection />}
 
+      {tab === 'atendimento' && podeConfigurarAtendimento && <AtendimentoSettings />}
+
       {tab === 'users' && isAdmin && (
         <section className="card">
           <UserAccess crm />
@@ -174,7 +190,8 @@ export function CrmSettingsPanel() {
       )}
 
       {/* ---------- Meta Conversion API ---------- */}
-      {tab === 'integrations' && (
+      {tab === 'integrations' && settings === null && <Loader />}
+      {tab === 'integrations' && settings !== null && (
       <section className="card">
         <h3 className="card-title"><ShieldCheck size={15} /> Aviso de vendas para a Meta</h3>
         <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>

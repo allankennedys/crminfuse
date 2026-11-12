@@ -37,6 +37,7 @@ import type {
 } from '@/types'
 import type { ChannelCount, OrigemCount } from '@/services/crmService'
 import { PendingReceiptsButton } from './PendingReceipts'
+import { AtendimentoReport } from '@/components/atendimento/AtendimentoReport'
 
 const tooltipStyle = {
   background: '#18181b',
@@ -100,6 +101,7 @@ type PeriodId = (typeof PERIODS)[number]['id'] | 'mes' | 'custom'
  * os números deveriam bater entre si.
  */
 const REPORT_TABS = [
+  { id: 'atendimento', label: 'Atendimento', sub: 'Volume, tempos de resposta e de atendimento, motivos de conclusão e desempenho por atendente' },
   { id: 'vendas', label: 'Vendas', sub: 'Faturamento por data da venda, com recompras' },
   { id: 'funil', label: 'Funil', sub: 'Leads criados no período e o que fechou nele, por origem e canal' },
   { id: 'jornada', label: 'Jornada', sub: 'O caminho do lead: quanto tempo até a resposta, onde ele para e por que se perde' },
@@ -977,6 +979,8 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
           onRefundChanged={can('crm.vendas.editar') ? refresh : undefined}
         />
       )}
+
+      {tab === 'atendimento' && <AtendimentoReport label={label} range={range} />}
 
       {tab === 'jornada' && (
         <JourneyReport

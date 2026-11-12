@@ -7,7 +7,10 @@
  */
 
 import { supabase } from '@/lib/supabase'
-import type { WaAttendant, WaConversation, WaConversationStatus, WaMessage, WaSession } from '@/types'
+import type {
+  WaAgentLimit, WaAttendant, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport, WaRoutingRule,
+  WaSession, WaSettings,
+} from '@/types'
 
 export type WaScope = 'minhas' | 'fila' | 'todas'
 
@@ -134,8 +137,121 @@ export const atendimentoService = {
     await invokeChat({ action: 'mark_read', conversation_id: conversationId })
   },
 
+  /**
+   * Atribuir, transferir, assumir ou devolver à fila (userId null). Quem pode
+   * o quê é decidido por wa_transfer (119); a nota vai para o histórico.
+   */
+  async transfer(conversationId: string, userId: string | null, note?: string): Promise<void> {
+    const { error } = await supabase.rpc('wa_transfer', {
+      p_conversation: conversationId, p_to: userId, p_note: note?.trim() || null,
+    })
+    if (error) throw error
+  },
+
   async assign(conversationId: string, userId: string | null): Promise<void> {
-    const { error } = await supabase.rpc('wa_assign', { p_conversation: conversationId, p_user: userId })
+    return this.transfer(conversationId, userId)
+  },
+
+  async listEvents(conversationId: string): Promise<WaEvent[]> {
+    const { data, error } = await supabase
+      .from('wa_conversation_events')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at')
+      .returns<WaEvent[]>()
+    if (error) throw error
+    return data ?? []
+  },
+
+  // ---------- Configuração (119) ----------
+
+  /** Sem linha salva = padrão: restrito e manual. */
+  async getSettings(organizationId: string): Promise<WaSettings> {
+    const { data } = await supabase
+      .from('wa_settings')
+      .select('organization_id, restrict_to_assigned, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons')
+      .eq('organization_id', organizationId)
+      .maybeSingle<WaSettings>()
+    return data ?? {
+      organization_id: organizationId, restrict_to_assigned: true, assign_mode: 'manual', fixed_user: null, pool: [],
+      max_open_per_agent: null,
+      conclusion_reasons: ['Dúvida resolvida', 'Venda realizada', 'Sem retorno do cliente', 'Encaminhado para outro setor'],
+    }
+  },
+
+  async saveSettings(s: WaSettings, userId: string): Promise<void> {
+    const { error } = await supabase.from('wa_settings').upsert({
+      ...s, updated_at: new Date().toISOString(), updated_by: userId,
+    })
+    if (error) throw error
+  },
+
+  async listAgentLimits(): Promise<WaAgentLimit[]> {
+    const { data, error } = await supabase.from('wa_agent_limits').select('user_id, max_open').returns<WaAgentLimit[]>()
+    if (error) throw error
+    return data ?? []
+  },
+
+  /** 'padrao' apaga a exceção; null = livre; número = limite próprio. */
+  async setAgentLimit(organizationId: string, userId: string, value: 'padrao' | number | null) {
+    if (value === 'padrao') {
+      const { error } = await supabase.from('wa_agent_limits').delete().eq('user_id', userId)
+      if (error) throw error
+      return
+    }
+    const { error } = await supabase.from('wa_agent_limits')
+      .upsert({ organization_id: organizationId, user_id: userId, max_open: value })
+    if (error) throw error
+  },
+
+  /** Distribui a fila com a configuração atual. Devolve quantas saíram. */
+  async dispatchNow(): Promise<number> {
+    const { data, error } = await supabase.rpc('wa_dispatch_now')
+    if (error) throw error
+    return Number(data ?? 0)
+  },
+
+  async conclude(conversationId: string, reason: string | null, note: string): Promise<void> {
+    const { error } = await supabase.rpc('wa_conclude', {
+      p_conversation: conversationId, p_reason: reason, p_note: note.trim() || null,
+    })
+    if (error) throw error
+  },
+
+  async reopen(conversationId: string): Promise<void> {
+    const { error } = await supabase.rpc('wa_reopen', { p_conversation: conversationId })
+    if (error) throw error
+  },
+
+  async report(from: string, to: string): Promise<WaReport> {
+    const { data, error } = await supabase.rpc('wa_report', { p_from: from, p_to: to })
+    if (error) throw error
+    return data as WaReport
+  },
+
+  async listRules(): Promise<WaRoutingRule[]> {
+    const { data, error } = await supabase
+      .from('wa_routing_rules')
+      .select('*')
+      .order('position')
+      .order('created_at')
+      .returns<WaRoutingRule[]>()
+    if (error) throw error
+    return data ?? []
+  },
+
+  async addRule(rule: Pick<WaRoutingRule, 'organization_id' | 'position' | 'kind' | 'session_id' | 'keywords' | 'target_user'>) {
+    const { error } = await supabase.from('wa_routing_rules').insert(rule)
+    if (error) throw error
+  },
+
+  async updateRule(id: string, patch: Partial<Pick<WaRoutingRule, 'position' | 'active'>>) {
+    const { error } = await supabase.from('wa_routing_rules').update(patch).eq('id', id)
+    if (error) throw error
+  },
+
+  async deleteRule(id: string) {
+    const { error } = await supabase.from('wa_routing_rules').delete().eq('id', id)
     if (error) throw error
   },
 
