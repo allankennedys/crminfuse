@@ -28,7 +28,15 @@ async function request<T = unknown>(
   })
 
   if (error) {
-    return { ok: false, status: 0, data: { error: error.message } as T }
+    // O corpo de erro da função (com a mensagem em português) vem no context.
+    let msg = 'Falha de comunicação com o servidor. Tente de novo.'
+    try {
+      const ctx = (error as { context?: Response }).context
+      const j = ctx ? await ctx.json() : null
+      const m = j?.data?.error ?? j?.error
+      if (typeof m === 'string' && m) msg = m
+    } catch { /* corpo não era JSON */ }
+    return { ok: false, status: 0, data: { error: msg } as T }
   }
 
   return {

@@ -36,7 +36,6 @@ import type {
   MetaAdsAccountResult, MetaAdsInsights, MetaAdsRow,
 } from '@/types'
 import type { ChannelCount, OrigemCount } from '@/services/crmService'
-import { PendingReceiptsButton } from './PendingReceipts'
 import { AtendimentoReport } from '@/components/atendimento/AtendimentoReport'
 
 const tooltipStyle = {
@@ -2749,7 +2748,6 @@ function SalesReport({
         {/* Mesmo botão da tela inicial: quem está olhando o faturamento é
             quem acabou de vender, e a venda entra sem sair do relatório. */}
         <div className="flex" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <PendingReceiptsButton />
           {onLaunchSale && (
             <button className="btn btn-primary btn-sm" onClick={onLaunchSale}>
               <Receipt size={15} /> Lançar venda

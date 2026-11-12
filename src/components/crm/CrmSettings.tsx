@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Megaphone, Plus, Copy, Check, ShieldCheck, Trash2, Webhook, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
+import { KeyRound, Megaphone, Plus, ShieldCheck, Trash2, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
 import { AtendimentoSettings } from '@/components/atendimento/AtendimentoSettings'
 import { supabase } from '@/lib/supabase'
 import { crmService } from '@/services/crmService'
@@ -8,17 +8,13 @@ import { UserAccess } from '@/components/settings/UserAccess'
 import { Loader } from '@/components/ui'
 import { toast } from '@/store/toastStore'
 import { confirmDialog } from '@/store/confirmStore'
-import { formatSP } from '@/lib/datetime'
-import type { CrmAdAccount, CrmApiKey, CrmSettings as Settings } from '@/types'
-
-const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/crm-api`
+import type { CrmAdAccount, CrmSettings as Settings } from '@/types'
 
 const SETTINGS_TAB_ALL = [
   { id: 'org', label: 'Organização', icon: Building2 },
   { id: 'atendimento', label: 'Atendimento', icon: MessageCircle },
   { id: 'users', label: 'Usuários', icon: UsersIcon },
   { id: 'integrations', label: 'Integrações', icon: ShieldCheck },
-  { id: 'keys', label: 'Chaves de API', icon: KeyRound },
 ] as const
 
 type SettingsTab = (typeof SETTINGS_TAB_ALL)[number]['id']
@@ -45,8 +41,8 @@ export function CrmSettingsPanel() {
   const settingsTabs = SETTINGS_TAB_ALL.filter((t) => {
     if (t.id === 'atendimento') return podeConfigurarAtendimento
     if (t.id === 'users' || t.id === 'org') return isAdmin
-    // Integrações e chaves: quem enxerga as chaves (o painel já exigia).
-    return isAdmin || can('crm.chaves.ver')
+    // Integrações (Meta): só admin.
+    return isAdmin
   })
   const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'org' : podeConfigurarAtendimento ? 'atendimento' : 'integrations')
 
@@ -67,13 +63,6 @@ export function CrmSettingsPanel() {
   const [editingAdsToken, setEditingAdsToken] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
 
-  const [keys, setKeys] = useState<CrmApiKey[] | null>(null)
-  const [newKeyName, setNewKeyName] = useState('')
-  const [creatingKey, setCreatingKey] = useState(false)
-  /** Chave recém-criada, em texto puro — some ao recarregar a tela. */
-  const [freshKey, setFreshKey] = useState('')
-  const [copied, setCopied] = useState('')
-
   const loadSettings = useCallback(() => {
     crmService.getSettings()
       .then((s) => {
@@ -84,18 +73,13 @@ export function CrmSettingsPanel() {
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Falha ao carregar configurações'))
   }, [])
 
-  const loadKeys = useCallback(() => {
-    crmService.listApiKeys().then(setKeys).catch(() => setKeys([]))
-  }, [])
-
-  // Meta e chaves só para quem vê essas abas: quem só configura o
-  // atendimento não tem acesso e veria um erro à toa.
-  const veIntegracoes = isAdmin || can('crm.chaves.ver')
+  // Meta só para quem vê a aba: quem só configura o atendimento não tem
+  // acesso e veria um erro à toa.
+  const veIntegracoes = isAdmin
   useEffect(() => {
     if (!veIntegracoes) return
     loadSettings()
-    loadKeys()
-  }, [loadSettings, loadKeys, veIntegracoes])
+  }, [loadSettings, veIntegracoes])
 
   async function saveSettings() {
     setSavingSettings(true)
@@ -120,46 +104,6 @@ export function CrmSettingsPanel() {
     } finally {
       setSavingSettings(false)
     }
-  }
-
-  async function createKey() {
-    setCreatingKey(true)
-    try {
-      const key = await crmService.createApiKey(newKeyName.trim() || 'Automação')
-      setFreshKey(key)
-      setNewKeyName('')
-      loadKeys()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Falha ao criar a chave')
-    } finally {
-      setCreatingKey(false)
-    }
-  }
-
-  async function revokeKey(key: CrmApiKey) {
-    const ok = await confirmDialog({
-      title: 'Revogar chave',
-      message: `Revogar "${key.name}"? Qualquer automação que a use vai parar de funcionar imediatamente.`,
-      confirmLabel: 'Revogar',
-      danger: true,
-    })
-    if (!ok) return
-    try {
-      await crmService.revokeApiKey(key.id)
-      toast.success('Chave revogada')
-      loadKeys()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Falha ao revogar')
-    }
-  }
-
-  function copy(text: string, id: string) {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        setCopied(id)
-        setTimeout(() => setCopied(''), 2000)
-      })
-      .catch(() => toast.error('Não foi possível copiar'))
   }
 
   return (
@@ -355,191 +299,6 @@ export function CrmSettingsPanel() {
       )}
 
       {/* ---------- Chaves de API ---------- */}
-      {tab === 'keys' && (
-      <>
-      <section className="card">
-        <h3 className="card-title"><KeyRound size={15} /> Chaves de API</h3>
-        <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
-          Usadas por automações externas (n8n, bots) para mover contatos entre etapas.
-        </p>
-
-        {freshKey && (
-          <div className="fresh-key">
-            <p style={{ fontSize: 12, marginBottom: 8 }}>
-              <strong>Copie agora.</strong> Esta chave não será exibida novamente.
-            </p>
-            <div className="fresh-key-row">
-              <code className="mono">{freshKey}</code>
-              <button className="btn btn-sm btn-ghost" onClick={() => copy(freshKey, 'fresh')}>
-                {copied === 'fresh' ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-            </div>
-            <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setFreshKey('')}>
-              Já copiei
-            </button>
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className="flex" style={{ gap: 8, marginBottom: 16 }}>
-            <input
-              className="input"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              placeholder="Nome da chave (ex.: n8n produção)"
-            />
-            <button className="btn btn-primary" onClick={createKey} disabled={creatingKey}>
-              <Plus size={15} /> Gerar
-            </button>
-          </div>
-        )}
-
-        {keys === null ? (
-          <Loader />
-        ) : keys.length === 0 ? (
-          <p className="text-muted" style={{ fontSize: 12 }}>Nenhuma chave criada ainda.</p>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Chave</th>
-                  <th>Último uso</th>
-                  <th>Status</th>
-                  {isAdmin && <th />}
-                </tr>
-              </thead>
-              <tbody>
-                {keys.map((k) => (
-                  <tr key={k.id}>
-                    <td>{k.name}</td>
-                    <td className="mono text-muted">{k.key_prefix}…</td>
-                    <td className="text-secondary">
-                      {k.last_used_at ? formatSP(k.last_used_at) : 'Nunca'}
-                    </td>
-                    <td>
-                      <span className={`badge ${k.revoked_at ? 'badge-gray' : 'badge-green'}`}>
-                        {k.revoked_at ? 'Revogada' : 'Ativa'}
-                      </span>
-                    </td>
-                    {isAdmin && (
-                      <td style={{ textAlign: 'right' }}>
-                        {!k.revoked_at && (
-                          <button className="icon-btn" onClick={() => revokeKey(k)} aria-label="Revogar">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* ---------- Documentação do endpoint ---------- */}
-      <section className="card">
-        <h3 className="card-title"><Webhook size={15} /> Endpoint para automações</h3>
-        <p className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
-          Cria contatos, move de etapa e registra vendas a partir de qualquer
-          sistema externo. Autentique com o header <code>x-api-key</code>.
-        </p>
-
-        <div className="endpoint-row">
-          <code className="mono">POST {ENDPOINT}</code>
-          <button className="btn btn-sm btn-ghost" onClick={() => copy(ENDPOINT, 'url')}>
-            {copied === 'url' ? <Check size={14} /> : <Copy size={14} />}
-          </button>
-        </div>
-
-        <h4 className="endpoint-h">Consultar se o contato existe</h4>
-        <p className="text-muted" style={{ fontSize: 12, marginBottom: 10 }}>
-          Só leitura. Responde <code>exists: false</code> quando não há contato com
-          aquele número, ou os dados dele mais <code>hasPurchased</code> e
-          {' '}<code>nextSaleIsFirst</code> — para a automação decidir entre primeira
-          venda e recompra.
-        </p>
-        <pre className="code-block">{`curl -X POST ${ENDPOINT} \\
-  -H "x-api-key: SUA_CHAVE" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "action": "lookup",
-    "phone": "5511999999999"
-  }'`}</pre>
-
-        <h4 className="endpoint-h">Criar ou atualizar contato</h4>
-        <p className="text-muted" style={{ fontSize: 12, marginBottom: 10 }}>
-          Localiza o contato pelo <code>conversationId</code> ou, na falta dele, pelo
-          <code>phone</code>. Informe pelo menos um dos dois — o <code>conversationId</code>
-          é opcional.
-        </p>
-        <pre className="code-block">{`curl -X POST ${ENDPOINT} \\
-  -H "x-api-key: SUA_CHAVE" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "action": "upsert",
-    "conversationId": "abc-123",
-    "name": "Fulano de Tal",
-    "phone": "5511999999999",
-    "email": "fulano@exemplo.com",
-    "tags": ["quente"],
-    "channel": "WhatsApp Vendas",
-    "value": 250.00,
-    "stageName": "Em qualificação"
-  }'`}</pre>
-        <p className="text-muted" style={{ fontSize: 12, margin: '10px 0' }}>
-          Mandando <code>creatives</code> junto, o upsert também lança a venda
-          (usando o <code>value</code>). Sem <code>externalId</code>, ele só lança
-          se o contato ainda não tiver venda — o upsert é reenviado a cada passo
-          da automação, e essa trava evita venda duplicada. Recompra vai pela
-          ação <code>sale</code>.
-        </p>
-        <pre className="code-block">{`curl -X POST ${ENDPOINT} \\
-  -H "x-api-key: SUA_CHAVE" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "action": "upsert",
-    "phone": "5511999999999",
-    "name": "Fulano de Tal",
-    "creatives": 3,
-    "value": 1500.00
-  }'`}</pre>
-
-        <h4 className="endpoint-h">Mover de etapa</h4>
-        <pre className="code-block">{`curl -X POST ${ENDPOINT} \\
-  -H "x-api-key: SUA_CHAVE" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "conversationId": "abc-123",
-    "stageName": "Ganho"
-  }'`}</pre>
-
-        <h4 className="endpoint-h">Registrar venda</h4>
-        <p className="text-muted" style={{ fontSize: 12, marginBottom: 10 }}>
-          Identifica o contato pelo <code>phone</code>. A 1ª venda do cliente move
-          o contato para a etapa de conversão; as seguintes ficam só registradas
-          no contato. <code>tags</code> substitui as etiquetas do contato. Mande o
-          {' '}<code>externalId</code> sempre que houver número de pedido: reenviar
-          o mesmo id devolve a venda existente em vez de duplicar.
-        </p>
-        <pre className="code-block">{`curl -X POST ${ENDPOINT} \\
-  -H "x-api-key: SUA_CHAVE" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "action": "sale",
-    "phone": "5511999999999",
-    "creatives": 3,
-    "value": 1500.00,
-    "tags": ["cliente"],
-    "soldAt": "2026-07-28",
-    "externalId": "pedido-9912"
-  }'`}</pre>
-      </section>
-      </>
-      )}
     </div>
   )
 }

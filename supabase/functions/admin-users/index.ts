@@ -26,7 +26,8 @@ const CORS = {
 
 const AUTH_EMAIL_DOMAIN = 'infuse.local'
 // Renames no enum do banco: 'crm_only' → 'sdr' (054), 'viewer' → 'gestor' (056).
-const VALID_ROLES = ['admin', 'operator', 'gestor', 'sdr', 'atendente'] as const
+// Neste projeto: só admin e atendente.
+const VALID_ROLES = ['admin', 'atendente'] as const
 
 /**
  * Dono da plataforma: única conta que pode criar admins donos de NOVAS
@@ -183,7 +184,7 @@ Deno.serve(async (req) => {
     const newOrganization = body?.new_organization === true
     const organizationName = typeof body?.organization_name === 'string' ? body.organization_name.trim() : ''
     // Numa org nova o usuário é sempre o admin dono; senão respeita a role pedida.
-    const role = newOrganization ? 'admin' : (VALID_ROLES.includes(body?.role) ? body.role : 'operator')
+    const role = newOrganization ? 'admin' : (VALID_ROLES.includes(body?.role) ? body.role : 'atendente')
 
     if (!/^[a-z0-9._-]+$/.test(username)) {
       return json({ error: 'Usuário só pode ter letras, números, ponto, hífen ou underline.' }, 400)

@@ -181,18 +181,6 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: 'crm.vendas.excluir', label: 'Excluir' },
     ],
   },
-  {
-    // Fora dos presets de propósito (nenhuma migration a acompanha): é a
-    // aprovação FINAL, e quem pré-aprova não pode tê-la. Admin tem por
-    // definição; para outro cargo é caixa marcada no usuário. Quem confere é
-    // a Edge Function crm-decide-receipt, no projeto dos comprovantes, via
-    // current_user_can deste banco.
-    id: 'crm.comprovantes',
-    sistema: 'crm',
-    label: 'Comprovantes',
-    hint: 'Aprovação final dos comprovantes de pagamento pelo CRM',
-    actions: [{ key: 'crm.comprovantes.aprovar', label: 'Aprovar' }],
-  },
   // Relatórios saiu do catálogo: neste projeto a aba é só do admin (decisão,
   // não preset), e uma caixa marcável daria a impressão de que dá para
   // delegar. A chave crm.relatorios.ver continua no banco para as RPCs.
@@ -204,16 +192,6 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     actions: [
       { key: 'crm.automacoes.ver', label: 'Ver' },
       { key: 'crm.automacoes.editar', label: 'Editar' },
-    ],
-  },
-  {
-    id: 'crm.chaves',
-    sistema: 'crm',
-    label: 'Chaves de API',
-    hint: 'Chaves usadas por automações externas (n8n, bots)',
-    actions: [
-      { key: 'crm.chaves.ver', label: 'Ver' },
-      { key: 'crm.chaves.editar', label: 'Criar e revogar' },
     ],
   },
 ]

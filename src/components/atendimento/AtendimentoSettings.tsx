@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, CheckCircle2, Eye, Gauge, Plus, Shuffle, Trash2, Workflow, X as XIcon } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Eye, Gauge, Megaphone, Plus, Shuffle, Tag, Trash2, Workflow, X as XIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { Loader } from '@/components/ui'
 import { toast } from '@/store/toastStore'
 import { confirmDialog } from '@/store/confirmStore'
 import { atendimentoService, sessionLabel } from '@/services/atendimentoService'
-import type { WaAgentLimit, WaAssignMode, WaAttendant, WaRoutingRule, WaSession, WaSettings } from '@/types'
+import type { WaAgentLimit, WaAssignMode, WaAttendant, WaRoutingRule, WaSession, WaSettings, WaSourceRule } from '@/types'
 
 const MODES: { id: WaAssignMode; label: string; hint: string }[] = [
   { id: 'manual', label: 'Manual', hint: 'A conversa fica na Fila até alguém atribuir.' },
@@ -27,6 +27,9 @@ export function AtendimentoSettings() {
   const [rules, setRules] = useState<WaRoutingRule[] | null>(null)
   const [limits, setLimits] = useState<Map<string, number | null>>(new Map())
   const [newReason, setNewReason] = useState('')
+  const [sources, setSources] = useState<WaSourceRule[]>([])
+  const [phrase, setPhrase] = useState('')
+  const [origemNova, setOrigemNova] = useState('')
   const [saving, setSaving] = useState(false)
 
   // Formulário de regra nova
@@ -35,6 +38,10 @@ export function AtendimentoSettings() {
   const [sessionId, setSessionId] = useState('')
   const [target, setTarget] = useState('')
   const [adding, setAdding] = useState(false)
+
+  const loadSources = useCallback(() => {
+    atendimentoService.listSourceRules().then(setSources).catch(() => setSources([]))
+  }, [])
 
   const loadRules = useCallback(() => {
     atendimentoService.listRules().then(setRules).catch((err) => {
@@ -55,6 +62,7 @@ export function AtendimentoSettings() {
       .then((rows: WaAgentLimit[]) => setLimits(new Map(rows.map((r) => [r.user_id, r.max_open]))))
       .catch(() => setLimits(new Map()))
     loadRules()
+    loadSources()
   }, [profile, loadRules])
 
   const names = useMemo(() => new Map(attendants.map((a) => [a.id, a.name])), [attendants])
@@ -154,6 +162,25 @@ export function AtendimentoSettings() {
   }
 
   const usaPool = settings.assign_mode === 'aleatoria' || settings.assign_mode === 'rodizio'
+
+  async function addSource() {
+    if (!profile) return
+    const p = phrase.trim(), o = origemNova.trim()
+    if (p.length < 2 || o.length < 2) return toast.error('Preencha a frase e a origem (mínimo 2 letras).')
+    try {
+      await atendimentoService.addSourceRule({
+        organization_id: profile.organization_id,
+        position: sources.length ? Math.max(...sources.map((r) => r.position)) + 1 : 0,
+        phrase: p,
+        origem: o,
+      })
+      setPhrase('')
+      setOrigemNova('')
+      loadSources()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao criar a regra de origem')
+    }
+  }
 
   async function changeLimit(userId: string, raw: string) {
     if (!profile) return
@@ -423,6 +450,73 @@ export function AtendimentoSettings() {
           <button className="btn btn-ghost" onClick={addRule} disabled={adding}>
             <Plus size={14} /> Adicionar
           </button>
+        </div>
+      </section>
+
+      <section className="card">
+        <h3 className="card-title"><Tag size={15} /> Origem do contato</h3>
+        <div className="at-client-ad" style={{ marginBottom: 14 }}>
+          <Megaphone size={14} />
+          <div>
+            <strong>Anúncio é reconhecido sozinho</strong>
+            <span className="text-muted">
+              Quem chega clicando num anúncio do Instagram ou do Facebook ganha a origem
+              "Anúncio Instagram" ou "Anúncio Facebook", e as vendas lançadas para ele vão para a Meta.
+            </span>
+          </div>
+        </div>
+        <p className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
+          Para as outras fontes, cadastre frases: se a mensagem do cliente contém a frase, a origem
+          dele é preenchida. Vale para quem ainda não tem origem; sem diferença de maiúscula ou acento.
+        </p>
+
+        {sources.length > 0 && (
+          <div className="at-rules">
+            {sources.map((r) => (
+              <div key={r.id} className={`at-rule${r.active ? '' : ' off'}`}>
+                <div className="at-rule-text">
+                  Mensagem contém <strong>“{r.phrase}”</strong> → origem <strong>{r.origem}</strong>
+                </div>
+                <label className="at-rule-active" title="Ativa">
+                  <input
+                    type="checkbox"
+                    checked={r.active}
+                    onChange={() => atendimentoService.updateSourceRule(r.id, { active: !r.active }).then(loadSources)
+                      .catch((err) => toast.error(err instanceof Error ? err.message : 'Falha ao alterar'))}
+                  /> Ativa
+                </label>
+                <button
+                  className="icon-btn btn-danger-ghost"
+                  aria-label="Apagar regra de origem"
+                  onClick={async () => {
+                    if (!(await confirmDialog({ message: 'Apagar esta regra de origem?', confirmLabel: 'Apagar', danger: true }))) return
+                    atendimentoService.deleteSourceRule(r.id).then(loadSources)
+                      .catch((err) => toast.error(err instanceof Error ? err.message : 'Falha ao apagar'))
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="at-source-form">
+          <input
+            className="input"
+            value={phrase}
+            onChange={(e) => setPhrase(e.target.value)}
+            placeholder="Frase. Ex.: vi no Instagram"
+            aria-label="Frase"
+          />
+          <input
+            className="input"
+            value={origemNova}
+            onChange={(e) => setOrigemNova(e.target.value)}
+            placeholder="Origem. Ex.: Instagram"
+            aria-label="Origem"
+          />
+          <button className="btn btn-ghost" onClick={addSource}><Plus size={14} /> Adicionar</button>
         </div>
       </section>
     </>

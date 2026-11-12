@@ -4,7 +4,7 @@ import {
   Hand, Paperclip, RotateCcw, Send, X as XIcon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useAuthStore, useCan } from '@/store/authStore'
+import { useAuthStore } from '@/store/authStore'
 import { Loader, Modal } from '@/components/ui'
 import { LinkifiedText } from '@/components/LinkifiedText'
 import { toast } from '@/store/toastStore'
@@ -12,6 +12,7 @@ import {
   atendimentoService, conversationName, formatPhone, sessionLabel,
 } from '@/services/atendimentoService'
 import { formatBytes, formatDayLabel, formatTime, initials, sameDay } from './format'
+import { ClientPanel } from './ClientPanel'
 import type { WaAttendant, WaConversation, WaEvent, WaMessage, WaSession } from '@/types'
 
 const MAX_FILE = 100 * 1024 * 1024 // o limite do bucket at-media
@@ -41,12 +42,13 @@ export function ChatThread({
   onBack, onChanged, onOpenContact,
 }: Props) {
   const userId = useAuthStore((s) => s.profile?.id)
-  const can = useCan()
 
   const [messages, setMessages] = useState<WaMessage[] | null>(null)
   const [events, setEvents] = useState<WaEvent[]>([])
   const [showTransfer, setShowTransfer] = useState(false)
   const [showConclude, setShowConclude] = useState(false)
+  // Painel do cliente: aberto por padrão em tela larga, onde cabe ao lado.
+  const [showClient, setShowClient] = useState(() => window.innerWidth >= 1280)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [urls, setUrls] = useState<Map<string, string>>(new Map())
@@ -329,6 +331,7 @@ export function ChatThread({
         : null
 
   return (
+    <div className="at-thread-wrap">
     <div className="at-thread">
       <header className="at-thread-head">
         <button className="icon-btn at-back" onClick={onBack} aria-label="Voltar para a lista">
@@ -365,11 +368,13 @@ export function ChatThread({
               <span className="badge badge-gray">{conv.assigned_to === userId ? 'Você' : assignedName}</span>
             )
           )}
-          {conv.contact_id && onOpenContact && can('crm.contatos.ver') && (
-            <button className="btn btn-ghost btn-sm" onClick={() => onOpenContact(conv.contact_id!)} title="Abrir o contato no CRM">
-              <Contact size={14} /> CRM
-            </button>
-          )}
+          <button
+            className={`btn btn-ghost btn-sm${showClient ? ' btn-active' : ''}`}
+            onClick={() => setShowClient((v) => !v)}
+            aria-pressed={showClient}
+          >
+            <Contact size={14} /> Cliente
+          </button>
           <span className={`badge ${situacao.cls}`}>{situacao.label}</span>
           {conv.status === 'aberta' ? (
             podeConcluir && (
@@ -508,6 +513,10 @@ export function ChatThread({
           }}
         />
       )}
+    </div>
+    {showClient && (
+      <ClientPanel conversation={conv} onClose={() => setShowClient(false)} onOpenContact={onOpenContact} />
+    )}
     </div>
   )
 }

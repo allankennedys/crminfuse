@@ -44,7 +44,7 @@ export function NumerosAtendimento({ onClose, onChanged }: { onClose: () => void
           title: 'Este número já envia mensagens para outro sistema',
           message:
             `Hoje as mensagens deste número vão para ${info.webhook.host ?? 'outro endereço'}. ` +
-            'Ligar o atendimento substitui esse envio (a Evolution aceita um só destino por número): ' +
+            'Ligar o atendimento substitui esse envio (cada número aceita um só destino): ' +
             'automações que dependem dele param de receber. Desligar o atendimento depois devolve o envio anterior.',
           confirmLabel: 'Ligar mesmo assim',
           danger: true,
