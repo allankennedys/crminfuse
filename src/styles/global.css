@@ -140,7 +140,7 @@ input, select, textarea { font-family: inherit; }
 
 .nav-item.active {
   background: var(--primary);
-  color: #030b1a;
+  color: #fff;
   font-weight: 600;
 }
 
@@ -274,7 +274,7 @@ input, select, textarea { font-family: inherit; }
   transition: all 0.15s;
 }
 .crm-tab:hover { color: var(--text); background: var(--surface-hover); }
-.crm-tab.active { color: #030b1a; background: var(--primary); font-weight: 600; }
+.crm-tab.active { color: #fff; background: var(--primary); font-weight: 600; }
 
 /* ---------- Área principal ---------- */
 .crm-main {
@@ -1039,7 +1039,7 @@ input, select, textarea { font-family: inherit; }
 .report-tab:hover { color: var(--text); background: var(--surface-hover); }
 .report-tab.active {
   background: var(--primary);
-  color: #030b1a;
+  color: #fff;
   font-weight: 600;
 }
 
@@ -3784,7 +3784,7 @@ body.no-sidebar { --sidebar-w: 0px; }
   font-weight: 500;
 }
 .at-seg-btn:hover { color: var(--text); }
-.at-seg-btn.active { background: var(--primary); color: #030b1a; font-weight: 600; }
+.at-seg-btn.active { background: var(--primary); color: #fff; font-weight: 600; }
 .at-seg-count {
   min-width: 18px;
   padding: 0 5px;
