@@ -81,7 +81,7 @@
 -- relatório de terça manda "23h47", não "15h05":
 --
 --   select net.http_post(
---     url := 'https://djtpkyvvrntyagmivjqr.supabase.co/functions/v1/ads-campaigns',
+--     url := 'https://__SUPABASE_REF__.supabase.co/functions/v1/ads-campaigns',
 --     headers := '{"Content-Type": "application/json", "x-worker-secret": "..."}'::jsonb,
 --     body := '{"dia": "2026-09-05"}'::jsonb
 --   );
@@ -107,7 +107,7 @@ select cron.schedule(
   '5 14,16,18,20 * * 1-5',
   $$
   select net.http_post(
-    url := 'https://djtpkyvvrntyagmivjqr.supabase.co/functions/v1/ads-campaigns',
+    url := 'https://__SUPABASE_REF__.supabase.co/functions/v1/ads-campaigns',
     headers := '{"Content-Type": "application/json", "x-worker-secret": "SECRET"}'::jsonb,
     body := '{}'::jsonb
   );

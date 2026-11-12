@@ -39,7 +39,7 @@
 -- reenviar aquele dia sem esperar o próximo ciclo:
 --
 --   select net.http_post(
---     url := 'https://djtpkyvvrntyagmivjqr.supabase.co/functions/v1/ads-daily',
+--     url := 'https://__SUPABASE_REF__.supabase.co/functions/v1/ads-daily',
 --     headers := '{"Content-Type": "application/json", "x-worker-secret": "..."}'::jsonb,
 --     body := '{"dia": "2026-08-15"}'::jsonb
 --   );
@@ -63,7 +63,7 @@ select cron.schedule(
   '0 0 * * *',
   $$
   select net.http_post(
-    url := 'https://djtpkyvvrntyagmivjqr.supabase.co/functions/v1/ads-daily',
+    url := 'https://__SUPABASE_REF__.supabase.co/functions/v1/ads-daily',
     headers := '{"Content-Type": "application/json", "x-worker-secret": "SECRET"}'::jsonb,
     body := '{}'::jsonb
   );
