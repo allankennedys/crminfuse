@@ -1251,3 +1251,36 @@ export interface WaEvent {
   created_at: string
 }
 
+/** Cartão do cliente na conversa (121). contact null = ainda sem cadastro no CRM. */
+export interface WaClientCard {
+  contact: {
+    id: string
+    name: string
+    phone: string | null
+    email: string | null
+    origem: string | null
+    channel: string | null
+    stage: string | null
+    sales_count: number
+    sales_total_cents: number
+    /** Origem ou clique dizem anúncio: a venda vai para a Meta. */
+    from_ad: boolean
+    has_click: boolean
+    created_at: string
+  } | null
+  ad: { app: string | null; title: string | null; url: string | null; at: string | null } | null
+  sales: { id: string; value_cents: number; sold_at: string; payment_method: string | null }[]
+  origens: string[]
+}
+
+/** Frase que define a origem do contato (121). */
+export interface WaSourceRule {
+  id: string
+  organization_id: string
+  position: number
+  phrase: string
+  origem: string
+  active: boolean
+  created_at: string
+}
+

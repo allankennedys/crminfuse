@@ -130,6 +130,8 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
     if (!parsed) continue // protocolo, edição, reação removida…
 
     const fromMe = Boolean(key.fromMe)
+    // Só mensagem do cliente traz anúncio de verdade.
+    const ad = fromMe ? null : findAd(item)
 
     const { data: row, error } = await admin.rpc('wa_ingest_message', {
       p_session: session.id,
@@ -145,6 +147,7 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
       p_has_media: parsed.media,
       p_ts: toDate(item.messageTimestamp),
       p_status: fromMe ? (mapStatus(item.status) ?? 'sent') : 'received',
+      p_ad: ad,
     }).single<{ conversation_id: string; message_id: string; inserted: boolean; organization_id: string }>()
     if (error) throw error
 
@@ -174,6 +177,47 @@ function resolveJids(key: Json, item: Json): { pn: string | null; lid: string | 
   }
   if (rj.endsWith('@lid')) {
     return { pn: alts.find((a) => a.endsWith('@s.whatsapp.net')) ?? null, lid: rj }
+  }
+  return null
+}
+
+/**
+ * Clique em anúncio Click-to-WhatsApp (CTWA). A Meta manda o contexto do
+ * anúncio na primeira mensagem: externalAdReply com ctwaClid (o id do clique,
+ * que a Conversions API usa para atribuir a venda ao anúncio), sourceId (id
+ * do anúncio), sourceUrl e o app de entrada. A Evolution põe o contextInfo
+ * em lugares diferentes conforme o tipo de mensagem e a versão — daí a busca
+ * em todos eles.
+ */
+function findAd(item: Json): Record<string, string | null> | null {
+  const msg = item?.message ?? {}
+  const contexts: Json[] = [item?.contextInfo, msg?.contextInfo]
+  for (const v of Object.values(msg)) {
+    if (v && typeof v === 'object' && (v as Json).contextInfo) contexts.push((v as Json).contextInfo)
+  }
+
+  for (const ctx of contexts) {
+    if (!ctx || typeof ctx !== 'object') continue
+    const ar = ctx.externalAdReply ?? {}
+    const clid = ar.ctwaClid ?? ctx.ctwaClid ?? null
+    const sourceId = ar.sourceId ?? null
+    const isAd = clid || sourceId || ar.sourceType === 'ad'
+      || /ads|ctwa/i.test(String(ctx.conversionSource ?? '') + String(ctx.entryPointConversionSource ?? ''))
+    if (!isAd) continue
+
+    const url = String(ar.sourceUrl ?? '')
+    const appHint = String(ctx.entryPointConversionApp ?? ar.sourceApp ?? '').toLowerCase()
+    const app = appHint.includes('instagram') || /instagram\./i.test(url) ? 'instagram'
+      : appHint.includes('facebook') || /(facebook\.|fb\.me|fb\.com)/i.test(url) ? 'facebook'
+      : null
+
+    return {
+      ctwa_clid: clid ? String(clid) : null,
+      source_id: sourceId ? String(sourceId) : null,
+      source_url: url || null,
+      source_app: app,
+      title: ar.title ? String(ar.title).slice(0, 200) : null,
+    }
   }
   return null
 }

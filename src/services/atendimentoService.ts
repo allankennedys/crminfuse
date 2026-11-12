@@ -8,8 +8,8 @@
 
 import { supabase } from '@/lib/supabase'
 import type {
-  WaAgentLimit, WaAttendant, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport, WaRoutingRule,
-  WaSession, WaSettings,
+  WaAgentLimit, WaAttendant, WaClientCard, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport,
+  WaRoutingRule, WaSession, WaSettings, WaSourceRule,
 } from '@/types'
 
 export type WaScope = 'minhas' | 'fila' | 'todas'
@@ -30,7 +30,9 @@ const PAGE = 60
 async function invokeChat<T = unknown>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('wa-chat', { body })
   if (error) {
-    let msg = error.message
+    // A mensagem crua do cliente é técnica ("Edge Function returned…"); sem
+    // corpo legível, fica a genérica.
+    let msg = 'Falha de comunicação com o servidor. Tente de novo.'
     try {
       const ctx = (error as { context?: Response }).context
       const j = ctx ? await ctx.json() : null
@@ -227,6 +229,66 @@ export const atendimentoService = {
     const { data, error } = await supabase.rpc('wa_report', { p_from: from, p_to: to })
     if (error) throw error
     return data as WaReport
+  },
+
+  // ---------- Cartão do cliente (121) ----------
+
+  async clientCard(conversationId: string): Promise<WaClientCard> {
+    const { data, error } = await supabase.rpc('wa_client_card', { p_conversation: conversationId })
+    if (error) throw error
+    return data as WaClientCard
+  },
+
+  async clientUpdate(conversationId: string, f: { name: string; email: string; origem: string }): Promise<WaClientCard> {
+    const { data, error } = await supabase.rpc('wa_client_update', {
+      p_conversation: conversationId, p_name: f.name, p_email: f.email, p_origem: f.origem,
+    })
+    if (error) throw error
+    return data as WaClientCard
+  },
+
+  /** Lança a venda no contato da conversa. from_ad = vai para a Meta. */
+  async launchSale(
+    conversationId: string,
+    s: { valueCents: number; payment: string | null; soldAt: string | null; note: string },
+  ): Promise<{ sale_id: string; from_ad: boolean }> {
+    const { data, error } = await supabase.rpc('wa_launch_sale', {
+      p_conversation: conversationId,
+      p_value_cents: s.valueCents,
+      p_payment: s.payment,
+      p_sold_at: s.soldAt,
+      p_note: s.note || null,
+    })
+    if (error) throw error
+    return data as { sale_id: string; from_ad: boolean }
+  },
+
+  // ---------- Frases de origem (121) ----------
+
+  async listSourceRules(): Promise<WaSourceRule[]> {
+    const { data, error } = await supabase
+      .from('wa_source_rules')
+      .select('*')
+      .order('position')
+      .order('created_at')
+      .returns<WaSourceRule[]>()
+    if (error) throw error
+    return data ?? []
+  },
+
+  async addSourceRule(r: Pick<WaSourceRule, 'organization_id' | 'position' | 'phrase' | 'origem'>) {
+    const { error } = await supabase.from('wa_source_rules').insert(r)
+    if (error) throw error
+  },
+
+  async updateSourceRule(id: string, patch: Partial<Pick<WaSourceRule, 'active' | 'position'>>) {
+    const { error } = await supabase.from('wa_source_rules').update(patch).eq('id', id)
+    if (error) throw error
+  },
+
+  async deleteSourceRule(id: string) {
+    const { error } = await supabase.from('wa_source_rules').delete().eq('id', id)
+    if (error) throw error
   },
 
   async listRules(): Promise<WaRoutingRule[]> {

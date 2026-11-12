@@ -32,13 +32,13 @@ function conferirDepois(requestId: number) {
       .then((r) => {
         if (!r) return
         if (r.timed_out) {
-          toast.error('Venda registrada, mas o n8n não respondeu a tempo.')
+          toast.error('Venda registrada, mas o sistema integrado não respondeu a tempo.')
           return
         }
         const code = r.status_code
         if (code == null || code < 200 || code >= 300) {
           toast.error(
-            `Venda registrada, mas o n8n recusou o aviso (${code ?? r.error_msg ?? 'sem resposta'}).`,
+            `Venda registrada, mas o sistema integrado recusou o aviso (${code ?? r.error_msg ?? 'sem resposta'}).`,
           )
         }
       })

@@ -604,9 +604,6 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
                 ? 'Recompra: não move o contato de etapa, mas a Meta é avisada desta venda também — cliente de anúncio manda toda compra, não só a primeira.'
                 : 'Recompra: fica registrada no cliente, não move o contato de etapa e não avisa a Meta.'}
           </p>
-          <p className="text-muted sale-outcome">
-            Ao salvar, a venda e os dados do contato são enviados ao n8n.
-          </p>
         </div>
 
         <footer className="drawer-foot">

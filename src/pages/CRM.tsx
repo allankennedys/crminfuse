@@ -16,7 +16,6 @@ import { Pipeline } from '@/components/crm/Pipeline'
 import { StageDialog } from '@/components/crm/StageDialog'
 import { CrmSettingsPanel } from '@/components/crm/CrmSettings'
 import { CrmReports } from '@/components/crm/CrmReports'
-import { PendingReceiptsButton } from '@/components/crm/PendingReceipts'
 import { Atendimento } from '@/components/atendimento/Atendimento'
 import logo from '@/assets/favicon.png'
 import type { CrmContact, CrmStage } from '@/types'
@@ -386,7 +385,6 @@ export function CRMPage() {
                 <button className="btn btn-ghost btn-sm" onClick={() => setEditingContact(undefined)}>
                   <Plus size={15} /> Novo contato
                 </button>
-                <PendingReceiptsButton />
                 <span className="text-muted board-count">
                   {searching
                     ? `${boardContacts.length} resultado(s)`

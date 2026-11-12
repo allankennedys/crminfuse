@@ -385,8 +385,9 @@ function evolutionError(res: { status: number; data: Json }, what: string): stri
   const d = res.data
   const msg = d?.response?.message ?? d?.message ?? d?.error
   const text = Array.isArray(msg) ? msg.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ') : msg
-  if (res.status === 0) return `Não foi possível falar com a Evolution para ${what}${text ? `: ${text}` : ''}`
-  return `A Evolution recusou ${what} (${res.status}${text ? `: ${text}` : ''})`
+  // Mensagem para a tela: sem nome de fornecedor.
+  if (res.status === 0) return `Não foi possível falar com o WhatsApp para ${what}. Tente de novo em instantes.`
+  return `O WhatsApp recusou ${what} (${res.status}${text ? `: ${text}` : ''})`
 }
 
 function waitUntil(p: Promise<unknown>) {

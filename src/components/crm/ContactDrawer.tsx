@@ -1039,9 +1039,6 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                         + 'Corrigir o valor de uma venda não reenvia nada: só se o aviso dela ainda não '
                         + 'tiver saído (até 30 min), aí o valor novo vai junto. Excluir a venda antes disso cancela o aviso.'}
                   </p>
-                  <p className="text-muted" style={{ fontSize: 11 }}>
-                    Ao registrar, a venda é enviada ao n8n.
-                  </p>
                 </>
               )}
             </section>
@@ -1149,8 +1146,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
               <Trash2 size={15} /> Excluir de todos os sistemas
             </button>
             <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: '-4px 0 6px' }}>
-              A venda é apagada e o fluxo de reembolso (n8n) é avisado. A conversão
-              já enviada para a Meta não é desfeita.
+              A venda é apagada. A conversão já enviada para a Meta não é desfeita.
             </p>
             <button className="btn btn-ghost" onClick={() => setRemovendo(null)}>Cancelar</button>
           </div>

@@ -8,6 +8,9 @@ import { mergePermissions, type PermissionSystem } from '@/lib/permissions'
 import { toast } from '@/store/toastStore'
 import type { UserProfile, UserRole } from '@/types'
 
+/** Cargos oferecidos na tela. Os outros continuam no banco só por compatibilidade. */
+const ROLES_DESTE_PROJETO: UserRole[] = ['admin', 'atendente']
+
 const ROLE_LABEL: Record<UserRole, string> = {
   admin: 'Admin',
   operator: 'Operador',
@@ -58,13 +61,13 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
   // aberto em /crm pelo domínio da gestão.
   const sistema: PermissionSystem = crm ? 'crm' : 'painel'
   // "Dono da plataforma" é resolvido no servidor (whoami) — sem email no cliente.
-  const [owner, setOwner] = useState(false)
+  const owner = false
   const [users, setUsers] = useState<UserProfile[] | null>(null)
   const [showInvite, setShowInvite] = useState(false)
   const [inviteUsername, setInviteUsername] = useState('')
   const [inviteName, setInviteName] = useState('')
   const [invitePassword, setInvitePassword] = useState('')
-  const [inviteRole, setInviteRole] = useState<UserRole>('operator')
+  const [inviteRole, setInviteRole] = useState<UserRole>('atendente')
   const [inviteNewOrg, setInviteNewOrg] = useState(false)
   const [inviteOrgName, setInviteOrgName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -117,17 +120,9 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
   const [pwBusy, setPwBusy] = useState(false)
   const [pwError, setPwError] = useState('')
 
-  // Quem só usa o Tarefas não é usuário do CRM e não entra nesta lista. Quem
-  // são é o módulo de lá que diz (task_fora_do_crm, t36). Se a função falhar
-  // ou ainda não existir no banco, a lista sai inteira, como sempre saiu.
   const refresh = useCallback(() => {
-    Promise.all([
-      supabase.from('users').select('*').order('created_at').returns<UserProfile[]>(),
-      supabase.rpc('task_fora_do_crm'),
-    ]).then(([{ data }, fora]) => {
-      const ocultar = new Set<string>(Array.isArray(fora.data) ? fora.data : [])
-      setUsers((data ?? []).filter((u) => !ocultar.has(u.id)))
-    })
+    supabase.from('users').select('*').order('created_at').returns<UserProfile[]>()
+      .then(({ data }) => setUsers(data ?? []))
   }, [])
 
   // Só o dono vê a lista global (todas as organizações), via Edge Function.
@@ -138,13 +133,9 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       .catch(console.error)
   }, [owner])
 
-  // Descobre no servidor se o usuário logado é o dono da plataforma.
-  useEffect(() => {
-    if (!isAdmin) { setOwner(false); return }
-    supabase.functions.invoke('admin-users', { body: { action: 'whoami' } })
-      .then(({ data }) => setOwner(data?.is_owner === true))
-      .catch(() => setOwner(false))
-  }, [isAdmin, profile?.id])
+  // Neste projeto não há "dono da plataforma" na tela: criar organização nova
+  // e a lista de todas as organizações não aparecem para ninguém. owner fica
+  // false e os blocos que dependem dele não são desenhados.
 
   useEffect(refresh, [refresh])
   useEffect(refreshGlobal, [refreshGlobal])
@@ -465,7 +456,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
               <tr>
                 <th>Nome</th>
                 <th>Usuário</th>
-                <th>Role</th>
+                <th>Cargo</th>
                 <th>Status</th>
                 {isAdmin && <th style={{ textAlign: 'right' }}>Ações</th>}
               </tr>
@@ -485,7 +476,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
                         value={u.role}
                         onChange={(e) => handleChangeRole(u, e.target.value as UserRole)}
                       >
-                        {(Object.keys(ROLE_LABEL) as UserRole[]).filter((r) => r !== 'gestor').map((r) => (
+                        {(Object.keys(ROLE_LABEL) as UserRole[]).filter((r) => ROLES_DESTE_PROJETO.includes(r)).map((r) => (
                           <option key={r} value={r}>{ROLE_LABEL[r]}</option>
                         ))}
                       </select>
@@ -570,7 +561,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
               <div className="table-wrap" style={{ border: 'none', background: 'transparent' }}>
                 <table>
                   <thead>
-                    <tr><th>Nome</th><th>Usuário</th><th>Role</th><th>Status</th><th style={{ textAlign: 'right' }}>Ações</th></tr>
+                    <tr><th>Nome</th><th>Usuário</th><th>Cargo</th><th>Status</th><th style={{ textAlign: 'right' }}>Ações</th></tr>
                   </thead>
                   <tbody>
                     {g.users.map((u) => (
@@ -656,9 +647,9 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
             </div>
           ) : (
             <div className="field">
-              <label>Role</label>
+              <label>Cargo</label>
               <select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as UserRole)}>
-                {(Object.keys(ROLE_LABEL) as UserRole[]).filter((r) => r !== 'gestor').map((r) => (
+                {(Object.keys(ROLE_LABEL) as UserRole[]).filter((r) => ROLES_DESTE_PROJETO.includes(r)).map((r) => (
                   <option key={r} value={r}>{ROLE_LABEL[r]}</option>
                 ))}
               </select>
@@ -681,7 +672,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
                   <div><strong>Permissões</strong></div>
                   <span className="text-muted">
                     {sistema === 'crm'
-                      ? 'Permissões do CRM. As do painel de gestão são editadas lá.'
+                      ? 'O que esta pessoa pode fazer no sistema.'
                       : 'Permissões do painel. As do CRM são editadas lá.'}
                   </span>
                 </div>
@@ -844,7 +835,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
             </div>
             <span className="text-muted">
               {sistema === 'crm'
-                ? 'Permissões do CRM. As do painel de gestão são editadas lá e não mudam aqui.'
+                ? 'O que esta pessoa pode fazer no sistema.'
                 : 'Permissões do painel. As do CRM são editadas lá e não mudam aqui.'}
             </span>
           </div>
