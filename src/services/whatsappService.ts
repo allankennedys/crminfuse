@@ -7,7 +7,7 @@
  * instância pertence à organização do usuário autenticado.
  */
 
-import { supabase } from '@/lib/supabase'
+import { supabase, FunctionRegion } from '@/lib/supabase'
 
 interface EvolutionResponse<T = unknown> {
   ok: boolean
@@ -20,6 +20,7 @@ async function request<T = unknown>(
   options: { method?: string; body?: unknown } = {},
 ): Promise<EvolutionResponse<T>> {
   const { data, error } = await supabase.functions.invoke('evolution', {
+    region: FunctionRegion.EuWest3,
     body: {
       path,
       method: options.method ?? 'GET',

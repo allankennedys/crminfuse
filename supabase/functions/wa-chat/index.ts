@@ -63,7 +63,9 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
       auth: { persistSession: false },
     })
-    const { data: { user } } = await userClient.auth.getUser()
+    // O gateway já validou o JWT (verify_jwt): o id do usuário sai do próprio
+    // token, sem mais uma ida ao serviço de autenticação a cada mensagem.
+    const user = await currentUser(userClient, req.headers.get('Authorization'))
     if (!user) throw new HttpError(401, 'Não autenticado')
 
     const body = await req.json().catch(() => ({}))
@@ -106,13 +108,29 @@ async function instanceOf(conv: Conversation): Promise<string> {
   if (!conv.session_id) throw new HttpError(409, 'O número desta conversa foi removido do painel')
   const { data } = await admin
     .from('whatsapp_sessions')
-    .select('instance_name, organization_id')
+    .select('instance_name, organization_id, status')
     .eq('id', conv.session_id)
     .maybeSingle()
   if (!data || data.organization_id !== conv.organization_id) {
     throw new HttpError(409, 'O número desta conversa não está disponível')
   }
+  // Desconectado: avisa na hora. Mandar mesmo assim só fazia a tela esperar
+  // a Evolution desistir.
+  if (data.status === 'disconnected') {
+    throw new HttpError(409, 'O número está desconectado do WhatsApp. Reconecte em Atendimento → Números.')
+  }
   return data.instance_name
+}
+
+/** Usuário do token já validado pelo gateway; sem token legível, pergunta ao Auth. */
+async function currentUser(userClient: SupabaseClient, authHeader: string | null): Promise<{ id: string } | null> {
+  const token = (authHeader ?? '').replace(/^Bearer\s+/i, '')
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    if (typeof payload?.sub === 'string' && payload.role === 'authenticated') return { id: payload.sub }
+  } catch { /* cai no caminho lento */ }
+  const { data: { user } } = await userClient.auth.getUser()
+  return user ? { id: user.id } : null
 }
 
 /** Para onde mandar: o telefone quando conhecido, senão o próprio jid (LID). */
@@ -448,6 +466,8 @@ async function evolution(method: string, path: string, body?: unknown) {
     method,
     headers: { 'Content-Type': 'application/json', apikey: Deno.env.get('EVOLUTION_API_KEY') ?? '' },
     body: body === undefined ? undefined : JSON.stringify(body),
+    // Sem resposta em 25 s, desiste: a tela mostra o erro em vez de girar.
+    signal: AbortSignal.timeout(25_000),
   }).catch((err) => ({ ok: false, status: 0, json: async () => ({ error: String(err) }) } as unknown as Response))
   let data: Json = null
   try { data = await res.json() } catch { /* sem corpo */ }
