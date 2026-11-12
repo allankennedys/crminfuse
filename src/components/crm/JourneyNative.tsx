@@ -8,7 +8,7 @@ import { formatBRL, reportJourneyNative, type CrmJourneyNative } from '@/service
 import { fmtMin } from '@/components/atendimento/AtendimentoReport'
 
 /** Cor única das barras (magnitude): a primeira vaga da paleta validada. */
-const COR_BARRA = '#3987e5'
+const COR_BARRA = 'var(--series-1)'
 
 const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—')
 

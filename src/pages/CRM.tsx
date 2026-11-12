@@ -19,7 +19,10 @@ import { CrmReports } from '@/components/crm/CrmReports'
 import { Atendimento } from '@/components/atendimento/Atendimento'
 import { StartConversation } from '@/components/atendimento/StartConversation'
 import { useConversaStore } from '@/store/conversaStore'
-import logo from '@/assets/favicon.png'
+import logoBranco from '@/assets/favicon.png'
+import logoAzul from '@/assets/symbol-navy.png'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { useTheme } from '@/lib/theme'
 import type { CrmContact, CrmStage } from '@/types'
 
 /**
@@ -83,6 +86,7 @@ type TabId = (typeof TABS)[number]['id']
 export function CRMPage() {
   const { profile, signOut } = useAuthStore()
   const organizationName = useAuthStore((s) => s.organizationName)
+  const theme = useTheme((s) => s.theme)
   // Sem link de volta ao painel: os dois sistemas vivem em domínios
   // separados e sem SSO, então o "atalho" levava a uma tela de login.
   const can = useCan()
@@ -337,7 +341,7 @@ export function CRMPage() {
     <div className="crm-shell">
       <header className="topbar crm-topbar">
         <div className="flex">
-          <img src={logo} alt="Infuse" className="logo-img" style={{ width: 24, height: 24 }} />
+          <img src={theme === 'light' ? logoAzul : logoBranco} alt="Infuse" className="logo-img" style={{ width: 24, height: 24 }} />
           <span className="topbar-title crm-org-name" title={organizationName ?? undefined}>
             {organizationName || 'CRM'}
           </span>
@@ -360,6 +364,7 @@ export function CRMPage() {
           <span className="text-secondary crm-user">
             {profile?.full_name ?? profile?.email}
           </span>
+          <ThemeToggle />
           <button className="icon-btn" onClick={signOut} title="Sair" aria-label="Sair">
             <LogOut size={16} />
           </button>
@@ -449,7 +454,7 @@ export function CRMPage() {
 
                 {channels.length > 0 && (
                   <label className="channel-filter">
-                    <WhatsAppIcon size={14} color="#3b82f6" />
+                    <WhatsAppIcon size={14} color="var(--primary-text)" />
                     <select value={channel} onChange={(e) => setChannel(e.target.value)}>
                       <option value="">Todos os canais</option>
                       {channels.map((c) => (
