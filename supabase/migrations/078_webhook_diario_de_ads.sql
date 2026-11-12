@@ -22,7 +22,7 @@
 -- assentado do lado da Meta. É a leitura literal de "dia anterior", e é
 -- também a única janela que não muda depois de entregue.
 --
--- POR QUE O 5085fa755ec4d33c3aade64fc9379bd9789b6af90174603e E NÃO UM JWT
+-- POR QUE O __WORKER_SECRET__ E NÃO UM JWT
 --
 -- Mesma escolha da 043: a função se autentica pelo header x-worker-secret,
 -- comparado com o secret WORKER_SECRET. É por isso que ela precisa ser
@@ -64,7 +64,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url := 'https://__SUPABASE_REF__.supabase.co/functions/v1/ads-daily',
-    headers := '{"Content-Type": "application/json", "x-worker-secret": "SECRET"}'::jsonb,
+    headers := '{"Content-Type": "application/json", "x-worker-secret": "__WORKER_SECRET__"}'::jsonb,
     body := '{}'::jsonb
   );
   $$

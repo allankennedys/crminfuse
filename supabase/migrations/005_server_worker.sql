@@ -108,7 +108,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url := 'https://__SUPABASE_REF__.supabase.co/functions/v1/worker',
-    headers := '{"Content-Type": "application/json", "x-worker-secret": "5085fa755ec4d33c3aade64fc9379bd9789b6af90174603e"}'::jsonb,
+    headers := '{"Content-Type": "application/json", "x-worker-secret": "__WORKER_SECRET__"}'::jsonb,
     body := '{}'::jsonb
   );
   $$
