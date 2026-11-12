@@ -156,6 +156,11 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
     if (parsed.media && row?.inserted) {
       medias.push(() => saveMedia(session, row, item, parsed))
     }
+
+    // Foto de perfil: confere de novo depois de 3 dias (o link expira).
+    if (!fromMe && row?.inserted) {
+      medias.push(() => refreshAvatar(session, row.conversation_id))
+    }
   }
 
   return medias
@@ -338,6 +343,30 @@ async function saveMedia(
     .eq('id', row.message_id)
 
   if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// Foto de perfil
+// ---------------------------------------------------------------------------
+
+const AVATAR_TTL_MS = 3 * 24 * 60 * 60 * 1000
+
+async function refreshAvatar(session: Session, conversationId: string) {
+  const { data: c } = await admin
+    .from('wa_conversations')
+    .select('id, phone, remote_jid, avatar_checked_at')
+    .eq('id', conversationId)
+    .maybeSingle()
+  if (!c) return
+  if (c.avatar_checked_at && Date.now() - new Date(c.avatar_checked_at).getTime() < AVATAR_TTL_MS) return
+
+  const res = await evolution(`/chat/fetchProfilePictureUrl/${encodeURIComponent(session.instance_name)}`, {
+    number: c.phone ?? c.remote_jid,
+  })
+  const url = res.ok && typeof res.data?.profilePictureUrl === 'string' ? res.data.profilePictureUrl : null
+  await admin.from('wa_conversations')
+    .update({ avatar_url: url, avatar_checked_at: new Date().toISOString() })
+    .eq('id', c.id)
 }
 
 // ---------------------------------------------------------------------------

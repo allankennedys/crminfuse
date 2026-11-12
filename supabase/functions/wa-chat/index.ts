@@ -15,6 +15,7 @@
  *   { action: 'send_media', conversation_id, path, mime, name, caption? }
  *       path = arquivo já enviado ao bucket wa-media, dentro da pasta da conversa
  *   { action: 'mark_read',  conversation_id }
+ *   { action: 'avatar',     conversation_id, force? }  foto de perfil do cliente
  *   { action: 'session_info' | 'enable' | 'disable', session_id }
  *   { action: 'start', session_id, contact_id? , phone? }
  *       inicia conversa: confere o número na Evolution e devolve a conversa
@@ -75,6 +76,7 @@ Deno.serve(async (req) => {
       case 'send_text': return json(await sendText(userClient, user.id, body))
       case 'send_media': return json(await sendMedia(userClient, user.id, body))
       case 'mark_read': return json(await markRead(userClient, body))
+      case 'avatar': return json(await avatar(userClient, body))
       case 'session_info': return json(await sessionInfo(userClient, user.id, body))
       case 'enable': return json(await enable(userClient, user.id, body))
       case 'disable': return json(await disable(userClient, user.id, body))
@@ -259,6 +261,41 @@ async function markRead(userClient: SupabaseClient, body: Json) {
   })().catch(() => {}))
 
   return { ok: true }
+}
+
+// ---------------------------------------------------------------------------
+// Foto de perfil (127)
+// ---------------------------------------------------------------------------
+
+/**
+ * Busca (ou reaproveita) a foto do cliente. Conferida há menos de 3 dias,
+ * devolve a guardada; `force` (a imagem não carregou — link expirado) pede
+ * de novo, mas no máximo uma vez por hora.
+ */
+async function avatar(userClient: SupabaseClient, body: Json) {
+  const conv = await loadConversation(userClient, body?.conversation_id)
+  const { data: atual } = await admin
+    .from('wa_conversations')
+    .select('avatar_url, avatar_checked_at')
+    .eq('id', conv.id)
+    .single()
+  const idade = atual?.avatar_checked_at ? Date.now() - new Date(atual.avatar_checked_at).getTime() : Infinity
+  const limite = body?.force ? 60 * 60 * 1000 : 3 * 24 * 60 * 60 * 1000
+  if (idade < limite) return { avatar_url: atual?.avatar_url ?? null }
+
+  let url: string | null = null
+  try {
+    const instance = await instanceOf(conv)
+    const res = await evolution('POST', `/chat/fetchProfilePictureUrl/${encodeURIComponent(instance)}`, { number: target(conv) })
+    url = res.ok && typeof res.data?.profilePictureUrl === 'string' ? res.data.profilePictureUrl : null
+  } catch {
+    // Número desconectado/removido: fica a que já tinha.
+    return { avatar_url: atual?.avatar_url ?? null }
+  }
+  await admin.from('wa_conversations')
+    .update({ avatar_url: url, avatar_checked_at: new Date().toISOString() })
+    .eq('id', conv.id)
+  return { avatar_url: url }
 }
 
 // ---------------------------------------------------------------------------

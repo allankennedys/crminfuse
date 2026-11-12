@@ -12,8 +12,9 @@ import { toast } from '@/store/toastStore'
 import {
   atendimentoService, conversationName, formatPhone, sessionLabel,
 } from '@/services/atendimentoService'
-import { formatBytes, formatDayLabel, formatTime, initials, sameDay } from './format'
+import { formatBytes, formatDayLabel, formatTime, sameDay } from './format'
 import { ClientPanel } from './ClientPanel'
+import { ClientAvatar } from './ClientAvatar'
 import type { WaAttendant, WaConversation, WaEvent, WaMessage, WaSession } from '@/types'
 
 const MAX_FILE = 100 * 1024 * 1024 // o limite do bucket at-media
@@ -98,6 +99,16 @@ export function ChatThread({
         if (alive) setMessages([])
       })
     return () => { alive = false }
+  }, [conv.id])
+
+  // Foto de perfil: conversa nunca conferida ou conferida há mais de 3 dias
+  // pede ao servidor (que decide se precisa mesmo ir ao WhatsApp). A foto
+  // nova chega pela atualização da conversa.
+  useEffect(() => {
+    const velha = !conv.avatar_checked_at
+      || Date.now() - new Date(conv.avatar_checked_at).getTime() > 3 * 24 * 60 * 60 * 1000
+    if (velha && conv.session_id) atendimentoService.refreshAvatar(conv.id).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conv.id])
 
   // Histórico de atribuição/transferência (119), intercalado com as mensagens.
@@ -406,7 +417,7 @@ export function ChatThread({
         <button className="icon-btn at-back" onClick={onBack} aria-label="Voltar para a lista">
           <ArrowLeft size={17} />
         </button>
-        <span className="at-avatar" aria-hidden="true">{initials(name)}</span>
+        <ClientAvatar conv={conv} name={name} />
         <div className="at-head-info">
           <div className="at-head-name">{name}</div>
           <div className="at-head-sub">
