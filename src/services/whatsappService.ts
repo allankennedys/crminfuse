@@ -68,16 +68,16 @@ export interface EvolutionContact {
 }
 
 export const whatsappService = {
-  /** Cria uma instância (session) na Evolution API */
-  async createSession(instanceName: string) {
-    return request('/instance/create', {
-      method: 'POST',
-      body: {
-        instanceName,
-        qrcode: true,
-        integration: 'WHATSAPP-BAILEYS',
-      },
-    })
+  /**
+   * Cria um número. O nome da instância é gerado pela Edge Function (117):
+   * a Evolution é compartilhada e o painel não escolhe nome nenhum. Volta o
+   * número já registrado, com dono, e o primeiro QR quando a Evolution manda.
+   */
+  async createSession() {
+    return request<{ session?: import('@/types').WhatsAppSession; qrcode?: QRCodeData | null; error?: string }>(
+      '/instance/create',
+      { method: 'POST', body: {} },
+    )
   },
 
   /** Retorna QR Code para conexão */

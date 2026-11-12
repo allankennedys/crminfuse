@@ -123,6 +123,16 @@ Presets: admin tudo · operator ver + ver todas + atribuir · sdr ver · atenden
 
 Mídias ficam no bucket privado `wa-media` (links assinados de 1 h). Mensagens chegam ao vivo pelo Realtime.
 
+## 🔐 Evolution compartilhada (SaaS)
+
+A Evolution pode ser a mesma de outros sistemas: a chave global enxerga todas as instâncias do servidor, então quem isola é este projeto (migration 117 + Edge Function `evolution`):
+
+- **Nome gerado pelo sistema:** "Conectar número" cria a instância como `infuse-<aleatório>` (prefixo no secret `INSTANCE_PREFIX`). Nome que já existe na Evolution nunca é reaproveitado.
+- **Cada número tem dono** (`whatsapp_sessions.created_by`): só quem criou vê, gera QR, desconecta, remove, liga ao atendimento e envia por ele. Número de usuário apagado fica com o admin da organização.
+- O painel não insere nem renomeia número; agendamento, fila e jobs só aceitam número do próprio usuário (e sempre da mesma organização).
+- **Remover** apaga a instância na Evolution também (não sobra instância órfã no servidor).
+- O telefone é preenchido sozinho quando o QR é lido.
+
 ## 🔌 Integrações externas (desligadas por padrão)
 
 Os avisos de venda para o n8n e o aviso de reembolso para o sistema de comissão leem a URL da tabela `integration_urls` (migration 041). Sem linha cadastrada, **nada é enviado**. Os relatórios de anúncios (`ads-daily`, `ads-campaigns`) leem os secrets `N8N_ADS_DAILY_URL` e `N8N_ADS_CAMPAIGNS_URL`.

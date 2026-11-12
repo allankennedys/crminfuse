@@ -23,8 +23,10 @@ export function NumerosAtendimento({ onClose, onChanged }: { onClose: () => void
   const [managing, setManaging] = useState(false)
 
   const load = useCallback(() => {
+    // Só os números do próprio usuário: a lista também traz, para rótulo,
+    // os números das conversas que ele enxerga — esses ele não configura.
     atendimentoService.sessions()
-      .then(setSessions)
+      .then((list) => setSessions(list.filter((s) => s.mine)))
       .catch((err) => {
         toast.error(err instanceof Error ? err.message : 'Falha ao carregar os números')
         setSessions([])
@@ -98,7 +100,7 @@ export function NumerosAtendimento({ onClose, onChanged }: { onClose: () => void
       {sessions === null ? (
         <Loader />
       ) : sessions.length === 0 ? (
-        <EmptyState icon={<Smartphone />} text="Nenhum número conectado ainda." />
+        <EmptyState icon={<Smartphone />} text="Você ainda não conectou nenhum número." />
       ) : (
         <div className="at-numbers">
           {sessions.map((s) => (

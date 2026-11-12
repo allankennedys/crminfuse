@@ -45,6 +45,10 @@ export interface WhatsAppSession {
   rate_limit_per_min: number
   last_seen_at: string | null
   created_at: string
+  /** Dono do número (117): só ele vê e administra. */
+  created_by: string | null
+  /** Ligado ao Atendimento (116). Só o servidor muda. */
+  chat_enabled: boolean
 }
 
 export interface Group {
@@ -1153,6 +1157,8 @@ export interface WaSession {
   phone_number: string | null
   status: SessionStatus
   chat_enabled: boolean
+  /** true = número do próprio usuário (pode ligar/desligar no atendimento). */
+  mine: boolean
 }
 
 export interface WaAttendant {

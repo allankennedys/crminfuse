@@ -489,7 +489,7 @@ export function GroupsPage() {
         done++
         setImportProgress(`Importando ${done}/${chosen.length}…`)
       }
-      toast.success(`${chosen.length} grupo(s) importado(s) de ${session.instance_name}. Sincronizando participantes…`)
+      toast.success(`${chosen.length} grupo(s) importado(s) de ${sessionLabel(session)}. Sincronizando participantes…`)
       setImportList(null)
       refresh()
 
@@ -743,7 +743,7 @@ export function GroupsPage() {
                   className={`btn btn-sm ${form.sessionIds.includes(s.id) ? 'btn-primary' : 'btn-ghost'}`}
                   onClick={() => toggleSession(s.id)}
                 >
-                  {s.instance_name}
+                  {sessionLabel(s)}
                   <StatusBadge status={s.status} />
                 </button>
               ))}
@@ -875,7 +875,7 @@ export function GroupsPage() {
           })
         return (
           <Modal
-            title={`Importar grupos — ${importList.session.instance_name}`}
+            title={`Importar grupos — ${sessionLabel(importList.session)}`}
             onClose={() => !importing && setImportList(null)}
           >
             <p className="text-muted" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
