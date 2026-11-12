@@ -9,8 +9,9 @@ import {
   atendimentoService, conversationName, sessionLabel, type WaScope,
 } from '@/services/atendimentoService'
 import { ChatThread } from './ChatThread'
+import { ClientAvatar } from './ClientAvatar'
 import { NumerosAtendimento } from './NumerosAtendimento'
-import { formatListTime, initials } from './format'
+import { formatListTime } from './format'
 import type { WaAttendant, WaConversation, WaConversationStatus, WaSession } from '@/types'
 
 /**
@@ -275,7 +276,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
                   className={`at-item${c.id === selectedId ? ' active' : ''}`}
                   onClick={() => open(c)}
                 >
-                  <span className="at-avatar" aria-hidden="true">{initials(name)}</span>
+                  <ClientAvatar conv={c} name={name} />
                   <span className="at-item-main">
                     <span className="at-item-top">
                       <span className="at-item-name">{name}</span>

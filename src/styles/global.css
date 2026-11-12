@@ -4436,3 +4436,6 @@ td.col-acao { width: 44px; text-align: right; }
   cursor: pointer;
 }
 .at-row.out .at-failed { color: var(--bubble-out-failed); }
+
+/* Foto de perfil no lugar das iniciais (127) */
+.at-avatar-img { object-fit: cover; background: var(--avatar-bg); }

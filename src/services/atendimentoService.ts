@@ -135,6 +135,12 @@ export const atendimentoService = {
     return r.message
   },
 
+  /** Foto do cliente. force = a imagem não carregou (link expirado). */
+  async refreshAvatar(conversationId: string, force = false): Promise<string | null> {
+    const r = await invokeChat<{ avatar_url: string | null }>({ action: 'avatar', conversation_id: conversationId, force })
+    return r.avatar_url
+  },
+
   async markRead(conversationId: string): Promise<void> {
     await invokeChat({ action: 'mark_read', conversation_id: conversationId })
   },

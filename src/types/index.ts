@@ -869,6 +869,9 @@ export interface WaConversation {
   /** Só dígitos, com DDI. null enquanto o WhatsApp só informou o LID. */
   phone: string | null
   push_name: string | null
+  /** Foto de perfil do WhatsApp (127). null = sem foto ou escondida. */
+  avatar_url: string | null
+  avatar_checked_at: string | null
   contact_id: string | null
   assigned_to: string | null
   assigned_at: string | null
