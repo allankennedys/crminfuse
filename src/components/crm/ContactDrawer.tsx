@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRightLeft, Trash2, History, Merge, Pencil, Plus, Receipt, RotateCcw, Save, Undo2, X } from 'lucide-react'
+import { ArrowRightLeft, Trash2, History, Merge, MessageCirclePlus, Pencil, Plus, Receipt, RotateCcw, Save, Undo2, X } from 'lucide-react'
+import { useConversaStore } from '@/store/conversaStore'
 import { Combobox, type ComboOption } from './Combobox'
 import { TagInput } from './TagInput'
 import { MergeContactsDialog } from './MergeContactsDialog'
@@ -12,7 +13,7 @@ import {
   canalLabel, channelKey, crmService, formatBRL, hasAdClick, isAdOrigem, parseBRL, paymentLabel,
   PAYMENT_METHODS, STAGE_COLORS,
 } from '@/services/crmService'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, useCan } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import { confirmDialog } from '@/store/confirmStore'
 import {
@@ -71,6 +72,10 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
   onClose: () => void
   onSaved: () => void
 }) {
+  const canConversa = useCan()
+  // Iniciar conversa (126): para quem atende.
+  const podeConversar = canConversa('atendimento.ver') || canConversa('atendimento.ver_todas')
+  const pedirConversa = useConversaStore((st) => st.pedir)
   const profile = useAuthStore((s) => s.profile)
   const isNew = contact === null
 
@@ -690,9 +695,20 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
               </p>
             )}
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Fechar">
-            <X size={17} />
-          </button>
+          <div className="flex" style={{ gap: 6 }}>
+            {!isNew && contact.phone && podeConversar && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => pedirConversa({ id: contact.id, name: contact.name, phone: contact.phone })}
+                title="Iniciar conversa no WhatsApp"
+              >
+                <MessageCirclePlus size={14} /> Conversar
+              </button>
+            )}
+            <button className="icon-btn" onClick={onClose} aria-label="Fechar">
+              <X size={17} />
+            </button>
+          </div>
         </header>
 
         <div className="drawer-body">
