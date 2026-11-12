@@ -485,7 +485,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
                         value={u.role}
                         onChange={(e) => handleChangeRole(u, e.target.value as UserRole)}
                       >
-                        {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
+                        {(Object.keys(ROLE_LABEL) as UserRole[]).filter((r) => r !== 'gestor').map((r) => (
                           <option key={r} value={r}>{ROLE_LABEL[r]}</option>
                         ))}
                       </select>
@@ -658,7 +658,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
             <div className="field">
               <label>Role</label>
               <select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as UserRole)}>
-                {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
+                {(Object.keys(ROLE_LABEL) as UserRole[]).filter((r) => r !== 'gestor').map((r) => (
                   <option key={r} value={r}>{ROLE_LABEL[r]}</option>
                 ))}
               </select>
