@@ -6,7 +6,7 @@
  * por RPC ou pela Edge Function wa-chat, que conferem a permissão no banco.
  */
 
-import { supabase } from '@/lib/supabase'
+import { supabase, FunctionRegion } from '@/lib/supabase'
 import type {
   WaAgentLimit, WaAttendant, WaClientCard, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport,
   WaRoutingRule, WaSession, WaSettings, WaSourceRule,
@@ -28,7 +28,7 @@ const PAGE = 60
 
 /** Erro legível da Edge Function — o supabase-js esconde o corpo da resposta. */
 async function invokeChat<T = unknown>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('wa-chat', { body })
+  const { data, error } = await supabase.functions.invoke('wa-chat', { body, region: FunctionRegion.EuWest3 })
   if (error) {
     // A mensagem crua do cliente é técnica ("Edge Function returned…"); sem
     // corpo legível, fica a genérica.

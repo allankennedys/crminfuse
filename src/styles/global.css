@@ -79,6 +79,7 @@
   --bubble-out-text: #f4f4f5;
   --bubble-out-meta: #a9bfdc;
   --bubble-out-link: #9ecbff;
+  --bubble-out-failed: #ffb3be;
   --selected: #18181c;
   --avatar-bg: #26262c;
   --avatar-text: #f4f4f5;
@@ -162,6 +163,7 @@
   --bubble-out-text: #0f172a;
   --bubble-out-meta: #475569;
   --bubble-out-link: #1d4ed8;
+  --bubble-out-failed: #b4182f;
   --selected: #e6edf9;
   --avatar-bg: #e5e7eb;
   --avatar-text: #1f2937;
@@ -4412,3 +4414,25 @@ td.col-acao { width: 44px; text-align: right; }
 }
 @keyframes at-rec-pulse { 50% { opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) { .at-rec-dot { animation: none; } }
+
+/* Mensagem que não saiu (envio otimista) */
+.at-failed {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--danger);
+}
+.at-failed button {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.at-row.out .at-failed { color: var(--bubble-out-failed); }

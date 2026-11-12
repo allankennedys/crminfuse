@@ -16,3 +16,11 @@ export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
     params: { eventsPerSecond: 10 },
   },
 })
+
+/**
+ * Região das Edge Functions = a do banco (eu-west-3). Sem isto o Supabase
+ * roda a função perto de quem chama — no Brasil, São Paulo — e cada consulta
+ * dela ao banco atravessa o oceano (umas cinco por mensagem enviada).
+ */
+export { FunctionRegion } from '@supabase/supabase-js'
+export const FUNCTIONS_REGION = 'eu-west-3' as const

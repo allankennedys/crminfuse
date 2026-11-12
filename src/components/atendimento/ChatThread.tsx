@@ -56,7 +56,10 @@ export function ChatThread({
 
   const [text, setText] = useState('')
   const [file, setFile] = useState<File | null>(null)
-  const [sending, setSending] = useState(false)
+  // Mensagens a caminho: aparecem na hora (relógio) e saem quando a
+  // confirmada chega — pela resposta do envio ou pelo tempo real.
+  const [pendentes, setPendentes] = useState<WaMessage[]>([])
+  const arquivosPendentes = useRef(new Map<string, File>())
   const [busy, setBusy] = useState(false)
 
   const listRef = useRef<HTMLDivElement>(null)
@@ -111,7 +114,15 @@ export function ChatThread({
         { event: '*', schema: 'public', table: 'wa_messages', filter: `conversation_id=eq.${conv.id}` },
         (payload) => {
           const row = payload.new as WaMessage
-          if (row?.id) merge(row)
+          if (!row?.id) return
+          merge(row)
+          if (payload.eventType === 'INSERT' && row.from_me && row.sent_by === userId) {
+            setPendentes((p) => {
+              const i = p.findIndex((x) => x.status === 'pending'
+                && (row.type === 'text' ? x.body === row.body : x.media_name === row.media_name))
+              return i < 0 ? p : p.filter((_, j) => j !== i)
+            })
+          }
         },
       )
       .on(
@@ -124,7 +135,7 @@ export function ChatThread({
       )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [conv.id, merge])
+  }, [conv.id, merge, userId])
 
   // Links assinados das mídias (bucket privado, 1 h).
   useEffect(() => {
@@ -163,7 +174,7 @@ export function ChatThread({
       return
     }
     if (stickRef.current) el.scrollTop = el.scrollHeight
-  }, [messages])
+  }, [messages, pendentes])
 
   const onScroll = () => {
     const el = listRef.current
@@ -216,24 +227,63 @@ export function ChatThread({
     inputRef.current?.focus()
   }
 
-  const send = async () => {
-    const t = text.trim()
-    if (sending || (!t && !file)) return
-    setSending(true)
-    try {
-      const msg = file
-        ? await atendimentoService.sendFile(conv, file, t)
-        : await atendimentoService.sendText(conv.id, t)
-      stickRef.current = true
-      if (msg) merge(msg)
-      setText('')
-      setFile(null)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Não foi possível enviar')
-    } finally {
-      setSending(false)
-      inputRef.current?.focus()
+  const novoPendente = (p: Partial<WaMessage>): WaMessage => {
+    const agora = new Date().toISOString()
+    return {
+      id: `tmp-${crypto.randomUUID()}`, conversation_id: conv.id, wa_message_id: '', from_me: true,
+      sent_by: userId ?? null, type: 'text', body: null, media_path: null, media_mime: null, media_name: null,
+      media_status: null, status: 'pending', wa_timestamp: agora, created_at: agora, ...p,
     }
+  }
+
+  const despachar = (temp: WaMessage) => {
+    const arquivo = arquivosPendentes.current.get(temp.id)
+    setPendentes((p) => [...p.filter((x) => x.id !== temp.id), { ...temp, status: 'pending' }])
+    stickRef.current = true
+    const envio = arquivo
+      ? atendimentoService.sendFile(conv, arquivo, temp.body ?? undefined)
+      : atendimentoService.sendText(conv.id, temp.body ?? '')
+    envio
+      .then((msg) => {
+        setPendentes((p) => p.filter((x) => x.id !== temp.id))
+        arquivosPendentes.current.delete(temp.id)
+        if (msg) merge(msg)
+      })
+      .catch((err) => {
+        const erro = err instanceof Error ? err.message : 'Não foi possível enviar'
+        setPendentes((p) => p.map((x) => (x.id === temp.id ? { ...x, status: 'failed' } : x)))
+        toast.error(erro)
+      })
+  }
+
+  const descartarPendente = (id: string) => {
+    arquivosPendentes.current.delete(id)
+    setPendentes((p) => p.filter((x) => x.id !== id))
+  }
+
+  const tipoDoArquivo = (f: File): WaMessage['type'] =>
+    f.type.startsWith('image/') ? 'image'
+      : f.type.startsWith('video/') ? 'video'
+      : f.type.startsWith('audio/') ? 'audio'
+      : 'document'
+
+  // Envio otimista: a tela não espera o WhatsApp. A caixa limpa na hora e dá
+  // para mandar a próxima enquanto a anterior ainda está saindo.
+  const send = () => {
+    const t = text.trim()
+    if (!t && !file) return
+    if (file) {
+      const temp = novoPendente({
+        type: tipoDoArquivo(file), body: t || null, media_name: file.name, media_mime: file.type, media_status: 'pendente',
+      })
+      arquivosPendentes.current.set(temp.id, file)
+      despachar(temp)
+    } else {
+      despachar(novoPendente({ type: 'text', body: t }))
+    }
+    setText('')
+    setFile(null)
+    inputRef.current?.focus()
   }
 
   const onSubmit = (e: FormEvent) => { e.preventDefault(); send() }
@@ -241,17 +291,10 @@ export function ChatThread({
   // Mensagem de voz: grava no navegador e manda como arquivo de áudio — a
   // wa-chat envia áudio como mensagem de voz (PTT).
   const voice = useVoiceRecorder(
-    async (audio) => {
-      setSending(true)
-      try {
-        const msg = await atendimentoService.sendFile(conv, audio)
-        stickRef.current = true
-        if (msg) merge(msg)
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Não foi possível enviar o áudio')
-      } finally {
-        setSending(false)
-      }
+    (audio) => {
+      const temp = novoPendente({ type: 'audio', media_name: audio.name, media_mime: audio.type, media_status: 'pendente' })
+      arquivosPendentes.current.set(temp.id, audio)
+      despachar(temp)
     },
     (e) => toast.error(
       e === 'sem-permissao' ? 'Permita o uso do microfone no navegador para gravar áudio.'
@@ -333,6 +376,7 @@ export function ChatThread({
     const desde = hasMore && messages.length ? new Date(messages[0].wa_timestamp).getTime() : -Infinity
     const items: { key: string; at: string; m?: WaMessage; e?: WaEvent }[] = [
       ...messages.map((m) => ({ key: m.id, at: m.wa_timestamp, m })),
+      ...pendentes.map((m) => ({ key: m.id, at: m.wa_timestamp, m })),
       ...events.filter((e) => new Date(e.created_at).getTime() >= desde).map((e) => ({ key: e.id, at: e.created_at, e })),
     ]
     return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
@@ -445,6 +489,8 @@ export function ChatThread({
                     url={item.m.media_path ? urls.get(item.m.media_path) : undefined}
                     author={item.m.from_me ? (item.m.sent_by ? names.get(item.m.sent_by) ?? 'Painel' : 'Celular') : null}
                     onMediaLoad={followIfStuck}
+                    onRetry={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => despachar(item.m!) : undefined}
+                    onDiscard={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => descartarPendente(item.m!.id) : undefined}
                   />
                 ) : item.e ? (
                   <div className="at-event">
@@ -501,7 +547,7 @@ export function ChatThread({
               type="button"
               className="icon-btn"
               onClick={() => fileRef.current?.click()}
-              disabled={semNumero || sending}
+              disabled={semNumero}
               title="Anexar arquivo"
               aria-label="Anexar arquivo"
             >
@@ -528,7 +574,7 @@ export function ChatThread({
               placeholder={semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem'}
               aria-label="Mensagem"
             />
-            {podeGravar && !sending ? (
+            {podeGravar ? (
               <button
                 type="button"
                 className="btn btn-primary at-send"
@@ -543,10 +589,10 @@ export function ChatThread({
               <button
                 type="submit"
                 className="btn btn-primary at-send"
-                disabled={semNumero || sending || (!text.trim() && !file)}
+                disabled={semNumero || (!text.trim() && !file)}
                 aria-label="Enviar"
               >
-                {sending ? <span className="spinner" /> : <Send size={16} />}
+                <Send size={16} />
               </button>
             )}
           </div>
@@ -744,12 +790,16 @@ function Ticks({ status }: { status: WaMessage['status'] }) {
   return <Check size={14} aria-label="Enviada" />
 }
 
-function Bubble({ m, url, author, onMediaLoad }: {
+function Bubble({ m, url, author, onMediaLoad, onRetry, onDiscard }: {
   m: WaMessage
   url: string | undefined
   author: string | null
   onMediaLoad: () => void
+  /** Só em mensagem que não saiu: tentar de novo / tirar da tela. */
+  onRetry?: () => void
+  onDiscard?: () => void
 }) {
+  const aCaminho = m.id.startsWith('tmp-')
   if (m.type === 'reaction') {
     return (
       <div className={`at-row ${m.from_me ? 'out' : 'in'}`}>
@@ -764,6 +814,13 @@ function Bubble({ m, url, author, onMediaLoad }: {
   if (hasMedia) {
     if (m.media_status === 'falhou') {
       media = <div className="at-media-missing">Não foi possível baixar este arquivo — veja no celular.</div>
+    } else if (aCaminho) {
+      media = (
+        <div className="at-media-missing">
+          {m.type === 'audio' ? '🎤 Mensagem de voz' : `📎 ${m.media_name ?? 'Arquivo'}`}
+          {m.status === 'pending' ? ' · enviando…' : ''}
+        </div>
+      )
     } else if (!url) {
       media = <div className="at-media-missing">Carregando arquivo…</div>
     } else if (m.type === 'image' || m.type === 'sticker') {
@@ -801,6 +858,13 @@ function Bubble({ m, url, author, onMediaLoad }: {
           <span>{formatTime(m.wa_timestamp)}</span>
           {m.from_me && <Ticks status={m.status} />}
         </div>
+        {(onRetry || onDiscard) && (
+          <div className="at-failed">
+            <span>Não enviada</span>
+            {onRetry && <button type="button" onClick={onRetry}>Tentar de novo</button>}
+            {onDiscard && <button type="button" onClick={onDiscard}>Descartar</button>}
+          </div>
+        )}
       </div>
     </div>
   )
