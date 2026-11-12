@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
-  AlertTriangle, ArrowLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
-  Paperclip, RotateCcw, Send, X as XIcon,
+  AlertTriangle, ArrowLeft, ArrowRightLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
+  Hand, Paperclip, RotateCcw, Send, X as XIcon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore, useCan } from '@/store/authStore'
-import { Loader } from '@/components/ui'
+import { Loader, Modal } from '@/components/ui'
 import { LinkifiedText } from '@/components/LinkifiedText'
 import { toast } from '@/store/toastStore'
 import {
   atendimentoService, conversationName, formatPhone, sessionLabel,
 } from '@/services/atendimentoService'
 import { formatBytes, formatDayLabel, formatTime, initials, sameDay } from './format'
-import type { WaAttendant, WaConversation, WaMessage, WaSession } from '@/types'
+import type { WaAttendant, WaConversation, WaEvent, WaMessage, WaSession } from '@/types'
 
 const MAX_FILE = 100 * 1024 * 1024 // o limite do bucket at-media
 
@@ -22,6 +22,12 @@ interface Props {
   names: Map<string, string>
   attendants: WaAttendant[]
   canAssign: boolean
+  /** Pode passar a conversa DELE para outra pessoa (119). */
+  canTransfer: boolean
+  /** Enxerga a Fila (restrição desligada ou "ver todas"): pode assumir. */
+  canTake: boolean
+  /** Motivos oferecidos ao concluir (120). Vazio = conclui sem perguntar. */
+  conclusionReasons: string[]
   onBack: () => void
   onChanged: () => void
   onOpenContact?: (contactId: string) => void
@@ -31,12 +37,16 @@ const byTime = (a: WaMessage, b: WaMessage) =>
   new Date(a.wa_timestamp).getTime() - new Date(b.wa_timestamp).getTime()
 
 export function ChatThread({
-  conversation: conv, session, names, attendants, canAssign, onBack, onChanged, onOpenContact,
+  conversation: conv, session, names, attendants, canAssign, canTransfer, canTake, conclusionReasons,
+  onBack, onChanged, onOpenContact,
 }: Props) {
   const userId = useAuthStore((s) => s.profile?.id)
   const can = useCan()
 
   const [messages, setMessages] = useState<WaMessage[] | null>(null)
+  const [events, setEvents] = useState<WaEvent[]>([])
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [showConclude, setShowConclude] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [urls, setUrls] = useState<Map<string, string>>(new Map())
@@ -84,6 +94,11 @@ export function ChatThread({
     return () => { alive = false }
   }, [conv.id])
 
+  // Histórico de atribuição/transferência (119), intercalado com as mensagens.
+  useEffect(() => {
+    atendimentoService.listEvents(conv.id).then(setEvents).catch(() => setEvents([]))
+  }, [conv.id])
+
   // Ao vivo, só desta conversa. A RLS também vale aqui.
   useEffect(() => {
     const channel = supabase
@@ -94,6 +109,14 @@ export function ChatThread({
         (payload) => {
           const row = payload.new as WaMessage
           if (row?.id) merge(row)
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'wa_conversation_events', filter: `conversation_id=eq.${conv.id}` },
+        (payload) => {
+          const row = payload.new as WaEvent
+          if (row?.id) setEvents((cur) => (cur.some((e) => e.id === row.id) ? cur : [...cur, row]))
         },
       )
       .subscribe()
@@ -223,6 +246,20 @@ export function ChatThread({
 
   // ---------- Ações da conversa ----------
 
+  const take = async () => {
+    if (!userId) return
+    setBusy(true)
+    try {
+      await atendimentoService.transfer(conv.id, userId)
+      toast.success('Conversa assumida.')
+      onChanged()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível assumir')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const assign = async (value: string) => {
     setBusy(true)
     try {
@@ -236,19 +273,43 @@ export function ChatThread({
     }
   }
 
-  const toggleStatus = async () => {
+  const reopen = async () => {
     setBusy(true)
     try {
-      const next = conv.status === 'aberta' ? 'resolvida' : 'aberta'
-      await atendimentoService.setStatus(conv.id, next)
-      toast.success(next === 'resolvida' ? 'Conversa resolvida.' : 'Conversa reaberta.')
+      await atendimentoService.reopen(conv.id)
+      toast.success('Atendimento reaberto.')
       onChanged()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Não foi possível mudar a situação')
+      toast.error(err instanceof Error ? err.message : 'Não foi possível reabrir')
     } finally {
       setBusy(false)
     }
   }
+
+  // Situação do atendimento, derivada da conversa (o banco mantém as duas
+  // em sincronia — 120).
+  const situacao = conv.status === 'resolvida'
+    ? { label: 'Concluído', cls: 'badge-gray' }
+    : conv.assigned_to
+      ? { label: 'Em atendimento', cls: 'badge-blue' }
+      : { label: 'Na fila', cls: 'badge-yellow' }
+
+  // Concluir: o responsável, quem atribui, ou quem pega da fila. O banco
+  // confere de novo (wa_conclude).
+  const podeConcluir = conv.assigned_to === userId || canAssign || (!conv.assigned_to && canTake)
+
+  // Mensagens e histórico numa linha do tempo só. Com histórico antigo ainda
+  // não carregado, eventos anteriores à primeira mensagem ficam de fora —
+  // aparecem junto com as mensagens da época.
+  const timeline = (() => {
+    if (!messages) return []
+    const desde = hasMore && messages.length ? new Date(messages[0].wa_timestamp).getTime() : -Infinity
+    const items: { key: string; at: string; m?: WaMessage; e?: WaEvent }[] = [
+      ...messages.map((m) => ({ key: m.id, at: m.wa_timestamp, m })),
+      ...events.filter((e) => new Date(e.created_at).getTime() >= desde).map((e) => ({ key: e.id, at: e.created_at, e })),
+    ]
+    return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+  })()
 
   const name = conversationName(conv)
   const assignedName = conv.assigned_to ? names.get(conv.assigned_to) ?? 'Atendente' : null
@@ -291,19 +352,36 @@ export function ChatThread({
                 ))}
               </select>
             </label>
+          ) : conv.assigned_to === userId && canTransfer ? (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowTransfer(true)} disabled={busy}>
+              <ArrowRightLeft size={14} /> Transferir
+            </button>
+          ) : !conv.assigned_to && canTake ? (
+            <button className="btn btn-primary btn-sm" onClick={take} disabled={busy}>
+              <Hand size={14} /> Assumir
+            </button>
           ) : (
-            assignedName && <span className="badge badge-gray">{assignedName}</span>
+            assignedName && (
+              <span className="badge badge-gray">{conv.assigned_to === userId ? 'Você' : assignedName}</span>
+            )
           )}
           {conv.contact_id && onOpenContact && can('crm.contatos.ver') && (
             <button className="btn btn-ghost btn-sm" onClick={() => onOpenContact(conv.contact_id!)} title="Abrir o contato no CRM">
               <Contact size={14} /> CRM
             </button>
           )}
-          <button className="btn btn-ghost btn-sm" onClick={toggleStatus} disabled={busy}>
-            {conv.status === 'aberta'
-              ? <><CheckCircle2 size={14} /> Resolver</>
-              : <><RotateCcw size={14} /> Reabrir</>}
-          </button>
+          <span className={`badge ${situacao.cls}`}>{situacao.label}</span>
+          {conv.status === 'aberta' ? (
+            podeConcluir && (
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowConclude(true)} disabled={busy}>
+                <CheckCircle2 size={14} /> Concluir
+              </button>
+            )
+          ) : (
+            <button className="btn btn-ghost btn-sm" onClick={reopen} disabled={busy}>
+              <RotateCcw size={14} /> Reabrir
+            </button>
+          )}
         </div>
       </header>
 
@@ -325,18 +403,25 @@ export function ChatThread({
                 </button>
               </div>
             )}
-            {messages.length === 0 && <div className="at-day"><span>Nenhuma mensagem ainda</span></div>}
-            {messages.map((m, i) => (
-              <div key={m.id}>
-                {(i === 0 || !sameDay(messages[i - 1].wa_timestamp, m.wa_timestamp)) && (
-                  <div className="at-day"><span>{formatDayLabel(m.wa_timestamp)}</span></div>
+            {timeline.length === 0 && <div className="at-day"><span>Nenhuma mensagem ainda</span></div>}
+            {timeline.map((item, i) => (
+              <div key={item.key}>
+                {(i === 0 || !sameDay(timeline[i - 1].at, item.at)) && (
+                  <div className="at-day"><span>{formatDayLabel(item.at)}</span></div>
                 )}
-                <Bubble
-                  m={m}
-                  url={m.media_path ? urls.get(m.media_path) : undefined}
-                  author={m.from_me ? (m.sent_by ? names.get(m.sent_by) ?? 'Painel' : 'Celular') : null}
-                  onMediaLoad={followIfStuck}
-                />
+                {item.m ? (
+                  <Bubble
+                    m={item.m}
+                    url={item.m.media_path ? urls.get(item.m.media_path) : undefined}
+                    author={item.m.from_me ? (item.m.sent_by ? names.get(item.m.sent_by) ?? 'Painel' : 'Celular') : null}
+                    onMediaLoad={followIfStuck}
+                  />
+                ) : item.e ? (
+                  <div className="at-event">
+                    <span>{eventText(item.e, names, userId)} · {formatTime(item.e.created_at)}</span>
+                    {item.e.note && <em>“{item.e.note}”</em>}
+                  </div>
+                ) : null}
               </div>
             ))}
           </>
@@ -396,7 +481,181 @@ export function ChatThread({
           </button>
         </div>
       </form>
+      {showConclude && (
+        <ConcludeDialog
+          reasons={conclusionReasons}
+          onClose={() => setShowConclude(false)}
+          onConfirm={async (reason, note) => {
+            await atendimentoService.conclude(conv.id, reason, note)
+            toast.success('Atendimento concluído.')
+            setShowConclude(false)
+            onChanged()
+          }}
+        />
+      )}
+
+      {showTransfer && (
+        <TransferDialog
+          conversationName={name}
+          currentUser={conv.assigned_to}
+          attendants={attendants}
+          onClose={() => setShowTransfer(false)}
+          onConfirm={async (to, note) => {
+            await atendimentoService.transfer(conv.id, to, note)
+            toast.success(to ? `Conversa transferida para ${names.get(to) ?? 'atendente'}.` : 'Conversa devolvida à fila.')
+            setShowTransfer(false)
+            onChanged()
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+function eventText(e: WaEvent, names: Map<string, string>, me: string | undefined): string {
+  const who = (id: string | null) => (!id ? 'alguém' : id === me ? 'você' : names.get(id) ?? 'alguém')
+  const Who = (id: string | null) => {
+    const w = who(id)
+    return w.charAt(0).toUpperCase() + w.slice(1)
+  }
+  switch (e.kind) {
+    case 'auto':
+      return `Atribuída automaticamente a ${who(e.to_user)}${e.note ? ` (${e.note})` : ''}`
+    case 'atribuida':
+      return e.by_user && e.by_user === e.to_user
+        ? `${Who(e.by_user)} assumiu a conversa`
+        : `${Who(e.by_user)} atribuiu a ${who(e.to_user)}`
+    case 'transferida':
+      return e.from_user && e.from_user !== e.by_user
+        ? `${Who(e.by_user)} transferiu de ${who(e.from_user)} para ${who(e.to_user)}`
+        : `${Who(e.by_user)} transferiu para ${who(e.to_user)}`
+    case 'fila':
+      return `${Who(e.by_user)} devolveu à fila`
+    case 'resolvida':
+      return `${Who(e.by_user)} concluiu o atendimento`
+    case 'reaberta':
+      return `${Who(e.by_user)} reabriu o atendimento`
+  }
+}
+
+function ConcludeDialog({ reasons, onClose, onConfirm }: {
+  reasons: string[]
+  onClose: () => void
+  onConfirm: (reason: string | null, note: string) => Promise<void>
+}) {
+  const [reason, setReason] = useState(reasons[0] ?? '')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      await onConfirm(reason || null, note)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível concluir')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title="Concluir atendimento" onClose={onClose}>
+      <form onSubmit={submit}>
+        {reasons.length > 0 && (
+          <div className="field">
+            <label>Motivo</label>
+            <div className="at-modes">
+              {reasons.map((r) => (
+                <label key={r} className={`at-mode${reason === r ? ' active' : ''}`}>
+                  <input type="radio" name="conclusion" checked={reason === r} onChange={() => setReason(r)} />
+                  <span><strong>{r}</strong></span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="field">
+          <label htmlFor="conclude-note">Observação <span className="text-muted">(opcional)</span></label>
+          <textarea
+            id="conclude-note"
+            className="input"
+            rows={3}
+            maxLength={500}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+        <p className="text-muted" style={{ fontSize: 12 }}>
+          Se o cliente escrever de novo, abre um atendimento novo. Para continuar este, use Reabrir.
+        </p>
+        <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            {busy ? <span className="spinner" /> : 'Concluir'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function TransferDialog({ conversationName, currentUser, attendants, onClose, onConfirm }: {
+  conversationName: string
+  currentUser: string | null
+  attendants: WaAttendant[]
+  onClose: () => void
+  onConfirm: (to: string | null, note: string) => Promise<void>
+}) {
+  const [to, setTo] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const options = attendants.filter((a) => a.id !== currentUser)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!to) return
+    setBusy(true)
+    try {
+      await onConfirm(to === '__fila__' ? null : to, note)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível transferir')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title={`Transferir — ${conversationName}`} onClose={onClose}>
+      <form onSubmit={submit}>
+        <div className="field">
+          <label htmlFor="transfer-to">Para</label>
+          <select id="transfer-to" className="input" value={to} onChange={(e) => setTo(e.target.value)} autoFocus>
+            <option value="">Escolha…</option>
+            {options.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            <option value="__fila__">Devolver à fila (sem atendente)</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="transfer-note">Nota <span className="text-muted">(opcional — fica no histórico da conversa)</span></label>
+          <textarea
+            id="transfer-note"
+            className="input"
+            rows={3}
+            maxLength={500}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Ex.: cliente quer falar sobre o boleto"
+          />
+        </div>
+        <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={!to || busy}>
+            {busy ? <span className="spinner" /> : 'Transferir'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 

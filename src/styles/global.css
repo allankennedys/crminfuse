@@ -4031,3 +4031,108 @@ body.no-sidebar { --sidebar-w: 0px; }
 /* Nome da organização no cabeçalho do CRM (118): nome longo não empurra as abas. */
 .crm-org-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 560px) { .crm-org-name { max-width: 140px; } }
+
+/* ---------- Atendimento: configurações (119/120) ---------- */
+.crm-settings .card + .card { margin-top: 16px; }
+
+.at-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+.at-toggle input { margin-top: 3px; accent-color: var(--primary); width: 16px; height: 16px; flex-shrink: 0; }
+.at-toggle > span { display: flex; flex-direction: column; gap: 2px; }
+.at-toggle .text-muted { font-size: 12px; }
+
+.at-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.at-mode {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.at-mode:hover { border-color: var(--border-strong); }
+.at-mode.active { border-color: var(--primary); background: var(--primary-dim); }
+.at-mode input { margin-top: 3px; accent-color: var(--primary); flex-shrink: 0; }
+.at-mode > span { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.at-mode .text-muted { font-size: 11.5px; }
+
+.at-pool { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.at-pool-item { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.at-pool-item input { accent-color: var(--primary); }
+
+.at-limit-default { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.at-limit-input { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.at-limit-input .input, .at-limit-num { width: 80px; }
+.at-limits { display: flex; flex-direction: column; gap: 6px; }
+.at-limit-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.at-limit-row > span { flex: 1; min-width: 140px; }
+.at-limit-row select.input { width: auto; min-width: 170px; }
+
+.at-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+.at-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.at-reason .icon-btn { width: 20px; height: 20px; }
+
+.at-rules { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.at-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.at-rule.off { opacity: 0.55; }
+.at-rule-order { display: flex; flex-direction: column; }
+.at-rule-order .icon-btn { width: 22px; height: 18px; }
+.at-rule-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.at-rule-active { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+.at-rule-active input { accent-color: var(--primary); }
+.at-rule-form { display: grid; grid-template-columns: 190px minmax(0, 1fr) 190px auto; gap: 8px; }
+@media (max-width: 760px) { .at-rule-form { grid-template-columns: 1fr; } }
+
+/* ---------- Atendimento: histórico dentro da conversa ---------- */
+.at-event {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 8px 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+.at-event > span {
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--border-strong);
+}
+.at-event em { color: var(--text-muted); max-width: 70%; overflow-wrap: anywhere; }
+
+/* ---------- Relatório de atendimento ---------- */
+.at-report-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 900px) { .at-report-grid { grid-template-columns: minmax(0, 1fr); } }
+.at-reason-bars { display: flex; flex-direction: column; gap: 12px; }
+.at-reason-bar-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 4px; }
+.at-reason-bar-track { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.at-reason-bar-track > div { height: 100%; border-radius: 4px; }
+th.at-num, td.at-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* 8 indicadores: 4 por linha em vez de 6 + 2. */
+.at-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .at-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .at-kpis { grid-template-columns: minmax(0, 1fr); } }

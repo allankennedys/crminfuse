@@ -25,8 +25,21 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   const can = useCan()
   const verTodas = can('atendimento.ver_todas')
   const podeAtribuir = can('atendimento.atribuir')
+  const podeTransferir = can('atendimento.transferir')
   const podeConfigurar = can('atendimento.configurar')
   const userId = profile?.id ?? ''
+
+  // Configuração da organização (119): com a restrição desligada, todo
+  // atendente enxerga todas as conversas — e a tela ganha as abas e a Fila.
+  const [restricted, setRestricted] = useState(true)
+  const [conclusionReasons, setConclusionReasons] = useState<string[]>([])
+  useEffect(() => {
+    if (!profile) return
+    atendimentoService.getSettings(profile.organization_id)
+      .then((s) => { setRestricted(s.restrict_to_assigned); setConclusionReasons(s.conclusion_reasons) })
+      .catch(() => { /* fica restrito: o banco decide de qualquer jeito */ })
+  }, [profile])
+  const veTudo = verTodas || !restricted
 
   const [scope, setScope] = useState<WaScope>(verTodas ? 'todas' : 'minhas')
   const [status, setStatus] = useState<WaConversationStatus>('aberta')
@@ -46,10 +59,10 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   const [names, setNames] = useState<Map<string, string>>(new Map())
   const [showNumeros, setShowNumeros] = useState(false)
 
-  // Sem "ver todas", a única visão possível é a das próprias conversas.
+  // Restrito e sem "ver todas": a única visão possível é a das próprias.
   useEffect(() => {
-    if (!verTodas && scope !== 'minhas') setScope('minhas')
-  }, [verTodas, scope])
+    if (!veTudo && scope !== 'minhas') setScope('minhas')
+  }, [veTudo, scope])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300)
@@ -65,7 +78,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   useEffect(() => {
     loadSessions()
     atendimentoService.userNames().then(setNames).catch(() => {})
-    if (podeAtribuir || verTodas) atendimentoService.attendants().then(setAttendants).catch(() => setAttendants([]))
+    if (podeAtribuir || verTodas || podeTransferir) atendimentoService.attendants().then(setAttendants).catch(() => setAttendants([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permissions])
 
@@ -79,7 +92,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
         atendimentoService.listConversations({
           scope, status, userId, assignee: scope === 'todas' ? assignee || undefined : undefined, search: debouncedSearch,
         }),
-        verTodas ? atendimentoService.queueCount() : Promise.resolve(0),
+        veTudo ? atendimentoService.queueCount() : Promise.resolve(0),
       ])
       setConversations(list)
       setQueueCount(fila)
@@ -106,7 +119,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
       toast.error(err instanceof Error ? err.message : 'Falha ao carregar as conversas')
       setConversations((cur) => cur ?? [])
     }
-  }, [scope, status, assignee, debouncedSearch, userId, verTodas])
+  }, [scope, status, assignee, debouncedSearch, userId, veTudo])
 
   useEffect(() => { load() }, [load])
 
@@ -166,7 +179,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
             )}
           </div>
 
-          {verTodas && (
+          {veTudo && (
             <div className="at-seg" role="tablist" aria-label="Quais conversas">
               {scopes.map((s) => (
                 <button
@@ -201,11 +214,11 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
           <div className="at-filters">
             <label className="channel-filter">
               <select value={status} onChange={(e) => setStatus(e.target.value as WaConversationStatus)} aria-label="Situação">
-                <option value="aberta">Abertas</option>
-                <option value="resolvida">Resolvidas</option>
+                <option value="aberta">Em aberto</option>
+                <option value="resolvida">Concluídas</option>
               </select>
             </label>
-            {verTodas && scope === 'todas' && attendants.length > 0 && (
+            {veTudo && scope === 'todas' && attendants.length > 0 && (
               <label className="channel-filter">
                 <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Atendente">
                   <option value="">Todos os atendentes</option>
@@ -224,7 +237,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
               icon={<MessageCircle />}
               text={
                 debouncedSearch ? 'Nenhuma conversa encontrada.'
-                  : scope === 'minhas' ? (status === 'aberta' ? 'Nenhuma conversa atribuída a você.' : 'Nenhuma conversa resolvida.')
+                  : scope === 'minhas' ? (status === 'aberta' ? 'Nenhuma conversa atribuída a você.' : 'Nenhum atendimento concluído.')
                   : scope === 'fila' ? 'Fila vazia — toda conversa tem atendente.'
                   : 'Nenhuma conversa ainda.'
               }
@@ -253,7 +266,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
                       </span>
                       {c.unread_count > 0 && <span className="at-unread">{c.unread_count > 99 ? '99+' : c.unread_count}</span>}
                     </span>
-                    {verTodas && (
+                    {veTudo && (
                       <span className="at-item-meta">
                         <span className={c.assigned_to ? '' : 'at-no-agent'}>
                           {c.assigned_to ? names.get(c.assigned_to) ?? 'Atendente' : 'Sem atendente'}
@@ -278,6 +291,9 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
             names={names}
             attendants={attendants}
             canAssign={podeAtribuir}
+            canTransfer={podeTransferir}
+            canTake={veTudo}
+            conclusionReasons={conclusionReasons}
             onBack={() => { setSelectedId(null); setSelectedSnapshot(null) }}
             onChanged={load}
             onOpenContact={onOpenContact}

@@ -1166,3 +1166,88 @@ export interface WaAttendant {
   name: string
   role: UserRole
 }
+
+export type WaAssignMode = 'manual' | 'aleatoria' | 'rodizio' | 'fixo'
+
+/** Configuração do atendimento da organização (119). */
+export interface WaSettings {
+  organization_id: string
+  /** true = quem não tem "ver todas" só vê as conversas atribuídas a si. */
+  restrict_to_assigned: boolean
+  assign_mode: WaAssignMode
+  fixed_user: string | null
+  /** Quem participa do sorteio/rodízio. Vazio = todos com atendimento. */
+  pool: string[]
+  /** Atendimentos simultâneos por pessoa (120). null = livre. */
+  max_open_per_agent: number | null
+  /** Opções de motivo ao concluir um atendimento (120). */
+  conclusion_reasons: string[]
+}
+
+/** Exceção ao limite padrão (120). max_open null = livre para esta pessoa. */
+export interface WaAgentLimit {
+  user_id: string
+  max_open: number | null
+}
+
+export interface WaReportAgent {
+  id: string
+  nome: string
+  ativo: boolean
+  limite: number | null
+  atendimentos: number
+  concluidos: number
+  em_atendimento: number
+  tma_min: number | null
+  tpr_min: number | null
+  msgs_enviadas: number
+  transf_recebidas: number
+  transf_feitas: number
+  reaberturas: number
+}
+
+/** wa_report (120): só admin. Minutos com uma casa; null = sem dado no período. */
+export interface WaReport {
+  resumo: {
+    abertos: number
+    concluidos: number
+    reaberturas: number
+    transferencias: number
+    em_atendimento_agora: number
+    na_fila_agora: number
+    tma_min: number | null
+    tpr_min: number | null
+    espera_min: number | null
+    respondidos: number
+    msgs_recebidas: number
+    msgs_enviadas: number
+  }
+  por_atendente: WaReportAgent[]
+  por_motivo: { motivo: string; total: number }[]
+  por_dia: { dia: string; abertos: number; concluidos: number }[]
+  por_hora: { hora: number; abertos: number }[]
+}
+
+export interface WaRoutingRule {
+  id: string
+  organization_id: string
+  position: number
+  kind: 'numero' | 'palavra'
+  session_id: string | null
+  keywords: string[]
+  target_user: string
+  active: boolean
+  created_at: string
+}
+
+export interface WaEvent {
+  id: string
+  conversation_id: string
+  kind: 'atribuida' | 'transferida' | 'fila' | 'auto' | 'resolvida' | 'reaberta'
+  from_user: string | null
+  to_user: string | null
+  by_user: string | null
+  note: string | null
+  created_at: string
+}
+
