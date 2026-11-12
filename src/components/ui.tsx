@@ -179,9 +179,16 @@ export function GroupPicker({ groups, selected, onChange }: {
   )
 }
 
-/** Nome legível de um número: "instância · telefone" quando o telefone é conhecido. */
-export function sessionLabel(s: WhatsAppSession): string {
-  return s.phone_number ? `${s.instance_name} · ${s.phone_number}` : s.instance_name
+/**
+ * Nome legível de um número. O nome da instância é gerado pelo sistema
+ * (117), então quem o usuário reconhece é o telefone; sem ele (QR ainda não
+ * lido), o nome técnico.
+ */
+export function sessionLabel(s: Pick<WhatsAppSession, 'instance_name' | 'phone_number'>): string {
+  if (!s.phone_number) return `Aguardando conexão (${s.instance_name})`
+  const d = s.phone_number.replace(/\D/g, '')
+  const br = d.match(/^55(\d{2})(\d{4,5})(\d{4})$/)
+  return br ? `+55 (${br[1]}) ${br[2]}-${br[3]}` : `+${d}`
 }
 
 /**

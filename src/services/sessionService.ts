@@ -24,22 +24,19 @@ export const sessionService = {
     return data
   },
 
-  /** Cria a instância na Evolution API e registra no banco */
-  async create(organizationId: string, instanceName: string, phoneNumber?: string) {
-    const res = await whatsappService.createSession(instanceName)
-    if (!res.ok && res.status !== 403) {
-      // 403 = instância já existe na Evolution; seguimos e registramos
-      throw new Error(`Não foi possível conectar o número (erro ${res.status}). Tente novamente.`)
+  /**
+   * Cria o número: a Edge Function gera o nome, cria na Evolution e registra
+   * com dono (117). O painel não insere nada em whatsapp_sessions — antes
+   * inseria, e um 403 ("já existe") era tratado como sucesso: o painel
+   * adotava a instância de quem quer que fosse no servidor compartilhado.
+   */
+  async create(): Promise<{ session: WhatsAppSession; qrBase64: string | null }> {
+    const res = await whatsappService.createSession()
+    if (!res.ok || !res.data?.session) {
+      const detail = res.data?.error
+      throw new Error(`Não foi possível criar o número${detail ? `: ${detail}` : ` (erro ${res.status})`}. Tente novamente.`)
     }
-
-    const { data, error } = await supabase.from('whatsapp_sessions').insert({
-      organization_id: organizationId,
-      instance_name: instanceName,
-      phone_number: phoneNumber ?? null,
-      status: 'connecting',
-    }).select().single<WhatsAppSession>()
-    if (error) throw error
-    return data
+    return { session: res.data.session, qrBase64: res.data.qrcode?.base64 ?? null }
   },
 
   async getQRCode(session: WhatsAppSession) {
@@ -100,10 +97,19 @@ export const sessionService = {
   },
 
   /**
-   * Remove o número apenas do painel (banco). A instância continua
-   * conectada na Evolution — pode ser re-adicionada depois pelo mesmo nome.
+   * Remove o número de vez: apaga a instância na Evolution (o que também
+   * desconecta o aparelho) e a linha do painel. Com a Evolution
+   * compartilhada, "tirar só do painel" deixaria uma instância órfã no
+   * servidor, conectada ao celular do cliente, sem ninguém que a enxergue.
    */
   async remove(session: WhatsAppSession) {
+    const res = await whatsappService.deleteSession(session.instance_name)
+    if (!res.ok && res.status !== 404) {
+      const detail = (res.data as { error?: string } | null)?.error
+      throw new Error(`Não foi possível remover o número (erro ${res.status}${detail ? `: ${detail}` : ''}).`)
+    }
+    // A Edge Function já apaga a linha; isto cobre a instância que não
+    // existia mais na Evolution.
     const { error } = await supabase.from('whatsapp_sessions').delete().eq('id', session.id)
     if (error) throw error
   },

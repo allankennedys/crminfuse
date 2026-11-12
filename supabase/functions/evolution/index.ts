@@ -30,8 +30,19 @@
  * em public.groups, que exige painel.grupos.editar. Pedir menos aqui só
  * adiantaria o erro para a linha seguinte.
  *
+ * EVOLUTION COMPARTILHADA (SaaS, 117)
+ *
+ * A chave global enxerga TODAS as instâncias do servidor, inclusive as de
+ * outros sistemas. Quem isola é esta função:
+ *   • criar: o nome é gerado aqui (prefixo + aleatório) e a instância NUNCA
+ *     é "adotada" — se o nome já existir na Evolution, sorteia outro. Só
+ *     depois de criada lá a linha entra em whatsapp_sessions, com o dono;
+ *   • qualquer outra rota: a instância tem que estar em whatsapp_sessions e
+ *     ser DO USUÁRIO (created_by), não só da organização.
+ *
  * Secrets necessários (supabase secrets set):
  *   EVOLUTION_API_URL, EVOLUTION_API_KEY
+ *   INSTANCE_PREFIX (opcional, padrão "infuse")
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -94,7 +105,7 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await userClient
       .from('users')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('id', user.id)
       .single()
 
@@ -135,33 +146,24 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    if (route.instanceGroup >= 0) {
-      // Rota com instância: precisa pertencer à organização do usuário
-      const instance = decodeURIComponent(path.match(route.pattern)![route.instanceGroup])
-      const { data: session } = await adminClient
-        .from('whatsapp_sessions')
-        .select('organization_id')
-        .eq('instance_name', instance)
-        .maybeSingle()
+    if (route.instanceGroup < 0) {
+      // Criar: o nome que veio do painel é ignorado de propósito.
+      return json(await createInstance(adminClient, profile.organization_id, user.id))
+    }
 
-      if (!session || session.organization_id !== profile.organization_id) {
-        return json({ ok: false, status: 403, data: { error: 'Número não pertence à sua organização' } }, 403)
-      }
-    } else {
-      // Create: impede registrar nome de instância que já é de outra organização
-      const instanceName = String(body?.instanceName ?? '')
-      if (!instanceName) {
-        return json({ ok: false, status: 400, data: { error: 'instanceName obrigatório' } }, 400)
-      }
-      const { data: existing } = await adminClient
-        .from('whatsapp_sessions')
-        .select('organization_id')
-        .eq('instance_name', instanceName)
-        .maybeSingle()
+    // Rota com instância: tem que ser um número DESTE usuário.
+    const instance = decodeURIComponent(path.match(route.pattern)![route.instanceGroup])
+    const { data: session } = await adminClient
+      .from('whatsapp_sessions')
+      .select('id, organization_id, created_by, phone_number')
+      .eq('instance_name', instance)
+      .maybeSingle()
 
-      if (existing && existing.organization_id !== profile.organization_id) {
-        return json({ ok: false, status: 403, data: { error: 'Este nome já está em uso' } }, 403)
-      }
+    const dono = session && session.organization_id === profile.organization_id && (
+      session.created_by === user.id || (session.created_by === null && profile.role === 'admin')
+    )
+    if (!dono) {
+      return json({ ok: false, status: 403, data: { error: 'Número não encontrado entre os seus' } }, 403)
     }
 
     const baseUrl = Deno.env.get('EVOLUTION_API_URL')!.replace(/\/+$/, '')
@@ -179,11 +181,106 @@ Deno.serve(async (req) => {
       data = await res.json()
     } catch { /* resposta sem corpo */ }
 
+    // Conectou e ainda não sabemos o telefone: pergunta à Evolution SÓ por
+    // esta instância e guarda. O nome é gerado, então o telefone é o que o
+    // usuário reconhece na lista.
+    const state = (data as { instance?: { state?: string } } | null)?.instance?.state
+    if (route.perm === 'painel.numeros.ver' && state === 'open' && !session!.phone_number) {
+      const phone = await ownerPhone(instance)
+      if (phone) await adminClient.from('whatsapp_sessions').update({ phone_number: phone }).eq('id', session!.id)
+    }
+
+    // Removida na Evolution = removida aqui. Sem isto a linha ficaria
+    // apontando para um nome livre, que outro sistema poderia criar depois.
+    if (path.startsWith('/instance/delete/') && (res.ok || res.status === 404)) {
+      await adminClient.from('whatsapp_sessions').delete().eq('id', session!.id)
+    }
+
     return json({ ok: res.ok, status: res.status, data })
   } catch (err) {
     return json({ ok: false, status: 500, data: { error: err instanceof Error ? err.message : 'Erro interno' } }, 500)
   }
 })
+
+// ---------------------------------------------------------------------------
+
+function evolutionBase() {
+  return Deno.env.get('EVOLUTION_API_URL')!.replace(/\/+$/, '')
+}
+
+async function evo(method: string, path: string, body?: unknown) {
+  const res = await fetch(`${evolutionBase()}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', apikey: Deno.env.get('EVOLUTION_API_KEY')! },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+  let data: unknown = null
+  try { data = await res.json() } catch { /* sem corpo */ }
+  return { ok: res.ok, status: res.status, data }
+}
+
+function randomSuffix(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(6))
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * Cria a instância na Evolution com nome próprio e só então registra o
+ * número, já com dono. Nome existente = sorteia outro; nunca reaproveita.
+ */
+// deno-lint-ignore no-explicit-any
+async function createInstance(adminClient: any, organizationId: string, userId: string) {
+  const prefix = (Deno.env.get('INSTANCE_PREFIX') ?? 'infuse').toLowerCase().replace(/[^a-z0-9]/g, '') || 'inst'
+
+  for (let tentativa = 0; tentativa < 4; tentativa++) {
+    const name = `${prefix}-${randomSuffix()}`
+
+    // Já existe na Evolution (de quem for)? Então não é nosso: outro nome.
+    const existe = await evo('GET', `/instance/connectionState/${name}`)
+    if (existe.ok) continue
+
+    const created = await evo('POST', '/instance/create', {
+      instanceName: name,
+      qrcode: true,
+      integration: 'WHATSAPP-BAILEYS',
+    })
+    if (!created.ok) {
+      // 403/409 = o nome apareceu entre a consulta e a criação. Outro nome.
+      if (created.status === 403 || created.status === 409) continue
+      return { ok: false, status: created.status, data: created.data }
+    }
+
+    const { data: session, error } = await adminClient.from('whatsapp_sessions').insert({
+      organization_id: organizationId,
+      instance_name: name,
+      created_by: userId,
+      status: 'connecting',
+    }).select().single()
+
+    if (error) {
+      // Não deixa instância órfã no servidor compartilhado.
+      await evo('DELETE', `/instance/delete/${name}`).catch(() => {})
+      return { ok: false, status: 500, data: { error: 'Falha ao registrar o número' } }
+    }
+
+    const qr = (created.data as { qrcode?: { base64?: string } } | null)?.qrcode
+    return { ok: true, status: 201, data: { session, qrcode: qr ?? null } }
+  }
+
+  return { ok: false, status: 409, data: { error: 'Não foi possível gerar um nome livre para o número. Tente de novo.' } }
+}
+
+/** Telefone do número conectado, perguntado só para esta instância. */
+async function ownerPhone(instance: string): Promise<string | null> {
+  const res = await evo('GET', `/instance/fetchInstances?instanceName=${encodeURIComponent(instance)}`).catch(() => null)
+  const list = Array.isArray(res?.data) ? res!.data as Array<Record<string, unknown>> : []
+  // Filtra de novo pelo nome: versões antigas ignoram o parâmetro e devolvem
+  // todas as instâncias do servidor.
+  const mine = list.find((i) => (i.name ?? (i.instance as Record<string, unknown> | undefined)?.instanceName) === instance)
+  const jid = String(mine?.ownerJid ?? (mine?.instance as Record<string, unknown> | undefined)?.owner ?? '')
+  const digits = jid.split('@')[0].replace(/\D/g, '')
+  return digits.length >= 10 ? digits : null
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

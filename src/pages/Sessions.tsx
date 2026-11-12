@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, QrCode, RefreshCw, Trash2, Smartphone, Unplug, AlertTriangle } from 'lucide-react'
+import { Plus, QrCode, RefreshCw, Trash2, Smartphone, Unplug } from 'lucide-react'
 import { sessionService } from '@/services/sessionService'
 import { useAuthStore } from '@/store/authStore'
 import { confirmDialog } from '@/store/confirmStore'
 import { useRealtime } from '@/hooks/useRealtime'
-import { Modal, Loader, EmptyState, StatusBadge } from '@/components/ui'
+import { Modal, Loader, EmptyState, StatusBadge, sessionLabel } from '@/components/ui'
 import type { WhatsAppSession } from '@/types'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -12,10 +12,8 @@ import { ptBR } from 'date-fns/locale'
 export function SessionsPage() {
   const profile = useAuthStore((s) => s.profile)
   const [sessions, setSessions] = useState<WhatsAppSession[] | null>(null)
-  const [showCreate, setShowCreate] = useState(false)
   const [qrSession, setQrSession] = useState<WhatsAppSession | null>(null)
   const [qrCode, setQrCode] = useState<string | null>(null)
-  const [instanceName, setInstanceName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [rowError, setRowError] = useState('')
@@ -27,18 +25,23 @@ export function SessionsPage() {
   useEffect(refresh, [refresh])
   useRealtime('whatsapp_sessions', refresh)
 
+  // Sem nome a escolher: o servidor gera o nome da instância (117) e o
+  // número passa a ser identificado pelo telefone depois do QR.
   async function handleCreate() {
-    if (!profile || !instanceName.trim()) return
+    if (!profile) return
     setBusy(true)
     setError('')
     try {
-      const session = await sessionService.create(profile.organization_id, instanceName.trim().replace(/\s+/g, '-'))
-      setShowCreate(false)
-      setInstanceName('')
+      const { session, qrBase64 } = await sessionService.create()
       refresh()
-      openQR(session)
+      if (qrBase64) {
+        setQrSession(session)
+        setQrCode(qrBase64)
+      } else {
+        openQR(session)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao criar sessão')
+      setError(err instanceof Error ? err.message : 'Falha ao criar o número')
     } finally {
       setBusy(false)
     }
@@ -78,7 +81,7 @@ export function SessionsPage() {
     const ok = await confirmDialog({
       title: 'Desconectar número',
       message:
-        `Encerrar a sessão de "${session.instance_name}"? O aparelho sai de "Aparelhos conectados" ` +
+        `Encerrar a sessão de ${sessionLabel(session)}? O aparelho sai de "Aparelhos conectados" ` +
         'no celular e será preciso ler um novo QR Code com o MESMO número para voltar a enviar. ' +
         'Os grupos e as associações do número são preservados.',
       confirmLabel: 'Desconectar',
@@ -98,13 +101,18 @@ export function SessionsPage() {
   async function handleDelete(session: WhatsAppSession) {
     const ok = await confirmDialog({
       title: 'Remover número',
-      message: `Remover "${session.instance_name}" do painel? O número continua conectado no WhatsApp e pode ser adicionado novamente depois.`,
+      message: `Remover ${sessionLabel(session)}? O aparelho é desconectado do WhatsApp e a conexão é apagada. Para usar o número de novo, conecte-o outra vez pelo QR Code.`,
       confirmLabel: 'Remover',
       danger: true,
     })
     if (!ok) return
-    await sessionService.remove(session)
-    refresh()
+    setRowError('')
+    try {
+      await sessionService.remove(session)
+      refresh()
+    } catch (err) {
+      setRowError(err instanceof Error ? err.message : 'Falha ao remover')
+    }
   }
 
   if (!sessions) return <Loader />
@@ -116,22 +124,12 @@ export function SessionsPage() {
           <h1>Números WhatsApp</h1>
           <p>Conecte e gerencie os números que fazem os envios</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <Plus /> Conectar número
+        <button className="btn btn-primary" onClick={handleCreate} disabled={busy}>
+          {busy ? <span className="spinner" /> : <Plus />} Conectar número
         </button>
       </div>
 
-      <div className="sessions-warn">
-        <AlertTriangle />
-        <div>
-          <strong>Estas conexões são compartilhadas com outras automações</strong>
-          <p>
-            Desconectar um número aqui pode afetar o funcionamento dele em outros sistemas
-            conectados.
-          </p>
-        </div>
-      </div>
-
+      {error && <p className="error-text">{error}</p>}
       {rowError && <p className="error-text">{rowError}</p>}
 
       {sessions.length === 0 ? (
@@ -143,8 +141,7 @@ export function SessionsPage() {
           <table>
             <thead>
               <tr>
-                <th>Nome</th>
-                <th>Telefone</th>
+                <th>Número</th>
                 <th>Status</th>
                 <th>Envios/min</th>
                 <th>Última verificação</th>
@@ -154,8 +151,12 @@ export function SessionsPage() {
             <tbody>
               {sessions.map((s) => (
                 <tr key={s.id}>
-                  <td className="mono" style={{ color: 'var(--text)' }}>{s.instance_name}</td>
-                  <td>{s.phone_number ?? '—'}</td>
+                  <td>
+                    <div style={{ color: 'var(--text)', fontWeight: 600 }}>
+                      {s.phone_number ? sessionLabel(s) : 'Aguardando leitura do QR'}
+                    </div>
+                    <div className="mono text-muted" style={{ fontSize: 11.5 }}>{s.instance_name}</div>
+                  </td>
                   <td><StatusBadge status={s.status} pulse={s.status === 'connected'} /></td>
                   <td>{s.rate_limit_per_min}/min</td>
                   <td>
@@ -185,30 +186,8 @@ export function SessionsPage() {
         </div>
       )}
 
-      {showCreate && (
-        <Modal title="Conectar novo número" onClose={() => setShowCreate(false)}>
-          <div className="field">
-            <label>Nome de identificação</label>
-            <input
-              className="input"
-              value={instanceName}
-              onChange={(e) => setInstanceName(e.target.value)}
-              placeholder="ex: comercial-01"
-              autoFocus
-            />
-          </div>
-          {error && <p className="error-text">{error}</p>}
-          <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 20 }}>
-            <button className="btn btn-ghost" onClick={() => setShowCreate(false)}>Cancelar</button>
-            <button className="btn btn-primary" onClick={handleCreate} disabled={busy || !instanceName.trim()}>
-              {busy ? <span className="spinner" /> : 'Criar e gerar QR'}
-            </button>
-          </div>
-        </Modal>
-      )}
-
       {qrSession && (
-        <Modal title={`Conectar: ${qrSession.instance_name}`} onClose={() => setQrSession(null)}>
+        <Modal title="Conectar número" onClose={() => setQrSession(null)}>
           {qrCode ? (
             <>
               <p className="text-secondary" style={{ fontSize: 13 }}>

@@ -247,16 +247,20 @@ async function sessionForConfig(userClient: SupabaseClient, userId: string, sess
   if (pode !== true) throw new HttpError(403, 'Seu perfil não pode configurar os números do atendimento')
   if (typeof sessionId !== 'string' || !sessionId) throw new HttpError(400, 'session_id obrigatório')
 
-  const { data: profile } = await userClient.from('users').select('organization_id').eq('id', userId).maybeSingle()
+  const { data: profile } = await userClient.from('users').select('organization_id, role').eq('id', userId).maybeSingle()
   const org = profile?.organization_id
   if (!org) throw new HttpError(403, 'Usuário sem organização')
 
   const { data: s } = await admin
     .from('whatsapp_sessions')
-    .select('id, organization_id, instance_name, chat_enabled')
+    .select('id, organization_id, instance_name, chat_enabled, created_by')
     .eq('id', sessionId)
     .maybeSingle()
-  if (!s || s.organization_id !== org) throw new HttpError(404, 'Número não encontrado')
+  // Só o dono liga/desliga o número (117) — a Evolution é compartilhada e o
+  // webhook é da instância inteira.
+  const dono = s && s.organization_id === org
+    && (s.created_by === userId || (s.created_by === null && profile?.role === 'admin'))
+  if (!dono) throw new HttpError(404, 'Número não encontrado entre os seus')
   return s as { id: string; organization_id: string; instance_name: string; chat_enabled: boolean }
 }
 
