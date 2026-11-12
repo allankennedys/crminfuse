@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { useTheme } from '@/lib/theme'
 
 export function LoginPage() {
+  const theme = useTheme((s) => s.theme)
   const signIn = useAuthStore((s) => s.signIn)
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
@@ -28,9 +31,10 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
+      <div className="auth-theme"><ThemeToggle /></div>
       <div className="auth-card">
         <div className="sidebar-logo" style={{ justifyContent: 'center', paddingBottom: 28 }}>
-          <img src="/logo.png" alt="Infuse" className="brand-logo" style={{ height: 38 }} />
+          <img src={theme === 'light' ? '/logo-navy.png' : '/logo.png'} alt="Infuse" className="brand-logo" style={{ height: 38 }} />
         </div>
 
         <form onSubmit={handleSubmit}>

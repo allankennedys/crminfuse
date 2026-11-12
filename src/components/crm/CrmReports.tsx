@@ -39,12 +39,12 @@ import type { ChannelCount, OrigemCount } from '@/services/crmService'
 import { AtendimentoReport } from '@/components/atendimento/AtendimentoReport'
 
 const tooltipStyle = {
-  background: '#18181b',
-  border: '1px solid rgba(255,255,255,0.14)',
+  background: 'var(--tooltip-bg)',
+  border: '1px solid var(--tooltip-border)',
   borderRadius: 10,
   fontSize: 12,
 } as const
-const tooltipLabel = { color: '#a1a1aa' }
+const tooltipLabel = { color: 'var(--text-secondary)' }
 
 /**
  * Quantas linhas de anúncio a tabela mostra antes do botão. A quebra por
@@ -551,7 +551,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
         <div className="flex" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {channels.length > 0 && (
             <label className="channel-filter">
-              <WhatsAppIcon size={14} color="#3b82f6" />
+              <WhatsAppIcon size={14} color="var(--primary-text)" />
               <select value={channel} onChange={(e) => setChannel(e.target.value)}>
                 <option value="">Todos os vendedores</option>
                 {channels.map((c) => (
@@ -916,27 +916,27 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
                   <AreaChart data={chartDays} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                     <defs>
                       <linearGradient id="crmLeadsFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
+                        <stop offset="0%" stopColor="var(--series-sky)" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="var(--series-sky)" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="crmConvFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#4da3ff" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#4da3ff" stopOpacity={0} />
+                        <stop offset="0%" stopColor="var(--series-blue-2)" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="var(--series-blue-2)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="label" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="label" stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} />
                     {/* Eixos separados: conversões normalmente são uma fração dos
                         leads, e dividir a mesma escala achatava a linha verde
                         perto do zero. A cor do eixo casa com a cor da linha, pra
                         ficar claro qual escala é de qual série. */}
-                    <YAxis yAxisId="leads" stroke="#38bdf8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <YAxis yAxisId="conv" orientation="right" stroke="#4da3ff" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis yAxisId="leads" stroke="var(--series-sky)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis yAxisId="conv" orientation="right" stroke="var(--series-blue-2)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
                     <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} />
                     {/* Com um dia só não existe segmento de reta: sem o
                         ponto marcado, o gráfico parece vazio mesmo tendo
                         dado. Com vários dias o ponto vira sujeira visual. */}
-                    <Area yAxisId="leads" type="monotone" dataKey="leads" name="Leads" stroke="#38bdf8" strokeWidth={2} fill="url(#crmLeadsFill)" dot={chartDays.length === 1 ? { r: 4 } : false} />
-                    <Area yAxisId="conv" type="monotone" dataKey="conversions" name="Conversões" stroke="#4da3ff" strokeWidth={2} fill="url(#crmConvFill)" dot={chartDays.length === 1 ? { r: 4 } : false} />
+                    <Area yAxisId="leads" type="monotone" dataKey="leads" name="Leads" stroke="var(--series-sky)" strokeWidth={2} fill="url(#crmLeadsFill)" dot={chartDays.length === 1 ? { r: 4 } : false} />
+                    <Area yAxisId="conv" type="monotone" dataKey="conversions" name="Conversões" stroke="var(--series-blue-2)" strokeWidth={2} fill="url(#crmConvFill)" dot={chartDays.length === 1 ? { r: 4 } : false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -955,7 +955,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
             <BreakdownCard
               title="Conversão por canal"
               colHead="Canal"
-              icon={<WhatsAppIcon size={14} color="#3b82f6" />}
+              icon={<WhatsAppIcon size={14} color="var(--primary-text)" />}
               emptyText="Nenhum contato com canal preenchido no período."
               rows={byChannel}
             />
@@ -1307,8 +1307,8 @@ function RepeatReport({ label, range, channel, onOpenContact }: {
               <div style={{ width: '100%', height: 260 }}>
                 <ResponsiveContainer>
                   <ComposedChart data={chartDays} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-                    <XAxis dataKey="label" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="label" stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} />
                     <Tooltip
                       contentStyle={tooltipStyle}
                       labelStyle={tooltipLabel}
@@ -1317,8 +1317,8 @@ function RepeatReport({ label, range, channel, onOpenContact }: {
                     <Legend wrapperStyle={{ fontSize: 11.5 }} />
                     {/* Empilhadas, não lado a lado: a leitura que interessa é
                         a fatia de cada uma dentro do total do dia. */}
-                    <Bar stackId="rev" dataKey="primeira" name="1ª venda" fill="#38bdf8" radius={[0, 0, 0, 0]} />
-                    <Bar stackId="rev" dataKey="recompra" name="Recompra" fill="#1f7aeb" radius={[3, 3, 0, 0]} />
+                    <Bar stackId="rev" dataKey="primeira" name="1ª venda" fill="var(--series-sky)" radius={[0, 0, 0, 0]} />
+                    <Bar stackId="rev" dataKey="recompra" name="Recompra" fill="var(--series-blue)" radius={[3, 3, 0, 0]} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -2362,16 +2362,16 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
               <ComposedChart data={chartDays} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="crmAdsSpend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.25} />
+                    <stop offset="0%" stopColor="var(--series-sky)" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="var(--series-sky)" stopOpacity={0.25} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="label" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="label" stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} />
                 {/* Dois eixos: em campanha saudável a receita é múltiplos do
                     gasto, e na mesma escala a barra de investimento vira um
                     fio no rodapé. A cor de cada eixo casa com a da série. */}
-                <YAxis yAxisId="custo" stroke="#38bdf8" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="receita" orientation="right" stroke="#1f7aeb" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="custo" stroke="var(--series-sky)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="receita" orientation="right" stroke="var(--series-blue)" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   labelStyle={tooltipLabel}
@@ -2388,7 +2388,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
                   type="monotone"
                   dataKey="receita"
                   name="Receita"
-                  stroke="#1f7aeb"
+                  stroke="var(--series-blue)"
                   strokeWidth={2}
                   dot={chartDays.length === 1 ? { r: 4 } : false}
                 />
@@ -2985,12 +2985,12 @@ function SalesReport({
                   <AreaChart data={chartDays} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                     <defs>
                       <linearGradient id="crmSalesFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#1f7aeb" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#1f7aeb" stopOpacity={0} />
+                        <stop offset="0%" stopColor="var(--series-blue)" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="var(--series-blue)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="label" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#1f7aeb" fontSize={11} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="label" stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--series-blue)" fontSize={11} tickLine={false} axisLine={false} />
                     <Tooltip
                       contentStyle={tooltipStyle}
                       labelStyle={tooltipLabel}
@@ -3002,7 +3002,7 @@ function SalesReport({
                       type="monotone"
                       dataKey="revenue"
                       name="Faturamento"
-                      stroke="#1f7aeb"
+                      stroke="var(--series-blue)"
                       strokeWidth={2}
                       fill="url(#crmSalesFill)"
                       // Ver nota no gráfico do funil: um dia só precisa do
@@ -3083,7 +3083,7 @@ function SalesReport({
               <SalesBreakdownCard
                 title="Vendas por canal"
                 colHead="Canal"
-                icon={<WhatsAppIcon size={14} color="#3b82f6" />}
+                icon={<WhatsAppIcon size={14} color="var(--primary-text)" />}
                 label={label}
                 rows={porCanal}
                 semRotulo="Sem canal"

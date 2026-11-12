@@ -16,17 +16,17 @@ import type { WaReport } from '@/types'
  * separação para daltonismo ΔE 26,8. Azul = abertos, laranja = concluídos;
  * sempre nessa ordem, inclusive quando só um aparece.
  */
-const COR_ABERTOS = '#3987e5'
-const COR_CONCLUIDOS = '#d95926'
+const COR_ABERTOS = 'var(--series-1)'
+const COR_CONCLUIDOS = 'var(--series-2)'
 
 const tooltipStyle = {
-  background: '#18181b',
-  border: '1px solid rgba(255,255,255,0.14)',
+  background: 'var(--tooltip-bg)',
+  border: '1px solid var(--tooltip-border)',
   borderRadius: 10,
   fontSize: 12,
 } as const
-const tooltipLabel = { color: '#a1a1aa' }
-const cursor = { fill: 'rgba(255,255,255,0.05)' }
+const tooltipLabel = { color: 'var(--text-secondary)' }
+const cursor = { fill: 'var(--surface)' }
 
 /** Minutos legíveis: "8 min", "1 h 05", "2,5 d". */
 export function fmtMin(min: number | null): string {
@@ -124,12 +124,12 @@ export function AtendimentoReport({ label, range }: { label: string; range: { fr
           <div style={{ width: '100%', height: 260 }}>
             <ResponsiveContainer>
               <BarChart data={dias} margin={{ top: 5, right: 5, bottom: 0, left: -20 }} barGap={2} barCategoryGap="22%">
-                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="label" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+                <XAxis dataKey="label" stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} cursor={cursor} />
                 {/* Texto da legenda em tinta de texto; a cor fica só no marcador. */}
-                <Legend wrapperStyle={{ fontSize: 11.5 }} formatter={(v) => <span style={{ color: '#a1a1aa' }}>{v}</span>} />
+                <Legend wrapperStyle={{ fontSize: 11.5 }} formatter={(v) => <span style={{ color: 'var(--text-secondary)' }}>{v}</span>} />
                 <Bar dataKey="abertos" name="Abertos" fill={COR_ABERTOS} radius={[4, 4, 0, 0]} maxBarSize={18} />
                 <Bar dataKey="concluidos" name="Concluídos" fill={COR_CONCLUIDOS} radius={[4, 4, 0, 0]} maxBarSize={18} />
               </BarChart>
@@ -150,9 +150,9 @@ export function AtendimentoReport({ label, range }: { label: string; range: { fr
             <div style={{ width: '100%', height: 220 }}>
               <ResponsiveContainer>
                 <BarChart data={horas} margin={{ top: 5, right: 5, bottom: 0, left: -20 }} barCategoryGap="18%">
-                  <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="label" stroke="#52525b" fontSize={10.5} tickLine={false} axisLine={false} interval={2} />
-                  <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+                  <XAxis dataKey="label" stroke="var(--chart-axis)" fontSize={10.5} tickLine={false} axisLine={false} interval={2} />
+                  <YAxis stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} cursor={cursor} />
                   <Bar dataKey="abertos" name="Abertos" fill={COR_ABERTOS} radius={[4, 4, 0, 0]} />
                 </BarChart>
