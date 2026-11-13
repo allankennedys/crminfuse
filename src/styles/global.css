@@ -3937,12 +3937,16 @@ body.no-sidebar { --sidebar-w: 0px; }
   min-width: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: var(--warning);
-  color: var(--on-warning);
+  /* Azul da marca, igual à bolinha de não lidas; na aba ativa (já azul)
+     inverte para branco com texto azul. */
+  background: var(--primary);
+  color: var(--on-primary);
   font-size: 10.5px;
   font-weight: 700;
   line-height: 18px;
+  text-align: center;
 }
+.at-seg-btn.active .at-seg-count { background: var(--on-primary); color: var(--primary); }
 
 .at-filters { display: flex; flex-wrap: wrap; gap: 8px; position: relative; }
 .at-filter-btn { background: none; font: inherit; font-size: 12.5px; }
@@ -3968,6 +3972,9 @@ body.no-sidebar { --sidebar-w: 0px; }
 .at-list-items { flex: 1; overflow-y: auto; }
 
 .at-item {
+  /* Lista longa: o navegador pula o desenho dos itens fora da tela. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
   display: flex;
   gap: 12px;
   width: 100%;
@@ -4863,3 +4870,5 @@ td.col-acao { width: 44px; text-align: right; }
 
 .at-filter-dates { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .at-filter-dates .date-input { flex: 1; min-width: 0; }
+
+.at-list-more { display: flex; justify-content: center; padding: 12px; }

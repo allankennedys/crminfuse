@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type UIEvent } from 'react'
 import { ListFilter, MessageCircle, MessageCirclePlus, Search, Smartphone, X as XIcon } from 'lucide-react'
 import { useConversaStore } from '@/store/conversaStore'
 import { supabase } from '@/lib/supabase'
@@ -6,7 +6,7 @@ import { useAuthStore, useCan } from '@/store/authStore'
 import { DateInput, EmptyState, Loader } from '@/components/ui'
 import { toast } from '@/store/toastStore'
 import {
-  atendimentoService, conversationName, sessionLabel, type WaScope,
+  atendimentoService, conversationName, sessionLabel, LIST_PAGE, type WaListFilters, type WaScope,
 } from '@/services/atendimentoService'
 import { ChatThread } from './ChatThread'
 import { ClientAvatar } from './ClientAvatar'
@@ -99,15 +99,30 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
 
   // Cache por filtro: trocar de aba mostra na hora o que já foi visto e
   // atualiza por baixo, em vez de esperar a rede com a lista antiga na tela.
-  const cacheRef = useRef<Map<string, WaConversation[]>>(new Map())
+  const cacheRef = useRef<Map<string, { items: WaConversation[]; more: boolean }>>(new Map())
   const keyRef = useRef('')
   const filtroKey = `${scope}|${status}|${scope === 'todas' ? assignee : ''}|${debouncedSearch}|${tagFiltro}|${compra}|${anuncio}|${dataDe || dataAte ? `${dataTipo}:${dataDe}:${dataAte}` : ''}`
   keyRef.current = filtroKey
   useLayoutEffect(() => {
     const cached = cacheRef.current.get(filtroKey)
-    if (cached) setConversations(cached)
-    else setConversations(null)
+    setHasMore(cached?.more ?? false)
+    setConversations(cached ? cached.items : null)
   }, [filtroKey])
+
+  // Lista paginada: a primeira página é recarregada a cada evento, as
+  // seguintes só quando a pessoa rola até o fim.
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const convRef = useRef<WaConversation[] | null>(null)
+  convRef.current = conversations
+  const hasMoreRef = useRef(false)
+  hasMoreRef.current = hasMore
+  const loadingMoreRef = useRef(false)
+  const filtros = useCallback((): WaListFilters => ({
+    scope, status, userId, assignee: scope === 'todas' ? assignee || undefined : undefined, search: debouncedSearch,
+    tags: tagFiltro ? [tagFiltro] : undefined, compra: compra || undefined, anuncio: anuncio || undefined,
+    data: dataDe || dataAte ? { tipo: dataTipo, de: dataDe || undefined, ate: dataAte || undefined } : undefined,
+  }), [scope, status, userId, assignee, debouncedSearch, tagFiltro, compra, anuncio, dataDe, dataAte, dataTipo])
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -115,14 +130,18 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     try {
       if (veTudo) atendimentoService.queueCount().then(setQueueCount)
       else setQueueCount(0)
-      const list = await atendimentoService.listConversations({
-        scope, status, userId, assignee: scope === 'todas' ? assignee || undefined : undefined, search: debouncedSearch,
-        tags: tagFiltro ? [tagFiltro] : undefined, compra: compra || undefined, anuncio: anuncio || undefined,
-        data: dataDe || dataAte ? { tipo: dataTipo, de: dataDe || undefined, ate: dataAte || undefined } : undefined,
-      })
-      cacheRef.current.set(key, list)
+      const first = await atendimentoService.listConversations(filtros(), 0, LIST_PAGE)
+      // Páginas já carregadas além da primeira continuam; o que subiu para a
+      // primeira sai do resto (sem duplicar).
+      const prev = keyRef.current === key ? convRef.current : cacheRef.current.get(key)?.items ?? null
+      const ids = new Set(first.map((c) => c.id))
+      const tail = (prev ?? []).slice(LIST_PAGE).filter((c) => !ids.has(c.id))
+      const list = [...first, ...tail]
+      const more = tail.length > 0 ? (keyRef.current === key ? hasMoreRef.current : cacheRef.current.get(key)?.more ?? false) : first.length === LIST_PAGE
+      cacheRef.current.set(key, { items: list, more })
       if (keyRef.current !== key) return // trocou de aba enquanto buscava
       setConversations(list)
+      setHasMore(more)
 
       // A conversa aberta sumiu da lista: filtro, ou o usuário perdeu o
       // acesso (foi transferida para outro atendente). No segundo caso fecha.
@@ -146,9 +165,37 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
       toast.error(err instanceof Error ? err.message : 'Falha ao carregar as conversas')
       setConversations((cur) => cur ?? [])
     }
-  }, [scope, status, assignee, debouncedSearch, userId, veTudo, filtroKey])
+  }, [userId, veTudo, filtroKey, filtros])
 
   useEffect(() => { load() }, [load])
+
+  const loadMore = useCallback(async () => {
+    const atual = convRef.current
+    if (!atual || !hasMoreRef.current || loadingMoreRef.current) return
+    const key = keyRef.current
+    loadingMoreRef.current = true
+    setLoadingMore(true)
+    try {
+      const page = await atendimentoService.listConversations(filtros(), atual.length, LIST_PAGE)
+      if (keyRef.current !== key) return
+      const have = new Set((convRef.current ?? []).map((c) => c.id))
+      const items = [...(convRef.current ?? []), ...page.filter((c) => !have.has(c.id))]
+      const more = page.length === LIST_PAGE
+      cacheRef.current.set(key, { items, more })
+      setConversations(items)
+      setHasMore(more)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao carregar mais conversas')
+    } finally {
+      loadingMoreRef.current = false
+      setLoadingMore(false)
+    }
+  }, [filtros])
+
+  const onListScroll = (e: UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 400) loadMore()
+  }
 
   // Aquece as outras abas: a primeira troca também já é instantânea.
   useEffect(() => {
@@ -156,8 +203,8 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     const outras = (['minhas', 'fila', 'todas'] as WaScope[]).filter((sc) => sc !== scope && (veTudo || sc === 'minhas'))
     outras.forEach((sc) => {
       const k = `${sc}|${status}||||||`
-      atendimentoService.listConversations({ scope: sc, status, userId, search: '' })
-        .then((l) => { cacheRef.current.set(k, l) })
+      atendimentoService.listConversations({ scope: sc, status, userId, search: '' }, 0, LIST_PAGE)
+        .then((l) => { cacheRef.current.set(k, { items: l, more: l.length === LIST_PAGE }) })
         .catch(() => {})
     })
   }, [userId, status, veTudo, debouncedSearch, scope, tagFiltro, compra, anuncio, dataDe, dataAte])
@@ -371,7 +418,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
           </div>
         </div>
 
-        <div className="at-list-items">
+        <div className="at-list-items" onScroll={onListScroll}>
           {conversations === null ? (
             <Loader />
           ) : conversations.length === 0 ? (
@@ -420,6 +467,13 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
                 </button>
               )
             })
+          )}
+          {conversations && conversations.length > 0 && hasMore && (
+            <div className="at-list-more">
+              {loadingMore ? <span className="spinner" /> : (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={loadMore}>Carregar mais</button>
+              )}
+            </div>
           )}
         </div>
       </aside>
