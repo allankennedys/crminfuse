@@ -39,7 +39,9 @@ const CORS = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const WEBHOOK_BASE = `${SUPABASE_URL.replace(/\/+$/, '')}/functions/v1/wa-webhook`
-const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
+// CONNECTION_UPDATE: o número caiu/voltou chega na hora, sem o worker ter
+// de perguntar à Evolution a cada minuto (o worker agora roda a cada 30 min).
+const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE', 'CONNECTION_UPDATE']
 
 const admin = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
   auth: { persistSession: false },
