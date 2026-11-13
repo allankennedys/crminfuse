@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRightLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
-  Hand, Headphones, Image as ImageIcon, MapPin, Mic, Paperclip, Play, RotateCcw, Send, StickyNote, UserRound, X as XIcon, Zap,
+  Hand, Headphones, Image as ImageIcon, MapPin, Mic, Paperclip, Play, RotateCcw, Send, StickyNote, UserRound, Zap,
 } from 'lucide-react'
 import { useVoiceRecorder } from './useVoiceRecorder'
 import { VoiceComposer } from './VoiceComposer'
@@ -21,6 +21,7 @@ import { compressImage } from '@/lib/compressImage'
 import { ClientPanel } from './ClientPanel'
 import { ClientAvatar } from './ClientAvatar'
 import { EnviarContato, EnviarLocalizacao } from './EnviarLocalizacaoContato'
+import { AnexoPreview } from './AnexoPreview'
 import type { WaAttendant, WaConversation, WaEvent, WaMessage, WaNote, WaQuickReply, WaSession } from '@/types'
 
 const MAX_FILE = 100 * 1024 * 1024 // o limite do bucket at-media
@@ -749,16 +750,7 @@ export function ChatThread({
               </button>
             )}
           </div>
-          {file && modo === 'responder' && (
-            <div className="at-attach-chip">
-              <Paperclip size={13} />
-              <span className="at-attach-name">{file.name}</span>
-              <span className="text-muted">{formatBytes(file.size)}</span>
-              <button type="button" className="icon-btn" onClick={() => setFile(null)} aria-label="Remover anexo">
-                <XIcon size={13} />
-              </button>
-            </div>
-          )}
+          {file && modo === 'responder' && <AnexoPreview file={file} onRemove={() => setFile(null)} />}
           {voice.phase !== 'idle' ? (
             <VoiceComposer voice={voice} />
           ) : (
