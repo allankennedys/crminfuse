@@ -34,6 +34,8 @@ export interface WaListFilters {
 
 const BUCKET = 'wa-media'
 const PAGE = 60
+/** Conversas por página na lista. */
+export const LIST_PAGE = 50
 
 /** Erro legível da Edge Function — o supabase-js esconde o corpo da resposta. */
 async function invokeChat<T = unknown>(body: Record<string, unknown>): Promise<T> {
@@ -57,7 +59,8 @@ async function invokeChat<T = unknown>(body: Record<string, unknown>): Promise<T
 export type MediaLinks = { url: string; download: string }
 
 export const atendimentoService = {
-  async listConversations(f: WaListFilters): Promise<WaConversation[]> {
+  /** Uma página da lista (a tela pede mais conforme rola). */
+  async listConversations(f: WaListFilters, offset = 0, limit = LIST_PAGE): Promise<WaConversation[]> {
     // Com filtro de contato, o recorte roda no banco (o atendente sem acesso
     // ao CRM não lê os contatos); sem filtro, leitura direta como sempre.
     const porData = Boolean(f.data && (f.data.de || f.data.ate))
@@ -74,7 +77,8 @@ export const atendimentoService = {
       .select('*, crm_contacts(name)')
       .eq('status', f.status)
       .order('last_message_at', { ascending: false, nullsFirst: false })
-      .limit(300)
+      .order('id', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (f.scope === 'minhas') q = q.eq('assigned_to', f.userId)
     else if (f.scope === 'fila') q = q.is('assigned_to', null)
