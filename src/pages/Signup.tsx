@@ -70,7 +70,7 @@ export function SignupPage() {
                 <strong>{p.name}</strong>
                 <span className="signup-price">{formatPrice(p.price_cents)}<small>/mês</small></span>
                 <span><Check size={12} /> {p.max_whatsapps} WhatsApp{p.max_whatsapps > 1 ? 's' : ''}</span>
-                <span><Check size={12} /> {p.max_agents} atendentes</span>
+                <span><Check size={12} /> {p.max_agents} usuários</span>
               </button>
             ))}
           </div>

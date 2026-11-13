@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
         throw new HttpError(400, `Você usa ${uso.whatsapps} números e o plano ${plano.name} permite ${plano.max_whatsapps}. Remova números antes de trocar.`)
       }
       if ((uso?.agents ?? 0) > plano.max_agents) {
-        throw new HttpError(400, `Você tem ${uso.agents} atendentes e o plano ${plano.name} permite ${plano.max_agents}. Desative atendentes antes de trocar.`)
+        throw new HttpError(400, `Você tem ${uso.agents} usuários e o plano ${plano.name} permite ${plano.max_agents}. Desative usuários antes de trocar.`)
       }
       return plano as { id: string; name: string; price_cents: number }
     }
