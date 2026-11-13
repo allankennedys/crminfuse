@@ -1024,8 +1024,10 @@ export interface WaClientCard {
     /** Origem ou clique dizem anúncio: a venda vai para a Meta. */
     from_ad: boolean
     has_click: boolean
+    tags: string[]
     created_at: string
   } | null
+  tag_options: string[]
   ad: { app: string | null; title: string | null; url: string | null; at: string | null } | null
   sales: { id: string; value_cents: number; sold_at: string; payment_method: string | null }[]
   origens: string[]

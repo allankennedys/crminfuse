@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { CheckCircle2, ExternalLink, Megaphone, Pencil, Receipt, RotateCcw, X as XIcon } from 'lucide-react'
 import { Loader } from '@/components/ui'
+import { TagInput } from '@/components/crm/TagInput'
 import { toast } from '@/store/toastStore'
 import { useCan } from '@/store/authStore'
 import { atendimentoService, formatPhone } from '@/services/atendimentoService'
@@ -100,6 +101,18 @@ export function ClientPanel({ conversation: conv, situacao, conclusao, onClose, 
                 <dt>Compras</dt>
                 <dd>{ct ? `${ct.sales_count} · ${formatBRL(ct.sales_total_cents)}` : '—'}</dd>
               </dl>
+
+              <div className="field">
+                <label>Etiquetas</label>
+                <TagInput
+                  value={ct?.tags ?? []}
+                  suggestions={card.tag_options ?? []}
+                  onChange={async (tags) => {
+                    try { setCard(await atendimentoService.clientSetTags(conv.id, tags)) }
+                    catch (err) { toast.error(err instanceof Error ? err.message : 'Falha ao salvar as etiquetas') }
+                  }}
+                />
+              </div>
 
               {(card.ad || ct?.from_ad) && (
                 <div className="at-client-ad">
