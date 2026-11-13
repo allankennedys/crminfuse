@@ -25,8 +25,8 @@
  *       inicia conversa: confere o número na Evolution e devolve a conversa
  *
  * Secrets: EVOLUTION_API_URL, EVOLUTION_API_KEY (+ os automáticos do Supabase)
- *          R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
- *          (opcionais: com eles as mídias novas vão para o R2 — _shared/media.ts)
+ *          MEDIA_SIGNING_KEY + PUBLIC_API_URL (opcionais: com eles as mídias
+ *          novas vão para o R2, pelo Worker do domínio — _shared/media.ts)
  */
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
