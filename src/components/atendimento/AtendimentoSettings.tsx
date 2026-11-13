@@ -224,6 +224,37 @@ export function AtendimentoSettings() {
             </span>
           </span>
         </label>
+        <label className="at-toggle">
+          <input
+            type="checkbox"
+            checked={settings.auto_conclude_hours !== null}
+            onChange={(e) => set({ auto_conclude_hours: e.target.checked ? 24 : null })}
+          />
+          <span>
+            <strong>Concluir sozinho o atendimento sem interação</strong>
+            <span className="text-muted">
+              O atendimento em aberto, com atendente, sem nenhuma mensagem (do cliente ou da equipe) pelo tempo abaixo
+              é concluído automaticamente, com o motivo "Sem interação". Conversas na Fila não são concluídas.
+              Se o cliente escrever de novo, a conversa reabre.
+            </span>
+          </span>
+        </label>
+        {settings.auto_conclude_hours !== null && (
+          <div className="flex" style={{ alignItems: 'center', gap: 8, margin: '4px 0 0 28px' }}>
+            <span>Concluir após</span>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={8760}
+              style={{ width: 90 }}
+              value={settings.auto_conclude_hours}
+              onChange={(e) => set({ auto_conclude_hours: Math.min(8760, Math.max(1, Math.round(Number(e.target.value)) || 1)) })}
+              aria-label="Horas sem interação"
+            />
+            <span>horas sem interação</span>
+          </div>
+        )}
         <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
           <button className="btn btn-primary" onClick={save} disabled={saving || !dirty}>
             {saving ? <span className="spinner" /> : 'Salvar'}
