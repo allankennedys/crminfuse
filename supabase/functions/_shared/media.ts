@@ -20,6 +20,13 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 export const BUCKET = 'wa-media'
 const R2_PREFIX = 'r2:'
 
+// Links que vão para o NAVEGADOR saem pelo domínio da Infuse (proxy
+// api.infusesoftware.com), não pelo endereço interno do projeto.
+const INTERNAL_URL = (Deno.env.get('SUPABASE_URL') ?? '').replace(/\/+$/, '')
+const PUBLIC_URL = (Deno.env.get('PUBLIC_API_URL') ?? '').replace(/\/+$/, '')
+const publico = (url: string) =>
+  PUBLIC_URL && INTERNAL_URL && url.startsWith(INTERNAL_URL) ? PUBLIC_URL + url.slice(INTERNAL_URL.length) : url
+
 const ACCOUNT = Deno.env.get('R2_ACCOUNT_ID') ?? ''
 const KEY_ID = Deno.env.get('R2_ACCESS_KEY_ID') ?? ''
 const SECRET = Deno.env.get('R2_SECRET_ACCESS_KEY') ?? ''
@@ -101,9 +108,11 @@ export async function mediaLinks(
     ])
     return { url, download }
   }
-  const url = await mediaUrl(admin, path, seconds)
+  const interno = await mediaUrl(admin, path, seconds)
+  if (!interno) return null
+  const url = publico(interno)
   // O Storage do Supabase aceita &download=nome no próprio link assinado.
-  return url ? { url, download: `${url}&download=${encodeURIComponent(downloadName)}` } : null
+  return { url, download: `${url}&download=${encodeURIComponent(downloadName)}` }
 }
 
 /**
