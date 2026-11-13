@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Copy, CreditCard, ExternalLink, QrCode, Smartphone, Users } from 'lucide-react'
+import { AlertTriangle, CreditCard, ExternalLink, MessageCircle, Smartphone, Users } from 'lucide-react'
 import { toast } from '@/store/toastStore'
 import { confirmDialog } from '@/store/confirmStore'
 import { formatSP } from '@/lib/datetime'
 import {
   billingService, formatPrice, type MySubscription, type Plan,
 } from '@/services/billingService'
+
+/** Outras formas de pagamento (Pix etc.) são combinadas direto com o time. */
+const WHATS_TIME = 'https://wa.me/5575982938031'
 
 const STATUS_LABEL: Record<string, string> = {
   trial: 'Teste grátis', ativa: 'Ativa', atrasada: 'Pagamento atrasado', cancelada: 'Cancelada',
@@ -39,7 +42,6 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
   const [plans, setPlans] = useState<Plan[]>([])
   const [cartaoOk, setCartaoOk] = useState<boolean | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [pixPlano, setPixPlano] = useState<Plan | null>(null)
 
   useEffect(() => {
     billingService.listPlans().then(setPlans)
@@ -73,18 +75,6 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
     }
   }
 
-  async function escolherPix(p: Plan) {
-    setBusy(`p-${p.id}`)
-    try {
-      await billingService.choosePix(p.id)
-      setPixPlano(p)
-      onChanged()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Não foi possível escolher o Pix')
-    } finally {
-      setBusy(null)
-    }
-  }
 
   async function gerenciarCartao() {
     setBusy('portal')
@@ -110,15 +100,10 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
     }
   }
 
-  const copiar = (t: string) => {
-    void navigator.clipboard?.writeText(t).then(() => toast.success('Copiado.')).catch(() => toast.error('Não consegui copiar.'))
-  }
 
   const dTeste = diasAte(sub.trial_ends_at)
   const noCartao = sub.payment_mode === 'cartao' && sub.has_billing
   const noPix = sub.payment_mode === 'pix'
-  const valorAtual = pixPlano ?? sub.plan
-  const pix = sub.pix
   // Em teste (ou sem assinatura paga) mostra todos; assinante vê só os mais caros (upgrade).
   const emTeste = sub.status === 'trial' || sub.status === 'cancelada' || sub.courtesy
   const opcoes = emTeste ? plans : plans.filter((p) => p.price_cents > sub.plan.price_cents)
@@ -171,46 +156,12 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
           {noCartao && !sub.cancel_at_period_end && sub.status !== 'cancelada' && (
             <button className="btn btn-ghost btn-sm" onClick={cancelar} disabled={busy !== null}>Cancelar assinatura</button>
           )}
-          {noPix && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setPixPlano(sub.plan)}>
-              <QrCode size={14} /> Ver como pagar por Pix
-            </button>
-          )}
+          {noPix && <a className="btn btn-ghost btn-sm" href={WHATS_TIME} target="_blank" rel="noreferrer"><MessageCircle size={14} /> Falar com o time</a>}
         </div>
+        <p className="text-muted" style={{ fontSize: 12.5, marginTop: 12 }}>
+          Quer pagar de outra forma, como Pix? <a href={WHATS_TIME} target="_blank" rel="noreferrer">Fale com o nosso time no WhatsApp</a>.
+        </p>
       </section>
-
-      {pixPlano && (
-        <section className="card">
-          <h3 className="card-title"><QrCode size={15} /> Pagar por Pix</h3>
-          {pix?.pix_key ? (
-            <div style={{ display: 'grid', gap: 10 }}>
-              <p className="text-secondary" style={{ lineHeight: 1.5 }}>
-                Faça um Pix de <strong>{formatPrice(valorAtual.price_cents)}</strong> para a chave abaixo e informe o código no campo de mensagem do Pix.
-              </p>
-              <div className="field" style={{ margin: 0 }}>
-                <label>Chave Pix{pix.pix_holder ? ` (${pix.pix_holder})` : ''}</label>
-                <div className="flex" style={{ gap: 6 }}>
-                  <input className="input" readOnly value={pix.pix_key} onFocus={(e) => e.currentTarget.select()} />
-                  <button className="btn btn-ghost btn-sm" onClick={() => copiar(pix.pix_key!)} aria-label="Copiar chave"><Copy size={14} /></button>
-                </div>
-              </div>
-              <div className="field" style={{ margin: 0 }}>
-                <label>Código da sua empresa</label>
-                <div className="flex" style={{ gap: 6 }}>
-                  <input className="input" readOnly value={sub.reference} />
-                  <button className="btn btn-ghost btn-sm" onClick={() => copiar(sub.reference)} aria-label="Copiar código"><Copy size={14} /></button>
-                </div>
-              </div>
-              <p className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
-                Depois de pagar, {pix.pix_contact ? <>envie o comprovante para <strong>{pix.pix_contact}</strong>. </> : 'envie o comprovante ao suporte. '}
-                A liberação é feita por uma pessoa, em até 1 dia útil. O acesso continua normal até lá.
-              </p>
-            </div>
-          ) : (
-            <p className="text-muted">O pagamento por Pix ainda não foi configurado. Fale com o suporte.</p>
-          )}
-        </section>
-      )}
 
       {opcoes.length > 0 && <section className="card">
         <h3 className="card-title">{emTeste ? 'Escolher um plano' : 'Fazer upgrade'}</h3>
@@ -230,9 +181,6 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
                   title={cartaoOk === false ? 'O pagamento por cartão ainda não foi configurado' : undefined}
                 >
                   {busy === `c-${p.id}` ? <span className="spinner" /> : atual && noCartao ? 'Plano atual' : noCartao ? 'Trocar (cartão)' : 'Assinar no cartão'}
-                </button>
-                <button className="btn btn-sm btn-ghost" disabled={busy !== null} onClick={() => escolherPix(p)}>
-                  {busy === `p-${p.id}` ? <span className="spinner" /> : 'Pagar por Pix'}
                 </button>
               </div>
             )

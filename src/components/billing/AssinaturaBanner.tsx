@@ -17,7 +17,7 @@ export function AssinaturaBanner({ sub, onOpenPlano }: { sub: MySubscription; on
   } else if (sub.payment_mode === 'pix' && sub.status === 'ativa' && sub.current_period_end) {
     // Pix não tem gateway mandando lembrete: o aviso é daqui.
     const venc = Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86_400_000)
-    if (venc <= 5) texto = venc > 0 ? `Sua assinatura vence em ${venc} dia${venc > 1 ? 's' : ''}. Pague por Pix para não perder o acesso.` : 'Sua assinatura venceu hoje. Pague por Pix para não perder o acesso.'
+    if (venc <= 5) texto = venc > 0 ? `Sua assinatura vence em ${venc} dia${venc > 1 ? 's' : ''}. Fale com o nosso time para renovar e não perder o acesso.` : 'Sua assinatura venceu hoje. Fale com o nosso time para renovar e não perder o acesso.'
     alerta = venc <= 2
   } else if (sub.status === 'trial' && dias !== null) {
     texto = dias > 0 ? `Teste grátis: ${dias} dia${dias > 1 ? 's' : ''} restante${dias > 1 ? 's' : ''}.` : 'O teste acabou hoje.'
