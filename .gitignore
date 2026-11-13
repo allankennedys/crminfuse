@@ -8,3 +8,7 @@ supabase/.temp
 
 # env pronto para importar na Vercel (chave pública, mas fora do git)
 .env.vercel
+
+# credenciais OAuth baixadas do Google (segredo do cliente): nunca versionar
+client_secret*.json
+*.apps.googleusercontent.com.json
