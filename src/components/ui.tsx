@@ -218,7 +218,7 @@ export function SessionPicker({ sessions, value, onChange }: {
             value={value ?? ''}
             onChange={(e) => onChange(e.target.value || null)}
           >
-            <option value="">Automático — distribui entre os conectados</option>
+            <option value="">Automático: distribui entre os conectados</option>
             {sessions.map((s) => (
               <option key={s.id} value={s.id}>
                 {sessionLabel(s)}{s.status === 'connected' ? '' : ' (desconectado)'}
@@ -227,7 +227,7 @@ export function SessionPicker({ sessions, value, onChange }: {
           </select>
           {chosen && chosen.status !== 'connected' && (
             <span style={{ fontSize: 12, color: 'var(--warning)' }}>
-              Esse número está desconectado. Se continuar assim na hora do envio, a mensagem falha —
+              Esse número está desconectado. Se continuar assim na hora do envio, a mensagem falha e
               não será enviada por outro número.
             </span>
           )}

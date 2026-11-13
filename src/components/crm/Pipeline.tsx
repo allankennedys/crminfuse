@@ -230,7 +230,7 @@ export function Pipeline({
         const toAd = isAdContact(contact, contact.origem)
         toast.success(
           toAd
-            ? `${contact.name} marcado como conversão — evento na fila para a Meta.`
+            ? `${contact.name} marcado como conversão. O aviso para a Meta está na fila.`
             : `${contact.name} marcado como conversão. Não veio de anúncio: nada é enviado à Meta.`,
         )
       }
@@ -399,7 +399,7 @@ function StageColumn({ stage, contacts, stats, automation, onLoadMore, onEdit, o
               className="kanban-col-total"
               title={stage.is_conversion
                 ? 'Soma dos contatos que estão nesta coluna agora. Quem converteu sai do '
-                  + 'funil 5 dias depois e deixa de somar aqui — no relatório ele continua '
+                  + 'funil 5 dias depois e deixa de somar aqui. No relatório ele continua '
                   + 'contando, porque lá a conta é por histórico de conversão, não por etapa atual.'
                 : 'Soma dos contatos que estão nesta coluna agora, dentro do período selecionado.'}
             >

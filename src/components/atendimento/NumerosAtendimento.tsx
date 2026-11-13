@@ -73,7 +73,7 @@ export function NumerosAtendimento({ onClose, onChanged }: { onClose: () => void
     setBusy(s.id)
     try {
       const r = await atendimentoService.disableSession(s.id)
-      toast.success(r.restored ? 'Desligado — o webhook anterior do número foi devolvido.' : 'Número desligado do atendimento.')
+      toast.success(r.restored ? 'Número desligado. A integração anterior dele foi restaurada.' : 'Número desligado do atendimento.')
       load()
       onChanged()
     } catch (err) {

@@ -86,7 +86,7 @@ export function AtendimentoSettings() {
       // Limite maior ou distribuição ligada agora: a fila que estava parada anda.
       const n = await atendimentoService.dispatchNow().catch(() => 0)
       toast.success(n > 0
-        ? `Configurações salvas — ${n} conversa(s) da fila distribuída(s)`
+        ? `Configurações salvas. ${n} conversa(s) da fila distribuída(s).`
         : 'Configurações do atendimento salvas')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Falha ao salvar')

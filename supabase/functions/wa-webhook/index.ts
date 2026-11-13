@@ -265,7 +265,7 @@ function parseContent(message: Json, messageType?: string): Parsed | null {
   const loc = m.locationMessage ?? m.liveLocationMessage
   if (loc) {
     const lat = loc.degreesLatitude, lng = loc.degreesLongitude
-    const label = [loc.name, loc.address].filter(Boolean).join(' — ')
+    const label = [loc.name, loc.address].filter(Boolean).join(', ')
     return {
       type: 'location',
       body: `📍 ${label ? label + '\n' : ''}https://maps.google.com/?q=${lat},${lng}`,
@@ -299,7 +299,7 @@ function parseContent(message: Json, messageType?: string): Parsed | null {
   if (m.protocolMessage || m.editedMessage || m.senderKeyDistributionMessage || m.pollUpdateMessage) return null
 
   const tipo = messageType && messageType !== 'unknown' ? messageType : 'mensagem'
-  return { type: 'other', body: `[${tipo} não suportada — veja no celular]`, media: false }
+  return { type: 'other', body: `[${tipo} não suportada. Veja no celular]`, media: false }
 }
 
 function vcardPhones(vcard?: string): string {

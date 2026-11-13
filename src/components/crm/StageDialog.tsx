@@ -166,7 +166,7 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
             </label>
             <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
               Quando um contato chega nesta etapa, a Meta é avisada de que a venda
-              aconteceu — é isso que faz o anúncio aprender e a conversão aparecer no
+              aconteceu. É isso que faz o anúncio aprender e a conversão aparecer no
               Gerenciador. Tendo venda registrada, quem avisa é cada venda, com o
               valor dela: a primeira e as recompras.
               {currentConversion && currentConversion.id !== stage?.id && isConversion && (

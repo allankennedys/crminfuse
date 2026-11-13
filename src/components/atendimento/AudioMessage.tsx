@@ -136,7 +136,7 @@ export function AudioMessage({ id, url }: { id: string; url: string }) {
           ))}
         </div>
         <div className="at-voice-sub">
-          <span>{duracao === null && !mostraPos ? '—:—' : fmtDur(mostraPos ? pos : total)}</span>
+          <span>{duracao === null && !mostraPos ? '' : fmtDur(mostraPos ? pos : total)}</span>
           {usado && (
             <button type="button" className="at-voice-rate" onClick={trocarVelocidade} aria-label="Velocidade de reprodução">
               {String(vel).replace('.', ',')}x

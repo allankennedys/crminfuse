@@ -262,7 +262,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
               text={
                 debouncedSearch ? 'Nenhuma conversa encontrada.'
                   : scope === 'minhas' ? (status === 'aberta' ? 'Nenhuma conversa atribuída a você.' : 'Nenhum atendimento concluído.')
-                  : scope === 'fila' ? 'Fila vazia — toda conversa tem atendente.'
+                  : scope === 'fila' ? 'Fila vazia. Toda conversa tem atendente.'
                   : 'Nenhuma conversa ainda.'
               }
             />

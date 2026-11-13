@@ -36,7 +36,7 @@ export function formatBytes(n: number | null | undefined) {
 }
 
 export function refundTooBig(name: string, bytes: number) {
-  return `"${name}" tem ${formatBytes(bytes)} mesmo depois de comprimido — o limite é ${formatBytes(REFUND_FILE_MAX)} por arquivo.`
+  return `"${name}" tem ${formatBytes(bytes)} mesmo depois de comprimido. O limite é ${formatBytes(REFUND_FILE_MAX)} por arquivo.`
 }
 
 /** Traduz o erro do storage para o que o usuário precisa fazer. */
@@ -45,7 +45,7 @@ function storageErrorMessage(name: string, msg: string) {
     return `"${name}" passa do tamanho máximo de ${formatBytes(REFUND_FILE_MAX)}.`
   }
   if (/quota|storage limit|insufficient|no space/i.test(msg)) {
-    return 'Sem espaço livre no armazenamento — apague arquivos antigos ou aumente o plano antes de anexar.'
+    return 'Sem espaço livre no armazenamento. Apague arquivos antigos ou aumente o plano antes de anexar.'
   }
   if (/mime|type/i.test(msg)) return `"${name}" não é PDF nem imagem.`
   return `Falha ao enviar "${name}": ${msg}`
@@ -1569,7 +1569,7 @@ export const crmService = {
       .select('id')
     if (error) throw asError(error)
     if (!data?.length) {
-      throw new Error('Nada foi gravado — seu usuário não tem permissão para editar este contato.')
+      throw new Error('Nada foi gravado. Seu usuário não tem permissão para editar este contato.')
     }
   },
 
@@ -1585,7 +1585,7 @@ export const crmService = {
       .select('id')
     if (error) throw error
     if (!data?.length) {
-      throw new Error('Nada foi gravado — seu usuário não tem permissão para mover este contato.')
+      throw new Error('Nada foi gravado. Seu usuário não tem permissão para mover este contato.')
     }
   },
 
@@ -1597,7 +1597,7 @@ export const crmService = {
       .select('id')
     if (error) throw error
     if (!data?.length) {
-      throw new Error('Nada foi excluído — seu usuário não tem permissão para excluir este contato.')
+      throw new Error('Nada foi excluído. Seu usuário não tem permissão para excluir este contato.')
     }
   },
 
@@ -1687,7 +1687,7 @@ export const crmService = {
       .select('id')
     if (error) throw error
     if (!data?.length) {
-      throw new Error('Nada foi gravado — seu usuário não tem permissão para editar vendas.')
+      throw new Error('Nada foi gravado. Seu usuário não tem permissão para editar vendas.')
     }
   },
 
@@ -1704,7 +1704,7 @@ export const crmService = {
       .select('id')
     if (error) throw error
     if (!data?.length) {
-      throw new Error('Nada foi excluído — seu usuário não tem permissão para excluir vendas.')
+      throw new Error('Nada foi excluído. Seu usuário não tem permissão para excluir vendas.')
     }
   },
 
@@ -1736,7 +1736,7 @@ export const crmService = {
       .select('id')
     if (error) throw asError(error)
     if (!data?.length) {
-      throw new Error('Nada foi gravado — seu usuário não tem permissão para editar vendas.')
+      throw new Error('Nada foi gravado. Seu usuário não tem permissão para editar vendas.')
     }
   },
 
@@ -1825,7 +1825,7 @@ export const crmService = {
       .select('id')
     if (error) throw asError(error)
     if (!data?.length) {
-      throw new Error('Nada foi removido — seu usuário não tem permissão para editar vendas.')
+      throw new Error('Nada foi removido. Seu usuário não tem permissão para editar vendas.')
     }
     // A linha já saiu: um arquivo que fique no bucket não aparece mais em lugar nenhum.
     await supabase.storage.from(REFUND_BUCKET).remove([file.path])
@@ -1867,7 +1867,7 @@ export const crmService = {
     if (error) throw error
     const r = (data as Record<string, unknown>[] | null)?.[0]
     if (!r) {
-      throw new Error('A unificação não devolveu resultado — confira os dois cadastros antes de repetir.')
+      throw new Error('A unificação não devolveu resultado. Confira os dois cadastros antes de repetir.')
     }
     return {
       survivor_id: String(r.survivor_id),

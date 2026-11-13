@@ -146,7 +146,7 @@ export function CrmSettingsPanel() {
       <section className="card">
         <h3 className="card-title"><ShieldCheck size={15} /> Aviso de vendas para a Meta</h3>
         <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
-          Cada venda de cliente que veio de anúncio é avisada à Meta sozinha — a
+          Cada venda de cliente que veio de anúncio é avisada à Meta sozinha: a
           primeira e as recompras. É assim que ela sabe quais anúncios estão dando
           venda e passa a procurar mais gente parecida. Na Meta isso se chama
           Conversions API.
@@ -185,7 +185,7 @@ export function CrmSettingsPanel() {
           <p className="text-muted" style={{ fontSize: 11.5, marginTop: 6 }}>
             A Página que aparece como anunciante nos anúncios de mensagem para o
             WhatsApp. Sem ela, a Meta não aceita o aviso das vendas de quem clicou
-            no anúncio — elas ficam guardadas e saem sozinhas assim que a Página
+            no anúncio. Elas ficam guardadas e saem sozinhas assim que a Página
             for salva. O número fica no Facebook, na Página → <em>Sobre</em> →{' '}
             <em>Transparência da Página</em> (ou no Meta Business Suite, em
             Configurações → Página).
@@ -234,7 +234,7 @@ export function CrmSettingsPanel() {
           <p className="text-muted" style={{ fontSize: 11.5, marginTop: 6 }}>
             Você gera esse código no Gerenciador de Eventos da Meta, nas
             configurações do pixel. Depois de salvo ele nunca mais aparece na
-            tela — para trocar, cole um novo por cima.
+            tela. Para trocar, cole um novo por cima.
           </p>
         </div>
 
@@ -311,7 +311,7 @@ export function CrmSettingsPanel() {
             Este só lê números, não envia nada. Na hora de gerar na Meta, marque
             a permissão de leitura de anúncios (<code>ads_read</code>). Ele vale
             para todas as contas que não tiverem um token próprio. Se deixar em
-            branco, o sistema tenta usar o Access Token de cima — o que só
+            branco, o sistema tenta usar o Access Token de cima, o que só
             funciona se aquele já tiver essa permissão. Os dois campos são
             separados de propósito: trocar o de cima só para arrumar o relatório
             derrubaria o aviso de vendas.
@@ -421,7 +421,7 @@ function AdAccountsSection({ canEdit }: { canEdit: boolean }) {
     const ok = await confirmDialog({
       title: 'Remover conta',
       message: `Remover ${account.label ?? account.account_id} do relatório? O `
-        + 'gasto dela sai dos totais de Meta ADS — na Meta nada muda, nada é '
+        + 'gasto dela sai dos totais de Meta ADS. Na Meta nada muda, nada é '
         + 'apagado lá.',
       confirmLabel: 'Remover',
       danger: true,
@@ -440,7 +440,7 @@ function AdAccountsSection({ canEdit }: { canEdit: boolean }) {
     <div className="field">
       <label>Contas de anúncios</label>
       <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 10 }}>
-        Uma linha por conta — o relatório soma todas e também mostra cada uma
+        Uma linha por conta. O relatório soma todas e também mostra cada uma
         separada. O número é o que aparece como <code>act_XXXXXXXX</code> no
         Gerenciador de Anúncios; pode colar com ou sem o <code>act_</code>. O
         apelido é só para você reconhecer a conta aqui.
@@ -450,7 +450,7 @@ function AdAccountsSection({ canEdit }: { canEdit: boolean }) {
         <Loader />
       ) : accounts.length === 0 && !draft ? (
         <p className="text-muted" style={{ fontSize: 12, marginBottom: 10 }}>
-          Nenhuma conta cadastrada — a aba Meta ADS mostra as vendas, mas sem o
+          Nenhuma conta cadastrada. A aba Meta ADS mostra as vendas, mas sem o
           gasto não dá para calcular custo, ROAS nem CAC.
         </p>
       ) : (
@@ -560,7 +560,7 @@ function AdAccountForm({ draft, setDraft, onSave, onCancel, saving, temToken }: 
           type="password"
           value={draft.token}
           onChange={(e) => setDraft({ ...draft, token: e.target.value })}
-          placeholder={temToken ? 'Token salvo — deixe em branco para manter' : 'Token próprio (opcional)'}
+          placeholder={temToken ? 'Token salvo. Deixe em branco para manter' : 'Token próprio (opcional)'}
           autoComplete="new-password"
         />
       </div>
