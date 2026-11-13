@@ -19,6 +19,9 @@ import { CrmReports } from '@/components/crm/CrmReports'
 import { Atendimento } from '@/components/atendimento/Atendimento'
 import { AvisosAtendimento } from '@/components/atendimento/Avisos'
 import { TituloDaAba } from '@/components/atendimento/TituloDaAba'
+import { PushSetup } from '@/components/PushSetup'
+import { InstallBanner } from '@/components/InstallBanner'
+import { desativarPush } from '@/lib/push'
 import { CentralAvisos } from '@/components/atendimento/CentralAvisos'
 import { LancarVendaDoContato } from '@/components/atendimento/LancarVendaDoContato'
 import { StartConversation } from '@/components/atendimento/StartConversation'
@@ -89,6 +92,12 @@ type TabId = (typeof TABS)[number]['id']
  */
 export function CRMPage() {
   const { profile, signOut } = useAuthStore()
+  // Ao sair, este aparelho deixa de receber os avisos desta pessoa (quem divide
+  // o aparelho não recebe os dela). A permissão do aparelho não é mexida.
+  const sair = async () => {
+    await desativarPush().catch(() => {})
+    await signOut()
+  }
   const organizationName = useAuthStore((s) => s.organizationName)
   const theme = useTheme((s) => s.theme)
   // Sem link de volta ao painel: os dois sistemas vivem em domínios
@@ -105,7 +114,7 @@ export function CRMPage() {
       // Relatórios é só do admin, inclusive o de atendimento (wa_report).
       if (t.id === 'relatorios') return isAdmin
       return can(t.perm)
-        || (t.id === 'config' && (isAdmin || can('atendimento.configurar')))
+        || (t.id === 'config' && (isAdmin || can('atendimento.configurar') || can('atendimento.ver')))
         || (t.id === 'atendimento' && can('atendimento.ver_todas'))
         || (t.id === 'funil' && can('crm.funil.mover'))
     }),
@@ -366,13 +375,14 @@ export function CRMPage() {
           </span>
           {can('atendimento.ver') && <CentralAvisos />}
           <ThemeToggle />
-          <button className="icon-btn" onClick={signOut} title="Sair" aria-label="Sair">
+          <button className="icon-btn" onClick={sair} title="Sair" aria-label="Sair">
             <LogOut size={16} />
           </button>
         </div>
       </header>
 
       <TituloDaAba />
+      {can('atendimento.ver') && <PushSetup />}
       {can('atendimento.ver') && <AvisosAtendimento />}
 
       <main className={tab === 'funil' ? 'crm-main crm-main-board' : tab === 'atendimento' ? 'crm-main crm-main-chat' : 'crm-main'}>
@@ -486,6 +496,8 @@ export function CRMPage() {
           <CrmSettingsPanel />
         )}
       </main>
+
+      <InstallBanner />
 
       {pedidoConversa && (
         <StartConversation

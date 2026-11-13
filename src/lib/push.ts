@@ -22,11 +22,40 @@ async function registro(): Promise<ServiceWorkerRegistration | null> {
   }
 }
 
-/** Este aparelho já está inscrito? */
+/** Permissão do aparelho para notificações (ou que o navegador não suporta). */
+export function pushPermissao(): NotificationPermission | 'unsupported' {
+  return pushSuportado() ? Notification.permission : 'unsupported'
+}
+
+/** Este aparelho está recebendo? Permissão dada, inscrição no navegador E registro no banco. */
 export async function pushAtivo(): Promise<boolean> {
   if (!pushSuportado() || Notification.permission !== 'granted') return false
   const reg = await registro()
-  return Boolean(reg && (await reg.pushManager.getSubscription()))
+  const sub = reg ? await reg.pushManager.getSubscription() : null
+  if (!sub) return false
+  const { count } = await supabase
+    .from('push_subscriptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('endpoint', sub.endpoint)
+  return (count ?? 0) > 0
+}
+
+// ---------- Decisão do usuário, por aparelho ----------
+// Guardada no navegador (cada aparelho decide por si) e por usuário (quem
+// divide o aparelho não herda a resposta do outro).
+
+export type DecisaoPush = 'sim' | 'nao'
+const chaveDecisao = (userId: string) => `push-decisao:${userId}`
+
+export function lerDecisaoPush(userId: string): DecisaoPush | null {
+  try {
+    const v = localStorage.getItem(chaveDecisao(userId))
+    return v === 'sim' || v === 'nao' ? v : null
+  } catch { return null }
+}
+
+export function gravarDecisaoPush(userId: string, d: DecisaoPush) {
+  try { localStorage.setItem(chaveDecisao(userId), d) } catch { /* sem armazenamento: pergunta de novo */ }
 }
 
 /** Pede a permissão, inscreve o aparelho e guarda a inscrição. Devolve o motivo se falhar. */
@@ -63,11 +92,32 @@ export async function ativarPush(userId: string, organizationId: string): Promis
   }
 }
 
-/** Cancela neste aparelho. */
+/**
+ * Para de receber neste aparelho: apaga SÓ o registro do banco, e o servidor
+ * deixa de mandar. A permissão do aparelho e a inscrição do navegador ficam
+ * como estão (não dá para o app revogar a permissão, e manter a inscrição
+ * deixa religar sem pedir nada de novo).
+ */
 export async function desativarPush(): Promise<void> {
   const reg = await registro()
   const sub = await reg?.pushManager.getSubscription()
   if (!sub) return
   await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
-  await sub.unsubscribe().catch(() => {})
 }
+
+// ---------- Instalação do app ----------
+
+/** Aberto como app instalado (tela cheia), e não numa aba do navegador. */
+export function emAppInstalado(): boolean {
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as Navigator & { standalone?: boolean }).standalone === true
+  } catch { return false }
+}
+
+export const ehIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+/** Celular ou tablet de toque (não um computador com a janela estreita). */
+export const ehCelular = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)

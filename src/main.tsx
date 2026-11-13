@@ -5,6 +5,15 @@ import App from './App'
 import './styles/global.css'
 import { useAuthStore } from './store/authStore'
 
+// Android/Chrome avisa que o app pode ser instalado; guarda o evento para o
+// botão "Instalar" (InstallBanner) usar quando a pessoa quiser. Precisa ser
+// capturado cedo: ele dispara uma vez, antes do login.
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault()
+  window.__promptInstalacao = e as never
+  window.dispatchEvent(new Event('prompt-instalacao'))
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
