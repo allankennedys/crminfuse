@@ -5257,3 +5257,20 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
   .login6-box h1 { font-size: 34px; }
   .login6-bot { padding: 18px 24px; flex-direction: column; gap: 4px; }
 }
+
+/* Importar contatos */
+.imp-drop { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 24px 8px; color: var(--text-secondary); }
+.imp-tabela { display: grid; gap: 8px; max-height: 42vh; overflow-y: auto; margin-bottom: 14px; padding-right: 4px; }
+.imp-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 12px; align-items: start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.imp-col.duvida { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 8%, transparent); }
+.imp-col-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.imp-col-info span { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-col-ctl { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.imp-aviso { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--warning); }
+.imp-aviso.suave { color: var(--text-muted); }
+.imp-opcoes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 6px; }
+.imp-resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.imp-resumo > div { border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+.imp-resumo b { font-size: 24px; }
+.imp-resumo span { font-size: 12px; color: var(--text-muted); }
+@media (max-width: 600px) { .imp-col { grid-template-columns: 1fr; } .imp-opcoes { grid-template-columns: 1fr; } }

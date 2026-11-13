@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Plus, Users, ChevronLeft, ChevronRight, Filter, Download, MessageCirclePlus } from 'lucide-react'
+import { Search, Plus, Users, ChevronLeft, ChevronRight, Filter, Download, MessageCirclePlus, Upload } from 'lucide-react'
 import { useCan } from '@/store/authStore'
 import { useConversaStore } from '@/store/conversaStore'
 import {
@@ -11,6 +11,7 @@ import { useDebounced } from '@/hooks/useDebounced'
 import { toast } from '@/store/toastStore'
 import { formatCustomValue } from './CustomFields'
 import { ContactDrawer } from './ContactDrawer'
+import { ImportarContatos } from './ImportarContatos'
 import { toCSV, csvMoney, downloadCSV } from '@/lib/csv'
 import { formatSP } from '@/lib/datetime'
 import type { CrmContact, CrmCustomField, CrmStage } from '@/types'
@@ -50,6 +51,7 @@ export function ContactsTable({ stages, onChanged }: {
   const [channels, setChannels] = useState<ChannelCount[]>([])
   const [origens, setOrigens] = useState<OrigemCount[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  const [importando, setImportando] = useState(false)
 
   // null = fechado; undefined = aberto para criar; objeto = editando
   const [editing, setEditing] = useState<CrmContact | null | undefined>(null)
@@ -316,6 +318,12 @@ export function ContactsTable({ stages, onChanged }: {
               ? `Exportar ${marcados} selecionado${marcados === 1 ? '' : 's'}`
               : 'Exportar CSV'}
         </button>
+
+        {can('crm.contatos.editar') && (
+          <button className="btn btn-ghost" onClick={() => setImportando(true)} title="Importar contatos de uma planilha (CSV ou Excel)">
+            <Upload size={15} /> Importar
+          </button>
+        )}
 
         <button className="btn btn-primary" onClick={() => setEditing(undefined)}>
           <Plus size={15} /> Novo contato
@@ -593,6 +601,10 @@ export function ContactsTable({ stages, onChanged }: {
           onClose={() => setEditing(null)}
           onSaved={handleSaved}
         />
+      )}
+
+      {importando && (
+        <ImportarContatos stages={stages} onClose={() => setImportando(false)} onDone={() => { refresh(); onChanged() }} />
       )}
     </div>
   )
