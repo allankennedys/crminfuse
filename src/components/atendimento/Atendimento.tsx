@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { MessageCircle, MessageCirclePlus, Search, Smartphone, X as XIcon } from 'lucide-react'
+import { ListFilter, MessageCircle, MessageCirclePlus, Search, Smartphone, X as XIcon } from 'lucide-react'
 import { useConversaStore } from '@/store/conversaStore'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore, useCan } from '@/store/authStore'
@@ -49,6 +49,8 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   const [tagFiltro, setTagFiltro] = useState('')
   const [compra, setCompra] = useState<'' | 'com' | 'sem'>('')
   const [anuncio, setAnuncio] = useState<'' | 'sim' | 'nao'>('')
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
+  const filtrosRef = useRef<HTMLDivElement>(null)
   const [tagOptions, setTagOptions] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -210,6 +212,20 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     setSelectedSnapshot(c)
   }
 
+  const filtrosAtivos = [tagFiltro, compra, anuncio, scope === 'todas' ? assignee : ''].filter(Boolean).length
+
+  // Fecha o painel de filtros ao clicar fora ou com Esc.
+  useEffect(() => {
+    if (!filtrosAbertos) return
+    const fora = (e: MouseEvent) => {
+      if (filtrosRef.current && !filtrosRef.current.contains(e.target as Node)) setFiltrosAbertos(false)
+    }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setFiltrosAbertos(false) }
+    document.addEventListener('mousedown', fora)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc) }
+  }, [filtrosAbertos])
+
   const scopes: { id: WaScope; label: string; count?: number }[] = [
     { id: 'minhas', label: 'Minhas' },
     { id: 'fila', label: 'Fila', count: queueCount },
@@ -266,42 +282,69 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
             <Search size={14} />
           </label>
 
-          <div className="at-filters">
+          <div className="at-filters" ref={filtrosRef}>
             <label className="channel-filter">
               <select value={status} onChange={(e) => setStatus(e.target.value as WaConversationStatus)} aria-label="Situação">
                 <option value="aberta">Em aberto</option>
                 <option value="resolvida">Concluídas</option>
               </select>
             </label>
-            {tagOptions.length > 0 && (
-              <label className="channel-filter">
-                <select value={tagFiltro} onChange={(e) => setTagFiltro(e.target.value)} aria-label="Etiqueta">
-                  <option value="">Todas as etiquetas</option>
-                  {tagOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </label>
-            )}
-            <label className="channel-filter">
-              <select value={compra} onChange={(e) => setCompra(e.target.value as '' | 'com' | 'sem')} aria-label="Compras">
-                <option value="">Com ou sem compra</option>
-                <option value="com">Com compra</option>
-                <option value="sem">Sem compra</option>
-              </select>
-            </label>
-            <label className="channel-filter">
-              <select value={anuncio} onChange={(e) => setAnuncio(e.target.value as '' | 'sim' | 'nao')} aria-label="Anúncio">
-                <option value="">Qualquer origem</option>
-                <option value="sim">Veio de anúncio</option>
-                <option value="nao">Não veio de anúncio</option>
-              </select>
-            </label>
-            {veTudo && scope === 'todas' && attendants.length > 0 && (
-              <label className="channel-filter">
-                <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Atendente">
-                  <option value="">Todos os atendentes</option>
-                  {attendants.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
+            <button
+              type="button"
+              className={`channel-filter at-filter-btn${filtrosAtivos ? ' active' : ''}`}
+              onClick={() => setFiltrosAbertos((v) => !v)}
+              aria-expanded={filtrosAbertos}
+              aria-haspopup="true"
+            >
+              <ListFilter size={14} /> Filtros
+              {filtrosAtivos > 0 && <span className="at-seg-count">{filtrosAtivos}</span>}
+            </button>
+            {filtrosAbertos && (
+              <div className="at-filter-pop" role="group" aria-label="Filtros">
+                {tagOptions.length > 0 && (
+                  <div className="field">
+                    <label htmlFor="f-etiqueta">Etiqueta</label>
+                    <select id="f-etiqueta" className="input" value={tagFiltro} onChange={(e) => setTagFiltro(e.target.value)}>
+                      <option value="">Todas</option>
+                      {tagOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div className="field">
+                  <label htmlFor="f-compra">Compras</label>
+                  <select id="f-compra" className="input" value={compra} onChange={(e) => setCompra(e.target.value as '' | 'com' | 'sem')}>
+                    <option value="">Com ou sem compra</option>
+                    <option value="com">Com compra</option>
+                    <option value="sem">Sem compra</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="f-anuncio">Origem</label>
+                  <select id="f-anuncio" className="input" value={anuncio} onChange={(e) => setAnuncio(e.target.value as '' | 'sim' | 'nao')}>
+                    <option value="">Qualquer origem</option>
+                    <option value="sim">Veio de anúncio</option>
+                    <option value="nao">Não veio de anúncio</option>
+                  </select>
+                </div>
+                {veTudo && scope === 'todas' && attendants.length > 0 && (
+                  <div className="field">
+                    <label htmlFor="f-atendente">Atendente</label>
+                    <select id="f-atendente" className="input" value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+                      <option value="">Todos os atendentes</option>
+                      {attendants.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                {filtrosAtivos > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setTagFiltro(''); setCompra(''); setAnuncio(''); setAssignee('') }}
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

@@ -2497,7 +2497,7 @@ body.no-sidebar { --sidebar-w: 0px; }
   border-radius: 18px;
   padding: 26px;
   width: 100%;
-  max-width: 480px;
+  max-width: 600px;
   /* centraliza no overlay; o teto desconta o padding (20px de cada lado) e
      usa dvh (viewport dinâmica) para caber sempre, em qualquer zoom/altura. */
   margin: auto;
@@ -2513,7 +2513,17 @@ body.no-sidebar { --sidebar-w: 0px; }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; letter-spacing: -0.01em; }
+.modal-small { max-width: 440px; }
+.modal-wide { max-width: 1040px; }
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.modal-head .icon-btn { flex-shrink: 0; margin: -4px -6px 0 0; }
+.modal-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; min-width: 0; overflow-wrap: anywhere; }
 
 /* ---------- Modal como página (tela cheia) ---------- */
 .modal-page {
@@ -3098,8 +3108,8 @@ body.no-sidebar { --sidebar-w: 0px; }
   .page-content { padding: 18px 14px; }
   .topbar { padding: 0 14px; }
   .stat-value { font-size: 24px; }
-  .modal-overlay { left: 0; }
-  .modal { padding: 20px; border-radius: 14px; }
+  .modal-overlay { left: 0; padding: 10px; }
+  .modal { padding: 18px; border-radius: 14px; max-height: calc(100dvh - 20px); }
   .modal-page { left: 0; }
   .modal-page-bar { padding: 13px 16px; gap: 12px; }
   .modal-page-body { padding: 20px 16px 48px; }
@@ -3934,7 +3944,26 @@ body.no-sidebar { --sidebar-w: 0px; }
   line-height: 18px;
 }
 
-.at-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.at-filters { display: flex; flex-wrap: wrap; gap: 8px; position: relative; }
+.at-filter-btn { background: none; font: inherit; font-size: 12.5px; }
+.at-filter-btn.active { border-color: var(--primary); color: var(--text); }
+.at-filter-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+}
+.at-filter-pop .field { margin: 0; }
+.at-filter-pop .btn { align-self: flex-end; }
 
 .at-list-items { flex: 1; overflow-y: auto; }
 
@@ -4350,6 +4379,39 @@ button.at-doc {
   background: var(--chat-bg);
 }
 .at-composer-row { display: flex; align-items: flex-end; gap: 8px; }
+.at-attach-wrap { position: relative; flex-shrink: 0; display: flex; }
+/* Mesma altura do campo de uma linha e do botão de enviar (42px), para o clipe
+   ficar centralizado com o texto, inclusive quando o campo cresce. */
+.at-attach-wrap > .icon-btn { width: 42px; height: 42px; border-radius: 50%; }
+.at-attach-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+}
+.at-attach-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.at-attach-menu button:hover { background: var(--surface-hover); }
 .at-input {
   flex: 1;
   min-width: 0;
@@ -4787,3 +4849,7 @@ td.col-acao { width: 44px; text-align: right; }
 :root[data-theme="light"] .kpi-pattern-topo .kpi-card-bg {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='140' viewBox='0 0 220 140'%3E%3Cg fill='none' stroke='%230F172A' stroke-opacity='0.07' stroke-width='1'%3E%3Cpath d='M-10 20 C 40 0, 80 40, 130 15 S 220 25, 260 10'/%3E%3Cpath d='M-10 45 C 40 25, 90 65, 140 40 S 230 50, 260 35'/%3E%3Cpath d='M-10 70 C 50 50, 90 90, 150 65 S 230 75, 260 60'/%3E%3Cpath d='M-10 95 C 50 75, 100 115, 150 90 S 230 100, 260 85'/%3E%3C/g%3E%3C/svg%3E");
 }
+
+/* Campo de data em dia/mês/ano (ui.tsx > DateInput). */
+.date-input { min-width: 128px; }
+.date-input .input { width: 100%; }

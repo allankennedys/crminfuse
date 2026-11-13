@@ -121,7 +121,7 @@ export function MergeContactsDialog({ contact, onClose, onMerged }: {
   }
 
   return (
-    <Modal title="Unificar cadastros" onClose={onClose} wide>
+    <Modal title="Unificar cadastros" onClose={onClose} variant="dialog" wide>
       {!outro ? (
         <>
           <p className="text-muted merge-intro">

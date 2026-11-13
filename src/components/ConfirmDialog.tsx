@@ -8,7 +8,7 @@ export function ConfirmDialog() {
   if (!current) return null
 
   return (
-    <Modal title={current.title ?? 'Confirmar'} onClose={() => respond(false)}>
+    <Modal title={current.title ?? 'Confirmar'} onClose={() => respond(false)} variant="dialog" small>
       {/* pre-line para a mensagem poder ter parágrafo. Nenhuma das mensagens
           existentes usa \n, então nada muda de aparência — só passa a existir
           a opção de separar "o que vai acontecer" de "quando usar isto". */}

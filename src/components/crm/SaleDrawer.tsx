@@ -8,6 +8,7 @@ import {
 } from '@/services/crmService'
 import { useAuthStore, useCan } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
+import { DateInput } from '@/components/ui'
 import { formatSP, nowSPDatetimeLocal, spWallTimeToUtcISO } from '@/lib/datetime'
 import type { CrmContact, CrmPaymentMethod, CrmStage } from '@/types'
 
@@ -484,12 +485,10 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
           <div className="drawer-grid">
             <div className="field">
               <label>Data da venda</label>
-              <input
-                className="input"
-                type="date"
+              <DateInput
                 value={date}
                 max={nowSPDatetimeLocal().slice(0, 10)}
-                onChange={(e) => e.target.value && setDate(e.target.value)}
+                onChange={(v) => v && setDate(v)}
               />
             </div>
             <div className="field">

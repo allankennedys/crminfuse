@@ -8,7 +8,7 @@ import { MergeContactsDialog } from './MergeContactsDialog'
 import { MoveSalesChannelDialog } from './MoveSalesChannelDialog'
 import { RefundDetailDialog, refundTargetFromDetail } from './RefundDetailDialog'
 import { RefundEditDialog, type RefundTarget } from './RefundEditDialog'
-import { Modal } from '../ui'
+import { DateInput, Modal } from '../ui'
 import {
   canalLabel, channelKey, crmService, formatBRL, hasAdClick, isAdOrigem, parseBRL, paymentLabel,
   PAYMENT_METHODS, STAGE_COLORS,
@@ -866,12 +866,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                               <div className="sale-edit">
                                 <label>
                                   <span>Data</span>
-                                  <input
-                                    className="input"
-                                    type="date"
-                                    value={editDate}
-                                    onChange={(e) => setEditDate(e.target.value)}
-                                  />
+                                  <DateInput value={editDate} onChange={setEditDate} />
                                 </label>
                                 <label>
                                   <span>Valor</span>
@@ -967,12 +962,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                   <div className="sale-form">
                     <label>
                       <span>Data</span>
-                      <input
-                        className="input"
-                        type="date"
-                        value={saleDate}
-                        onChange={(e) => setSaleDate(e.target.value)}
-                      />
+                      <DateInput value={saleDate} onChange={setSaleDate} />
                     </label>
                     <label>
                       <span>Valor</span>
@@ -1092,7 +1082,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
       )}
 
       {removendo && (
-        <Modal title="Excluir venda" onClose={() => setRemovendo(null)}>
+        <Modal title="Excluir venda" onClose={() => setRemovendo(null)} variant="dialog" small>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: 18 }}>
             Venda de <strong>{formatBRL(removendo.value_cents)}</strong> em {formatSP(removendo.sold_at)}.
             O que deseja fazer?

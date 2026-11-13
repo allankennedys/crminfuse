@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { CheckCircle2, ExternalLink, Megaphone, Pencil, Receipt, RotateCcw, X as XIcon } from 'lucide-react'
-import { Loader } from '@/components/ui'
+import { DateInput, Loader } from '@/components/ui'
 import { TagInput } from '@/components/crm/TagInput'
 import { toast } from '@/store/toastStore'
 import { useCan } from '@/store/authStore'
@@ -375,7 +375,7 @@ function SaleForm({ fromAd, onCancel, onSave }: {
       </div>
       <div className="field">
         <label htmlFor="venda-dia">Data da venda</label>
-        <input id="venda-dia" className="input" type="date" value={day} max={hoje} onChange={(e) => e.target.value && setDay(e.target.value)} />
+        <DateInput id="venda-dia" value={day} max={hoje} onChange={(v) => v && setDay(v)} />
       </div>
       <div className="field">
         <label htmlFor="venda-obs">Observação</label>

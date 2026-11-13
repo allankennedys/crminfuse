@@ -1,38 +1,68 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, ArrowLeft } from 'lucide-react'
+import { Search, ArrowLeft, X, CalendarDays } from 'lucide-react'
 import type { Group, QueueStatus, SessionStatus, LogStatus, ScheduleStatus, QueuePriority, WhatsAppSession } from '@/types'
 
-export function Modal({ title, onClose, children, variant = 'page', wide = false }: {
+// Pilha dos popups abertos: o Esc fecha só o de cima (há popup dentro de popup).
+const popupStack: symbol[] = []
+
+export function Modal({ title, onClose, children, variant = 'page', wide = false, small = false }: {
   title: string
   onClose: () => void
   children: ReactNode
   /**
-   * 'page' (padrão): tela cheia que rola naturalmente, imune aos bugs de
-   * centralização.
+   * 'page' (padrão): tela cheia que rola naturalmente. Para conteúdo longo
+   * (matriz de permissões, visualizador de arquivo).
    *
-   * 'dialog' (caixa flutuante centralizada) NÃO É USADO POR NINGUÉM. As três
-   * últimas telas que o usavam — confirmação, comprovante e escolha de número
-   * — viraram página, porque a caixa flutuante dá problema em parte dos
-   * dispositivos e a régua do projeto passou a ser página sempre, inclusive
-   * para conteúdo curto. O branch continua aqui só para não quebrar código
-   * que ainda passe a prop; antes de usá-lo, releia este parágrafo.
+   * 'dialog': popup centralizado, para formulário e confirmação curtos. A
+   * caixa tem teto de altura (dvh) e rola por dentro, ancora no topo quando
+   * não cabe e vira quase tela cheia no celular, então não some nem estoura
+   * a viewport. Fecha no X e no Esc (só o de cima, se houver mais de um); o
+   * clique no fundo só fecha o `small` (confirmação), para não perder um
+   * formulário preenchido por um clique errado.
    */
   variant?: 'page' | 'dialog'
   /**
    * Solta o teto de 600px do corpo. Existe para o conteúdo que é de fato em
    * duas colunas — formulário e prévia lado a lado. Dentro dos 600px padrão,
    * a segunda coluna espreme a primeira até o formulário virar uma tira.
-   * Só no variant 'page'.
    */
   wide?: boolean
+  /** Popup estreito, para confirmação (só no variant 'dialog'). */
+  small?: boolean
 }) {
-  if (variant === 'dialog') {
+  const isDialog = variant === 'dialog'
+  useEffect(() => {
+    if (!isDialog) return
+    const id = Symbol('popup')
+    popupStack.push(id)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && popupStack[popupStack.length - 1] === id) onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      const i = popupStack.indexOf(id)
+      if (i >= 0) popupStack.splice(i, 1)
+    }
+    // onClose costuma ser uma função nova a cada render; só a abertura conta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDialog])
+
+  if (isDialog) {
     // Portal no body: garante centralização na viewport, imune a transform/filter de ancestrais
     return createPortal(
-      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-        <div className="modal">
-          <h2 className="modal-title">{title}</h2>
+      <div className="modal-overlay" onClick={(e) => small && e.target === e.currentTarget && onClose()}>
+        <div
+          className={`modal${wide ? ' modal-wide' : small ? ' modal-small' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+        >
+          <div className="modal-head">
+            <h2 className="modal-title">{title}</h2>
+            <button className="icon-btn" onClick={onClose} aria-label="Fechar"><X size={17} /></button>
+          </div>
           {children}
         </div>
       </div>,
@@ -56,6 +86,104 @@ export function Modal({ title, onClose, children, variant = 'page', wide = false
       </div>
     </div>,
     document.body,
+  )
+}
+
+const isoParaBR = (iso: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : ''
+}
+
+/** "dd/mm/aaaa" completo e existente no calendário → "aaaa-mm-dd"; senão ''. */
+function brParaISO(br: string): string {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br)
+  if (!m) return ''
+  const d = Number(m[1]), mo = Number(m[2]), y = Number(m[3])
+  const t = new Date(Date.UTC(y, mo - 1, d))
+  if (t.getUTCFullYear() !== y || t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== d) return ''
+  return `${m[3]}-${m[2]}-${m[1]}`
+}
+
+/**
+ * Campo de data SEMPRE em dia/mês/ano. O <input type="date"> nativo mostra
+ * no formato do navegador de quem abre (mm/dd/aaaa num Chrome em inglês), e
+ * a página não tem como mudar isso. Aqui o texto é digitado com máscara
+ * (dd/mm/aaaa) e o calendário nativo fica só como seletor, pelo botão.
+ *
+ * `value` e `onChange` usam "aaaa-mm-dd" (o mesmo do input nativo). Só emite
+ * data completa e válida (dentro de min/max); apagar tudo emite ''.
+ */
+export function DateInput({ value, onChange, min, max, id, className = 'input', disabled, ariaLabel }: {
+  value: string
+  onChange: (iso: string) => void
+  min?: string
+  max?: string
+  id?: string
+  className?: string
+  disabled?: boolean
+  ariaLabel?: string
+}) {
+  const [draft, setDraft] = useState(isoParaBR(value))
+  const nativo = useRef<HTMLInputElement>(null)
+
+  // O pai mudou o valor (ex.: pelo calendário ou ao abrir outro registro).
+  useEffect(() => {
+    setDraft((cur) => (brParaISO(cur) === value ? cur : isoParaBR(value)))
+  }, [value])
+
+  const dentro = (iso: string) => (!min || iso >= min) && (!max || iso <= max)
+
+  const digitar = (raw: string) => {
+    const d = raw.replace(/\D/g, '').slice(0, 8)
+    const masked = d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`
+      : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d
+    setDraft(masked)
+    if (!masked) return onChange('')
+    const iso = brParaISO(masked)
+    if (iso && dentro(iso)) onChange(iso)
+  }
+
+  const invalida = draft.length === 10 && (!brParaISO(draft) || !dentro(brParaISO(draft)))
+
+  return (
+    <div className="date-input" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <input
+        id={id}
+        className={className}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="dd/mm/aaaa"
+        maxLength={10}
+        value={draft}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        aria-invalid={invalida || undefined}
+        style={{ paddingRight: 34, ...(invalida ? { borderColor: 'var(--danger)' } : {}) }}
+        onChange={(e) => digitar(e.target.value)}
+        onBlur={() => { if (invalida || draft.length < 10) setDraft(isoParaBR(value)) }}
+      />
+      <button
+        type="button"
+        className="icon-btn"
+        style={{ position: 'absolute', right: 4 }}
+        disabled={disabled}
+        aria-label="Abrir calendário"
+        onClick={() => { const el = nativo.current; if (el?.showPicker) el.showPicker(); else el?.click() }}
+      >
+        <CalendarDays size={15} />
+      </button>
+      <input
+        ref={nativo}
+        type="date"
+        tabIndex={-1}
+        aria-hidden="true"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e) => e.target.value && onChange(e.target.value)}
+        style={{ position: 'absolute', right: 4, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+      />
+    </div>
   )
 }
 
