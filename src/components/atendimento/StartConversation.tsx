@@ -72,7 +72,7 @@ export function StartConversation({ initialContact, onClose, onStarted }: {
   const sessaoLabel = (s: Sessao) => (s.phone_number ? formatPhone(s.phone_number) : s.instance_name)
 
   return (
-    <Modal title="Nova conversa" onClose={onClose}>
+    <Modal title="Nova conversa" onClose={onClose} variant="dialog">
       {sessoes === null ? <Loader /> : sessoes.length === 0 ? (
         <p className="text-secondary">
           Nenhum número de WhatsApp está ligado ao atendimento. Um administrador liga em

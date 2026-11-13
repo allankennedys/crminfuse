@@ -52,7 +52,7 @@ export function RefundDetailDialog({ saleId, onClose, onOpenContact, onEdit }: {
   const rotulo = { fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }
 
   return (
-    <Modal title="Reembolso" onClose={onClose}>
+    <Modal title="Reembolso" onClose={onClose} variant="dialog">
       {erro ? (
         <p style={{ color: 'var(--danger)', fontSize: 14 }}>{erro}</p>
       ) : detail === undefined ? (

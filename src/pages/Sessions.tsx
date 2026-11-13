@@ -187,7 +187,7 @@ export function SessionsPage() {
       )}
 
       {qrSession && (
-        <Modal title="Conectar número" onClose={() => setQrSession(null)}>
+        <Modal title="Conectar número" onClose={() => setQrSession(null)} variant="dialog">
           {qrCode ? (
             <>
               <p className="text-secondary" style={{ fontSize: 13 }}>

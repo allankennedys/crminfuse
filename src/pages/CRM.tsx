@@ -7,7 +7,7 @@ import {
 import { addDaysISO, nowSPDatetimeLocal } from '@/lib/datetime'
 import { useAuthStore, useCan } from '@/store/authStore'
 import { useRealtime } from '@/hooks/useRealtime'
-import { Loader, EmptyState } from '@/components/ui'
+import { DateInput, Loader, EmptyState } from '@/components/ui'
 import { toast } from '@/store/toastStore'
 import { ContactsTable } from '@/components/crm/ContactsTable'
 import { ContactDrawer } from '@/components/crm/ContactDrawer'
@@ -432,22 +432,18 @@ export function CRMPage() {
 
                 {periodo === 'custom' && (
                   <span className="board-range">
-                    <input
-                      className="input"
-                      type="date"
+                    <DateInput
                       value={customFrom}
                       max={hojeSP()}
-                      onChange={(e) => e.target.value && setCustomFrom(e.target.value)}
-                      aria-label="Entrada a partir de"
+                      onChange={(v) => v && setCustomFrom(v)}
+                      ariaLabel="Entrada a partir de"
                     />
                     <span className="text-muted">até</span>
-                    <input
-                      className="input"
-                      type="date"
+                    <DateInput
                       value={customTo}
                       max={hojeSP()}
-                      onChange={(e) => e.target.value && setCustomTo(e.target.value)}
-                      aria-label="Entrada até"
+                      onChange={(v) => v && setCustomTo(v)}
+                      ariaLabel="Entrada até"
                     />
                   </span>
                 )}

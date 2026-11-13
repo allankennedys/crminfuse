@@ -84,7 +84,7 @@ export function NumerosAtendimento({ onClose, onChanged }: { onClose: () => void
   }
 
   return (
-    <Modal title="Números do atendimento" onClose={onClose}>
+    <Modal title="Números do atendimento" onClose={onClose} variant="dialog">
       <p className="text-secondary" style={{ marginBottom: 16 }}>
         As conversas individuais dos números ligados aparecem na aba Atendimento. Grupos não entram.
       </p>

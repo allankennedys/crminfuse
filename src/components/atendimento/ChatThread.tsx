@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRightLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
-  Hand, Mic, Paperclip, Play, RotateCcw, Send, X as XIcon,
+  Hand, Headphones, Image as ImageIcon, Mic, Paperclip, Play, RotateCcw, Send, X as XIcon,
 } from 'lucide-react'
 import { useVoiceRecorder } from './useVoiceRecorder'
 import { VoiceComposer } from './VoiceComposer'
@@ -107,6 +107,25 @@ export function ChatThread({
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [menuAnexo, setMenuAnexo] = useState(false)
+  const anexoRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!menuAnexo) return
+    const fora = (e: MouseEvent) => { if (anexoRef.current && !anexoRef.current.contains(e.target as Node)) setMenuAnexo(false) }
+    const esc = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') setMenuAnexo(false) }
+    document.addEventListener('mousedown', fora)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc) }
+  }, [menuAnexo])
+  // Abre o seletor de arquivos já filtrado pelo tipo escolhido.
+  const escolherAnexo = (accept: string) => {
+    setMenuAnexo(false)
+    const el = fileRef.current
+    if (!el) return
+    if (accept) el.setAttribute('accept', accept)
+    else el.removeAttribute('accept')
+    el.click()
+  }
   // Perto do fim = acompanha as mensagens novas. Rolou para cima lendo o
   // histórico = não arrasta a pessoa de volta.
   const stickRef = useRef(true)
@@ -482,6 +501,13 @@ export function ChatThread({
           </div>
         </div>
         <div className="at-head-actions">
+          {canAssign && !conv.assigned_to && canTake && (
+            // Quem atribui também precisa do atalho: sem ele, assumir exigia
+            // achar o próprio nome no seletor.
+            <button className="btn btn-primary btn-sm" onClick={take} disabled={busy}>
+              <Hand size={14} /> Assumir
+            </button>
+          )}
           {canAssign ? (
             <label className="channel-filter at-assign" title="Atendente responsável">
               <select value={conv.assigned_to ?? ''} disabled={busy} onChange={(e) => assign(e.target.value)} aria-label="Atendente">
@@ -588,16 +614,33 @@ export function ChatThread({
           <VoiceComposer voice={voice} />
         ) : (
           <div className="at-composer-row">
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => fileRef.current?.click()}
-              disabled={semNumero}
-              title="Anexar arquivo"
-              aria-label="Anexar arquivo"
-            >
-              <Paperclip size={17} />
-            </button>
+            <div className="at-attach-wrap" ref={anexoRef}>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setMenuAnexo((v) => !v)}
+                disabled={semNumero}
+                title="Anexar"
+                aria-label="Anexar"
+                aria-haspopup="menu"
+                aria-expanded={menuAnexo}
+              >
+                <Paperclip size={17} />
+              </button>
+              {menuAnexo && (
+                <div className="at-attach-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => escolherAnexo('image/*,video/*')}>
+                    <ImageIcon size={16} /> Foto ou vídeo
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => escolherAnexo('')}>
+                    <FileText size={16} /> Documento
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => escolherAnexo('audio/*')}>
+                    <Headphones size={16} /> Áudio
+                  </button>
+                </div>
+              )}
+            </div>
             <input
               ref={fileRef}
               type="file"
@@ -736,7 +779,7 @@ function TransferDialog({ conversationName, currentUser, attendants, onClose, on
   }
 
   return (
-    <Modal title={`Transferir conversa de ${conversationName}`} onClose={onClose}>
+    <Modal title={`Transferir conversa de ${conversationName}`} onClose={onClose} variant="dialog">
       <form onSubmit={submit}>
         <div className="field">
           <label htmlFor="transfer-to">Para</label>

@@ -191,7 +191,7 @@ export function RefundEditDialog({ sale, onClose, onSaved }: {
   const rotulo = { fontSize: 12, color: 'var(--text-secondary)' }
 
   return (
-    <Modal title={sale.refunded_at ? 'Editar reembolso' : 'Marcar como reembolso'} onClose={() => onClose()}>
+    <Modal title={sale.refunded_at ? 'Editar reembolso' : 'Marcar como reembolso'} onClose={() => onClose()} variant="dialog">
       <form onSubmit={(e) => { e.preventDefault(); void save() }}>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: 14 }}>
           Venda de <strong>{formatBRL(sale.value_cents)}</strong> em {formatSP(sale.sold_at)}.

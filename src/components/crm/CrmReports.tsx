@@ -18,7 +18,7 @@ import { JourneyNative } from './JourneyNative'
 import { crmService, formatBRL } from '@/services/crmService'
 import { metaAdsService } from '@/services/metaAdsService'
 import type { DateRange } from '@/services/crmService'
-import { Loader, EmptyState } from '@/components/ui'
+import { DateInput, Loader, EmptyState } from '@/components/ui'
 import { ContactDrawer } from './ContactDrawer'
 import { SaleDrawer } from './SaleDrawer'
 import { RefundDetailDialog, refundTargetFromDetail } from './RefundDetailDialog'
@@ -606,29 +606,25 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
         <div className="crm-range">
           <label>
             <span>De</span>
-            <input
-              className="input"
-              type="date"
+            <DateInput
               value={customFromInput}
               min={DATA_MINIMA}
               max={todaySP()}
-              onChange={(e) => {
-                setCustomFromInput(e.target.value)
-                if (dataAceitavel(e.target.value)) setCustomFrom(e.target.value)
+              onChange={(v) => {
+                setCustomFromInput(v)
+                if (dataAceitavel(v)) setCustomFrom(v)
               }}
             />
           </label>
           <label>
             <span>Até</span>
-            <input
-              className="input"
-              type="date"
+            <DateInput
               value={customToInput}
               min={DATA_MINIMA}
               max={todaySP()}
-              onChange={(e) => {
-                setCustomToInput(e.target.value)
-                if (dataAceitavel(e.target.value)) setCustomTo(e.target.value)
+              onChange={(v) => {
+                setCustomToInput(v)
+                if (dataAceitavel(v)) setCustomTo(v)
               }}
             />
           </label>

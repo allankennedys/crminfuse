@@ -124,7 +124,7 @@ export function MoveSalesChannelDialog({
   }
 
   return (
-    <Modal title="Mover vendas para outro canal" onClose={onClose}>
+    <Modal title="Mover vendas para outro canal" onClose={onClose} variant="dialog">
       <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
         As marcadas mudam de canal. As demais ficam
         em {canalLabel(contact.channel ?? '') || 'canal em branco'}.

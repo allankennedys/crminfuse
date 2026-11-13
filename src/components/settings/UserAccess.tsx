@@ -599,7 +599,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       )}
 
       {showInvite && (
-        <Modal title="Novo usuário" onClose={() => setShowInvite(false)}>
+        <Modal title="Novo usuário" onClose={() => setShowInvite(false)} variant="dialog">
           <div className="field">
             <label>Usuário</label>
             <input className="input" type="text" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={inviteUsername} onChange={(e) => setInviteUsername(e.target.value)} placeholder="ex: joao.silva" autoFocus />
@@ -711,7 +711,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       )}
 
       {deleteTarget && (
-        <Modal title="Excluir usuário" onClose={() => setDeleteTarget(null)}>
+        <Modal title="Excluir usuário" onClose={() => setDeleteTarget(null)} variant="dialog" small>
           <p style={{ marginBottom: 8 }}>
             Você está prestes a excluir{' '}
             <strong style={{ color: 'var(--text)' }}>
@@ -749,7 +749,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       )}
 
       {showOwnPw && (
-        <Modal title="Trocar minha senha" onClose={() => setShowOwnPw(false)}>
+        <Modal title="Trocar minha senha" onClose={() => setShowOwnPw(false)} variant="dialog">
           <div className="field">
             <label>Nova senha</label>
             <input
@@ -785,7 +785,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       )}
 
       {pwTarget && (
-        <Modal title="Definir senha" onClose={() => setPwTarget(null)}>
+        <Modal title="Definir senha" onClose={() => setPwTarget(null)} variant="dialog">
           <p style={{ marginBottom: 8 }}>
             Definir uma nova senha para{' '}
             <strong style={{ color: 'var(--text)' }}>
