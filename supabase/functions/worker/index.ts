@@ -18,6 +18,7 @@
  */
 
 import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { autoEnableChat } from '../_shared/chatEnable.ts'
 
 type Json = Record<string, unknown>
 
@@ -56,7 +57,7 @@ function mapState(state: string | undefined): string {
 }
 
 async function refreshSessions() {
-  const { data: sessions } = await svc.from('whatsapp_sessions').select('id, instance_name, status')
+  const { data: sessions } = await svc.from('whatsapp_sessions').select('id, instance_name, status, chat_enabled, chat_manual_off')
   for (const s of sessions ?? []) {
     const res = await evo(`/instance/connectionState/${s.instance_name}`)
     const status = res.ok ? mapState((res.data?.instance as Json | undefined)?.state as string) : 'error'
@@ -64,6 +65,8 @@ async function refreshSessions() {
       status,
       last_seen_at: new Date().toISOString(),
     }).eq('id', s.id)
+    // Conectado e fora do atendimento: liga sozinho (não mexe em webhook alheio).
+    if (status === 'connected' && !s.chat_enabled) await autoEnableChat(svc, (m, p, b) => evo(p, m, b), s)
   }
 }
 

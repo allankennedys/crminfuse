@@ -515,7 +515,7 @@ async function enable(userClient: SupabaseClient, userId: string, body: Json) {
     throw new HttpError(502, evolutionError(res, 'configurar o webhook do número'))
   }
 
-  const { error } = await admin.from('whatsapp_sessions').update({ chat_enabled: true }).eq('id', s.id)
+  const { error } = await admin.from('whatsapp_sessions').update({ chat_enabled: true, chat_manual_off: false }).eq('id', s.id)
   if (error) throw error
   return { ok: true }
 }
@@ -549,7 +549,7 @@ async function disable(userClient: SupabaseClient, userId: string, body: Json) {
   if (!res.ok && res.status !== 404) throw new HttpError(502, evolutionError(res, 'desligar o webhook do número'))
 
   await admin.from('wa_session_secrets').delete().eq('session_id', s.id)
-  const { error } = await admin.from('whatsapp_sessions').update({ chat_enabled: false }).eq('id', s.id)
+  const { error } = await admin.from('whatsapp_sessions').update({ chat_enabled: false, chat_manual_off: true }).eq('id', s.id)
   if (error) throw error
   return { ok: true, restored: Boolean(prev?.url) }
 }

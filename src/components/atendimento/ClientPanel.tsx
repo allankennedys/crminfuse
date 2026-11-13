@@ -338,7 +338,7 @@ function EditForm({ card, fallbackName, onCancel, onSave }: {
   )
 }
 
-function SaleForm({ fromAd, onCancel, onSave }: {
+export function SaleForm({ fromAd, onCancel, onSave }: {
   fromAd: boolean
   onCancel: () => void
   onSave: (s: { valueCents: number; payment: string | null; soldAt: string | null; note: string }) => Promise<void>

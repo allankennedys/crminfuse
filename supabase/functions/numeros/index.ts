@@ -25,6 +25,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import QRCode from 'npm:qrcode@1.5.4'
+import { autoEnableChat } from '../_shared/chatEnable.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -52,6 +53,8 @@ interface Sessao {
   created_by: string | null
   phone_number: string | null
   status: string
+  chat_enabled?: boolean
+  chat_manual_off?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -113,7 +116,7 @@ async function sessaoDoUsuario(
   if (typeof id !== 'string' || !id) throw new HttpError(400, 'Número não informado')
   const { data } = await admin
     .from('whatsapp_sessions')
-    .select('id, organization_id, instance_name, created_by, phone_number, status')
+    .select('id, organization_id, instance_name, created_by, phone_number, status, chat_enabled, chat_manual_off')
     .eq('id', id)
     .maybeSingle<Sessao>()
   const dono = data && data.organization_id === profile.organization_id && (
@@ -205,7 +208,9 @@ async function criar(organizationId: string, userId: string) {
       throw new HttpError(500, 'Falha ao registrar o número')
     }
 
-    return { session, qr: await desenharQr(created.data?.qrcode) }
+    // O número já nasce no atendimento: não depende de ninguém ligar depois.
+    await autoEnableChat(admin, servidor, { id: session.id, instance_name: name })
+    return { session: { ...session, chat_enabled: true }, qr: await desenharQr(created.data?.qrcode) }
   }
 
   throw new HttpError(409, 'Não foi possível gerar um nome livre para o número. Tente de novo.')
@@ -233,6 +238,9 @@ async function status(s: Sessao) {
     if (phone) patch.phone_number = phone
   }
   await admin.from('whatsapp_sessions').update(patch).eq('id', s.id)
+  // Conectou e ainda não está no atendimento (número criado antes desta regra):
+  // liga sozinho, a menos que a instância tenha o webhook de outro sistema.
+  if (novo === 'connected' && !s.chat_enabled) await autoEnableChat(admin, servidor, s)
   return { status: novo }
 }
 

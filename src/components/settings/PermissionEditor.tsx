@@ -54,15 +54,18 @@ export function PermissionEditor({
    */
   function togglePerm(area: PermissionArea, key: string) {
     const verKey = area.actions.find((a) => a.key.endsWith('.ver'))?.key
+    // "Mover os das suas conversas" é independente de "Ver": ela mostra só os
+    // contatos da própria pessoa, e marcar "Ver" junto mostraria o funil todo.
+    const independente = (k: string) => k === 'crm.funil.mover'
     const next = new Set(selected)
     if (next.has(key)) {
       next.delete(key)
       if (verKey && key === verKey) {
-        for (const a of area.actions) next.delete(a.key)
+        for (const a of area.actions) if (!independente(a.key)) next.delete(a.key)
       }
     } else {
       next.add(key)
-      if (verKey) next.add(verKey)
+      if (verKey && !independente(key)) next.add(verKey)
     }
     onSelectedChange(next)
     // Mexeu, personalizou. Sem isto a marcação apareceria na tela e não seria

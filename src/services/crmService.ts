@@ -1600,7 +1600,7 @@ export const crmService = {
       .select('id')
     if (error) throw error
     if (!data?.length) {
-      throw new Error('Nada foi gravado. Seu usuário não tem permissão para mover este contato.')
+      throw new Error('Nada foi gravado. Você só pode mover contatos das suas próprias conversas.')
     }
   },
 

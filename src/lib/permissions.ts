@@ -118,7 +118,13 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     sistema: 'crm',
     label: 'Funil',
     hint: 'O kanban e o histórico de movimentação',
-    actions: [{ key: 'crm.funil.ver', label: 'Ver' }],
+    actions: [
+      { key: 'crm.funil.ver', label: 'Ver' },
+      // Para quem não edita contatos (ex.: Atendente): vê no funil só os
+      // contatos das suas conversas e arrasta entre etapas. Não vale para a
+      // etapa de conversão (que exige lançar venda) nem edita dados.
+      { key: 'crm.funil.mover', label: 'Mover os das suas conversas' },
+    ],
   },
   {
     id: 'crm.etapas',

@@ -28,6 +28,8 @@ export interface WaListFilters {
   compra?: 'com' | 'sem'
   /** Veio de anúncio ou não. */
   anuncio?: 'sim' | 'nao'
+  /** Só estes números (canais). Vazio = todos os que a pessoa pode ver. */
+  sessions?: string[]
   /** Recorte por data (dias "AAAA-MM-DD", inclusivos, em São Paulo). */
   data?: { tipo: 'abertura' | 'conclusao' | 'interacao'; de?: string; ate?: string }
 }
@@ -80,6 +82,7 @@ export const atendimentoService = {
       .order('id', { ascending: false })
       .range(offset, offset + limit - 1)
 
+    if (f.sessions?.length) q = q.in('session_id', f.sessions)
     if (f.scope === 'minhas') q = q.eq('assigned_to', f.userId)
     else if (f.scope === 'fila') q = q.is('assigned_to', null)
     else if (f.assignee) q = q.eq('assigned_to', f.assignee)
@@ -216,6 +219,28 @@ export const atendimentoService = {
     const { data, error } = await supabase.rpc('wa_client_set_custom', { p_conversation: conversationId, p_custom: custom })
     if (error) throw error
     return data as WaClientCard
+  },
+
+  // ---------- Números por atendente (143) ----------
+
+  /** Todos os números da organização (só para quem configura o atendimento). */
+  async allSessions(): Promise<WaSession[]> {
+    const { data, error } = await supabase.rpc('wa_sessions_all')
+    if (error) return []
+    return (data as WaSession[] | null) ?? []
+  },
+
+  /** { atendente → números permitidos }. Quem não aparece tem acesso a todos. */
+  async userSessions(): Promise<Map<string, string[]>> {
+    const { data, error } = await supabase.rpc('wa_user_sessions_list')
+    if (error) return new Map()
+    return new Map(((data ?? []) as Array<{ user_id: string; session_ids: string[] }>).map((r) => [r.user_id, r.session_ids]))
+  },
+
+  /** ids = null libera todos os números para o atendente. */
+  async setUserSessions(userId: string, ids: string[] | null): Promise<void> {
+    const { error } = await supabase.rpc('wa_user_sessions_set', { p_user: userId, p_sessions: ids })
+    if (error) throw error
   },
 
   // ---------- Notas internas (138) ----------

@@ -4906,8 +4906,15 @@ td.col-acao { width: 44px; text-align: right; }
 }
 
 /* Campo de data em dia/mês/ano (ui.tsx > DateInput). */
-.date-input { min-width: 128px; }
-.date-input .input { width: 100%; }
+.date-input { min-width: 0; width: 100%; }
+.date-input .input { width: 100%; min-width: 0; }
+/* Onde a largura é "a do conteúdo" (sem coluna para preencher), o campo precisa
+   de largura própria para caber dd/mm/aaaa mais o ícone do calendário. */
+.board-range .date-input,
+.crm-range .date-input { width: 140px; }
+/* Linhas de venda: o rótulo da data ganha mais espaço que os outros campos. */
+.sale-form > label:has(.date-input),
+.sale-edit label:has(.date-input) { flex: 1 1 140px; }
 
 .at-filter-dates { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .at-filter-dates .date-input { flex: 1; min-width: 0; }
@@ -4931,3 +4938,8 @@ td.col-acao { width: 44px; text-align: right; }
 /* Campo personalizado no cartão do funil (141) */
 .kanban-custom { font-size: 11.5px; color: var(--text-secondary); margin: 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kanban-custom span { color: var(--text-muted); }
+
+.at-filter-numeros { display: grid; gap: 4px; max-height: 140px; overflow-y: auto; margin: 2px 0 4px; }
+.at-num-row { padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.at-num-row:last-child { border-bottom: none; padding-bottom: 0; }
+.at-num-checks { display: grid; gap: 4px; margin: 8px 0 0 12px; }
