@@ -91,6 +91,11 @@ Deno.serve(async (req) => {
       case 'enable': return json(await enable(userClient, user.id, body))
       case 'disable': return json(await disable(userClient, user.id, body))
       case 'start': return json(await start(userClient, user.id, body))
+      case 'send_location': return json(await sendLocation(userClient, user.id, body))
+      case 'send_contact': return json(await sendContact(userClient, user.id, body))
+      case 'edit_message': return json(await editMessage(userClient, user.id, body))
+      case 'delete_message': return json(await deleteMessage(userClient, user.id, body))
+      case 'react': return json(await react(userClient, user.id, body))
       default: throw new HttpError(400, 'Ação desconhecida')
     }
   } catch (err) {
@@ -171,6 +176,164 @@ async function sendText(userClient: SupabaseClient, userId: string, body: Json) 
   if (!res.ok || !res.data?.key?.id) throw new HttpError(502, evolutionError(res, 'enviar a mensagem'))
 
   return { message: await record(conv, userId, res.data, { type: 'text', body: text }) }
+}
+
+/** Localização (ponto no mapa). Chega ao cliente como o pino do WhatsApp. */
+async function sendLocation(userClient: SupabaseClient, userId: string, body: Json) {
+  const conv = await loadConversation(userClient, body?.conversation_id)
+  const lat = Number(body?.latitude)
+  const lng = Number(body?.longitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    throw new HttpError(400, 'Latitude ou longitude inválida')
+  }
+  const name = String(body?.name ?? '').trim().slice(0, 100)
+  const address = String(body?.address ?? '').trim().slice(0, 200)
+
+  const instance = await instanceOf(conv)
+  const res = await evolution('POST', `/message/sendLocation/${encodeURIComponent(instance)}`, {
+    number: target(conv), name: name || 'Localização', address, latitude: lat, longitude: lng,
+  })
+  if (!res.ok || !res.data?.key?.id) throw new HttpError(502, evolutionError(res, 'enviar a localização'))
+
+  const label = [name, address].filter(Boolean).join(', ')
+  return {
+    message: await record(conv, userId, res.data, {
+      type: 'location',
+      body: `📍 ${label ? label + '\n' : ''}https://maps.google.com/?q=${lat},${lng}`,
+    }),
+  }
+}
+
+/** Cartão de contato (nome + telefone). */
+async function sendContact(userClient: SupabaseClient, userId: string, body: Json) {
+  const conv = await loadConversation(userClient, body?.conversation_id)
+  const name = String(body?.name ?? '').trim().slice(0, 100)
+  const digits = normalizePhone(String(body?.phone ?? ''))
+  if (!name) throw new HttpError(400, 'Informe o nome do contato')
+  if (digits.length < 10 || digits.length > 15) throw new HttpError(400, 'Telefone do contato inválido')
+
+  const instance = await instanceOf(conv)
+  const res = await evolution('POST', `/message/sendContact/${encodeURIComponent(instance)}`, {
+    number: target(conv),
+    contact: [{ fullName: name, wuid: digits, phoneNumber: `+${digits}` }],
+  })
+  if (!res.ok || !res.data?.key?.id) throw new HttpError(502, evolutionError(res, 'enviar o contato'))
+
+  return { message: await record(conv, userId, res.data, { type: 'contact', body: `👤 ${name}\n+${digits}` }) }
+}
+
+// ---------------------------------------------------------------------------
+// Editar, apagar e reagir
+// ---------------------------------------------------------------------------
+
+interface MsgRow {
+  id: string
+  conversation_id: string
+  wa_message_id: string
+  from_me: boolean
+  sent_by: string | null
+  type: string
+  wa_timestamp: string
+  deleted_at: string | null
+}
+
+/** A mensagem como o USUÁRIO a enxerga (RLS) e a conversa dela. */
+async function loadMessage(userClient: SupabaseClient, id: unknown): Promise<{ msg: MsgRow; conv: Conversation }> {
+  if (typeof id !== 'string' || !id) throw new HttpError(400, 'message_id obrigatório')
+  const { data: msg } = await userClient
+    .from('wa_messages')
+    .select('id, conversation_id, wa_message_id, from_me, sent_by, type, wa_timestamp, deleted_at')
+    .eq('id', id)
+    .maybeSingle<MsgRow>()
+  if (!msg) throw new HttpError(404, 'Mensagem não encontrada')
+  const conv = await loadConversation(userClient, msg.conversation_id)
+  return { msg, conv }
+}
+
+/**
+ * Quem pode editar/apagar: a própria mensagem do atendente, se o admin
+ * permitir (wa_settings); quem configura o atendimento pode as da equipe.
+ */
+async function assertCanChange(
+  userClient: SupabaseClient,
+  userId: string,
+  msg: MsgRow,
+  conv: Conversation,
+  flag: 'allow_edit_messages' | 'allow_delete_messages',
+) {
+  if (!msg.from_me) throw new HttpError(403, 'Só dá para mexer em mensagens enviadas pela equipe')
+  const { data: admin_ } = await userClient.rpc('current_user_can', { p_perm: 'atendimento.configurar' })
+  if (admin_ === true) return
+  const { data: set } = await admin.from('wa_settings').select(flag).eq('organization_id', conv.organization_id).maybeSingle()
+  if (!set?.[flag]) {
+    throw new HttpError(403, flag === 'allow_edit_messages'
+      ? 'O administrador não liberou a edição de mensagens'
+      : 'O administrador não liberou apagar mensagens')
+  }
+  if (msg.sent_by !== userId) throw new HttpError(403, 'Você só pode mexer nas mensagens que você enviou')
+}
+
+async function editMessage(userClient: SupabaseClient, userId: string, body: Json) {
+  const { msg, conv } = await loadMessage(userClient, body?.message_id)
+  await assertCanChange(userClient, userId, msg, conv, 'allow_edit_messages')
+  const text = String(body?.text ?? '').trim()
+  if (!text) throw new HttpError(400, 'Mensagem vazia')
+  if (text.length > 4096) throw new HttpError(400, 'Mensagem longa demais (máx. 4096 caracteres)')
+  if (msg.type !== 'text') throw new HttpError(400, 'Só mensagens de texto podem ser editadas')
+  if (msg.deleted_at) throw new HttpError(400, 'Esta mensagem foi apagada')
+  if (Date.now() - new Date(msg.wa_timestamp).getTime() > 15 * 60_000) {
+    throw new HttpError(400, 'O WhatsApp só deixa editar até 15 minutos depois de enviar')
+  }
+
+  const instance = await instanceOf(conv)
+  const res = await evolution('POST', `/chat/updateMessage/${encodeURIComponent(instance)}`, {
+    number: target(conv),
+    key: { remoteJid: conv.remote_jid, fromMe: true, id: msg.wa_message_id },
+    text,
+  })
+  if (!res.ok) throw new HttpError(502, evolutionError(res, 'editar a mensagem'))
+
+  await admin.rpc('wa_message_event', {
+    p_session: conv.session_id, p_kind: 'edit', p_target: msg.wa_message_id, p_text: text, p_actor: userId,
+  })
+  return { ok: true }
+}
+
+async function deleteMessage(userClient: SupabaseClient, userId: string, body: Json) {
+  const { msg, conv } = await loadMessage(userClient, body?.message_id)
+  await assertCanChange(userClient, userId, msg, conv, 'allow_delete_messages')
+  if (msg.deleted_at) return { ok: true }
+
+  const instance = await instanceOf(conv)
+  const res = await evolution('DELETE', `/chat/deleteMessageForEveryone/${encodeURIComponent(instance)}`, {
+    id: msg.wa_message_id, remoteJid: conv.remote_jid, fromMe: true,
+  })
+  if (!res.ok) throw new HttpError(502, evolutionError(res, 'apagar a mensagem'))
+
+  await admin.rpc('wa_message_event', {
+    p_session: conv.session_id, p_kind: 'delete', p_target: msg.wa_message_id, p_text: null, p_actor: userId,
+  })
+  return { ok: true }
+}
+
+/** Reage a uma mensagem (qualquer lado). emoji vazio = tira a reação. */
+async function react(userClient: SupabaseClient, userId: string, body: Json) {
+  const { msg, conv } = await loadMessage(userClient, body?.message_id)
+  const emoji = String(body?.emoji ?? '').trim()
+  if (emoji.length > 16) throw new HttpError(400, 'Reação inválida')
+  if (msg.deleted_at) throw new HttpError(400, 'Esta mensagem foi apagada')
+
+  const instance = await instanceOf(conv)
+  const res = await evolution('POST', `/message/sendReaction/${encodeURIComponent(instance)}`, {
+    key: { remoteJid: conv.remote_jid, fromMe: msg.from_me, id: msg.wa_message_id },
+    reaction: emoji,
+  })
+  if (!res.ok) throw new HttpError(502, evolutionError(res, 'reagir à mensagem'))
+
+  await admin.rpc('wa_message_event', {
+    p_session: conv.session_id, p_kind: 'reaction', p_target: msg.wa_message_id, p_text: emoji, p_actor: userId,
+  })
+  return { ok: true }
 }
 
 async function sendMedia(userClient: SupabaseClient, userId: string, body: Json) {

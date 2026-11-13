@@ -221,6 +221,31 @@ export const atendimentoService = {
     return data as WaClientCard
   },
 
+  // ---------- Localização, contato, editar, apagar e reagir (144) ----------
+
+  async sendLocation(conversationId: string, p: { latitude: number; longitude: number; name?: string; address?: string }): Promise<WaMessage> {
+    const r = await invokeChat<{ message: WaMessage }>({ action: 'send_location', conversation_id: conversationId, ...p })
+    return r.message
+  },
+
+  async sendContact(conversationId: string, name: string, phone: string): Promise<WaMessage> {
+    const r = await invokeChat<{ message: WaMessage }>({ action: 'send_contact', conversation_id: conversationId, name, phone })
+    return r.message
+  },
+
+  async editMessage(messageId: string, text: string): Promise<void> {
+    await invokeChat({ action: 'edit_message', message_id: messageId, text })
+  },
+
+  async deleteMessage(messageId: string): Promise<void> {
+    await invokeChat({ action: 'delete_message', message_id: messageId })
+  },
+
+  /** emoji vazio tira a reação. */
+  async react(messageId: string, emoji: string): Promise<void> {
+    await invokeChat({ action: 'react', message_id: messageId, emoji })
+  },
+
   // ---------- Números por atendente (143) ----------
 
   /** Todos os números da organização (só para quem configura o atendimento). */
@@ -339,11 +364,11 @@ export const atendimentoService = {
   async getSettings(organizationId: string): Promise<WaSettings> {
     const { data } = await supabase
       .from('wa_settings')
-      .select('organization_id, restrict_to_assigned, auto_conclude_hours, auto_greeting_on, auto_greeting_text, auto_away_on, auto_away_text, business_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons')
+      .select('organization_id, restrict_to_assigned, auto_conclude_hours, allow_edit_messages, allow_delete_messages, auto_greeting_on, auto_greeting_text, auto_away_on, auto_away_text, business_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons')
       .eq('organization_id', organizationId)
       .maybeSingle<WaSettings>()
     return data ?? {
-      organization_id: organizationId, restrict_to_assigned: true, auto_conclude_hours: null, auto_greeting_on: false, auto_greeting_text: null,
+      organization_id: organizationId, restrict_to_assigned: true, auto_conclude_hours: null, allow_edit_messages: false, allow_delete_messages: false, auto_greeting_on: false, auto_greeting_text: null,
       auto_away_on: false, auto_away_text: null, business_hours: { days: [1, 2, 3, 4, 5], start: '09:00', end: '18:00' },
       assign_mode: 'manual', fixed_user: null, pool: [],
       max_open_per_agent: null,

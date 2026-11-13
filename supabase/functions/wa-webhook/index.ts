@@ -128,8 +128,23 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
     const jids = resolveJids(key, item)
     if (!jids) continue // grupo, status, canal…
 
+    // Reação, edição e exclusão: atualizam a mensagem que já existe, não
+    // viram mensagem nova.
+    const evento = parseEvento(item.message)
+    if (evento) {
+      const { error: eErr } = await admin.rpc('wa_message_event', {
+        p_session: session.id,
+        p_kind: evento.kind,
+        p_target: evento.target,
+        p_text: evento.text,
+        p_actor: evento.kind === 'reaction' ? (key.fromMe ? 'equipe' : 'cliente') : null,
+      })
+      if (eErr) throw eErr
+      continue
+    }
+
     const parsed = parseContent(item.message, item.messageType)
-    if (!parsed) continue // protocolo, edição, reação removida…
+    if (!parsed) continue // protocolo, chaves…
 
     const fromMe = Boolean(key.fromMe)
     // Só mensagem do cliente traz anúncio de verdade.
@@ -265,6 +280,40 @@ function findAd(item: Json): Record<string, string | null> | null {
       source_url: url || null,
       source_app: app,
       title: ar.title ? String(ar.title).slice(0, 200) : null,
+    }
+  }
+  return null
+}
+
+/**
+ * Reação, edição ou exclusão feitas no WhatsApp. O formato muda entre versões
+ * da Evolution, por isso aceita as formas conhecidas: protocolMessage (tipo
+ * REVOKE/0 = apagar, MESSAGE_EDIT/14 = editar) e editedMessage embrulhada.
+ */
+function parseEvento(message: Json): { kind: 'reaction' | 'edit' | 'delete'; target: string; text: string | null } | null {
+  if (!message || typeof message !== 'object') return null
+  let m: Json = message
+  for (let i = 0; i < 3; i++) {
+    const inner = m.ephemeralMessage?.message ?? m.viewOnceMessage?.message ?? m.documentWithCaptionMessage?.message
+    if (!inner) break
+    m = inner
+  }
+
+  if (m.reactionMessage) {
+    const target = m.reactionMessage.key?.id
+    return target ? { kind: 'reaction', target: String(target), text: String(m.reactionMessage.text ?? '') } : null
+  }
+
+  const proto = m.protocolMessage ?? m.editedMessage?.message?.protocolMessage
+  if (proto) {
+    const t = proto.type
+    const target = proto.key?.id
+    if (!target) return null
+    if (t === 0 || t === 'REVOKE') return { kind: 'delete', target: String(target), text: null }
+    if (t === 14 || t === 'MESSAGE_EDIT' || proto.editedMessage) {
+      const e = proto.editedMessage ?? {}
+      const text = e.conversation ?? e.extendedTextMessage?.text ?? null
+      return text ? { kind: 'edit', target: String(target), text: String(text) } : null
     }
   }
   return null

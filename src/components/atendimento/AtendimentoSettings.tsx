@@ -229,6 +229,33 @@ export function AtendimentoSettings() {
         <label className="at-toggle">
           <input
             type="checkbox"
+            checked={settings.allow_edit_messages}
+            onChange={(e) => set({ allow_edit_messages: e.target.checked })}
+          />
+          <span>
+            <strong>Atendentes podem editar as mensagens que enviaram</strong>
+            <span className="text-muted">
+              O cliente vê a mensagem "editada". O WhatsApp só permite editar até 15 minutos depois de enviar.
+              Quem configura o atendimento sempre pode.
+            </span>
+          </span>
+        </label>
+        <label className="at-toggle">
+          <input
+            type="checkbox"
+            checked={settings.allow_delete_messages}
+            onChange={(e) => set({ allow_delete_messages: e.target.checked })}
+          />
+          <span>
+            <strong>Atendentes podem apagar para todos as mensagens que enviaram</strong>
+            <span className="text-muted">
+              A mensagem some para o cliente e fica marcada como apagada na conversa. Quem configura o atendimento sempre pode.
+            </span>
+          </span>
+        </label>
+        <label className="at-toggle">
+          <input
+            type="checkbox"
             checked={settings.auto_conclude_hours !== null}
             onChange={(e) => set({ auto_conclude_hours: e.target.checked ? 24 : null })}
           />
