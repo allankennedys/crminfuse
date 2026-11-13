@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
+import { GoogleButton } from '@/components/GoogleButton'
+import { useAuthStore } from '@/store/authStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/lib/theme'
 import { billingService, formatPrice, type Plan } from '@/services/billingService'
@@ -17,6 +19,7 @@ function mascaraDoc(v: string): string {
 /** Cadastro de uma empresa nova: 7 dias grátis, sem cartão. */
 export function SignupPage() {
   const theme = useTheme((s) => s.theme)
+  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle)
   const [plans, setPlans] = useState<Plan[]>([])
   const [planId, setPlanId] = useState('profissional')
   const [f, setF] = useState({ organization_name: '', full_name: '', email: '', doc: '', password: '', website: '' })
@@ -82,6 +85,9 @@ export function SignupPage() {
             ))}
           </div>
         )}
+
+        <GoogleButton label="Cadastrar com o Google" onClick={() => { signInWithGoogle().catch((e) => setError(e instanceof Error ? e.message : 'Falha ao entrar com o Google.')) }} />
+        <div className="auth-divisor"><span>ou com e-mail e senha</span></div>
 
         <form onSubmit={submit}>
           <div className="field">

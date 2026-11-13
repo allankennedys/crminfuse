@@ -16,6 +16,8 @@
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { enviarEmailMarca, novoCodigo, sha256 } from '../_shared/email.ts'
+import { cnpjValido, cpfValido } from '../_shared/doc.ts'
+import { usuarioGoogle } from '../_shared/google.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -31,28 +33,6 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 }
 
-function cpfValido(d: string): boolean {
-  if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false
-  const dv = (base: string, pesoInicial: number) => {
-    let soma = 0
-    for (let i = 0; i < base.length; i++) soma += Number(base[i]) * (pesoInicial - i)
-    const r = (soma * 10) % 11
-    return r === 10 ? 0 : r
-  }
-  return dv(d.slice(0, 9), 10) === Number(d[9]) && dv(d.slice(0, 10), 11) === Number(d[10])
-}
-
-function cnpjValido(d: string): boolean {
-  if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false
-  const dv = (base: string) => {
-    const pesos = base.length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    const soma = [...base].reduce((s, c, i) => s + Number(c) * pesos[i], 0)
-    const r = soma % 11
-    return r < 2 ? 0 : 11 - r
-  }
-  return dv(d.slice(0, 12)) === Number(d[12]) && dv(d.slice(0, 13)) === Number(d[13])
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'Método não permitido' }, 405)
@@ -63,16 +43,23 @@ Deno.serve(async (req) => {
     // Robô preenche o campo escondido; gente não.
     if (typeof body?.website === 'string' && body.website.trim() !== '') return json({ ok: true })
 
+    // Cadastro de empresa por quem entrou com o Google: a conta já existe (sem organização).
+    const viaGoogle = body?.action === 'google'
     const organizationName = String(body?.organization_name ?? '').trim()
     const fullName = String(body?.full_name ?? '').trim()
     const password = String(body?.password ?? '')
-    const email = String(body?.email ?? '').trim().toLowerCase()
+    let email = String(body?.email ?? '').trim().toLowerCase()
+    let googleUser: Awaited<ReturnType<typeof usuarioGoogle>> | null = null
+    if (viaGoogle) {
+      try { googleUser = await usuarioGoogle(req, admin) } catch (e) { return json({ error: e instanceof Error ? e.message : 'Não autenticado.' }, 400) }
+      email = googleUser.email
+    }
     const doc = String(body?.doc ?? '').replace(/\D/g, '')
     const planId = String(body?.plan_id ?? '')
 
     if (organizationName.length < 2 || organizationName.length > 80) return json({ error: 'Informe o nome da empresa (2 a 80 letras).' }, 400)
     if (fullName.length < 2 || fullName.length > 80) return json({ error: 'Informe o seu nome.' }, 400)
-    if (password.length < 8) return json({ error: 'A senha precisa ter ao menos 8 caracteres.' }, 400)
+    if (!viaGoogle && password.length < 8) return json({ error: 'A senha precisa ter ao menos 8 caracteres.' }, 400)
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.endsWith('@infuse.local')) return json({ error: 'E-mail inválido.' }, 400)
     if (!(cpfValido(doc) || cnpjValido(doc))) return json({ error: 'CPF ou CNPJ inválido.' }, 400)
 
@@ -86,11 +73,31 @@ Deno.serve(async (req) => {
 
     const { data: plano } = await admin.from('plans').select('id').eq('id', planId).eq('active', true).maybeSingle()
 
+    if (viaGoogle && googleUser) {
+      const { data: org, error: orgErr } = await admin.from('organizations').insert({ name: organizationName }).select('id').single()
+      if (orgErr || !org) { console.error('[signup google] org', orgErr?.message); return json({ error: 'Não foi possível criar a conta. Tente de novo.' }, 500) }
+      const { error: perfErr } = await admin.from('users').insert({
+        id: googleUser.id, organization_id: org.id, email, username: email, full_name: fullName, role: 'admin',
+      })
+      if (perfErr) {
+        console.error('[signup google] perfil', perfErr.message)
+        await admin.from('organizations').delete().eq('id', org.id)
+        return json({ error: 'Não foi possível criar a conta. Tente de novo.' }, 500)
+      }
+      await admin.from('subscriptions').update({
+        ...(plano ? { plan_id: plano.id } : {}),
+        billing_name: organizationName, billing_email: email, billing_doc: doc, updated_at: new Date().toISOString(),
+      }).eq('organization_id', org.id)
+      return json({ ok: true })
+    }
+
     // O e-mail é o login. "username" guarda o próprio e-mail (único) por compatibilidade.
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: false,
+      // Marca de "criado pelo servidor": o banco recusa cadastro direto sem ela (153).
+      app_metadata: { servidor: true },
       user_metadata: { username: email, full_name: fullName, organization_name: organizationName },
     })
     if (createErr || !created?.user) {

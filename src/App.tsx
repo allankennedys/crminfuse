@@ -9,10 +9,11 @@ import { SignupPage } from '@/pages/Signup'
 import { ConvitePage } from '@/pages/Convite'
 import { ConfirmarEmailPage, EsqueciSenhaPage, RedefinirSenhaPage } from '@/pages/EmailLinks'
 import { CRMPage } from '@/pages/CRM'
+import { CompletarCadastroPage } from '@/pages/CompletarCadastro'
 import { PrivacidadePage, TermosPage } from '@/pages/Legal'
 
 export default function App() {
-  const { session, loading, initialize } = useAuthStore()
+  const { session, profile, loading, initialize } = useAuthStore()
 
   useEffect(() => {
     initialize()
@@ -34,6 +35,20 @@ export default function App() {
           <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
           <Route path="/redefinir-senha/:token" element={<RedefinirSenhaPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+        <ToastContainer />
+      </>
+    )
+  }
+
+  // Entrou com o Google mas ainda não tem empresa: conclui o cadastro (ou aceita o convite).
+  if (!profile) {
+    return (
+      <>
+        <Routes>
+          <Route path="/privacidade" element={<PrivacidadePage />} />
+          <Route path="/termos" element={<TermosPage />} />
+          <Route path="*" element={<CompletarCadastroPage />} />
         </Routes>
         <ToastContainer />
       </>

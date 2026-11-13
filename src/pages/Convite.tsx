@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { GoogleButton } from '@/components/GoogleButton'
+import { CONVITE_PENDENTE } from '@/pages/CompletarCadastro'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/lib/theme'
 import { billingService } from '@/services/billingService'
@@ -11,6 +13,7 @@ export function ConvitePage() {
   const theme = useTheme((s) => s.theme)
   const session = useAuthStore((s) => s.session)
   const signIn = useAuthStore((s) => s.signIn)
+  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle)
   const signOut = useAuthStore((s) => s.signOut)
   const navigate = useNavigate()
   const [info, setInfo] = useState<{ organization: string; role: 'admin' | 'atendente'; email: string | null } | null>(null)
@@ -22,6 +25,16 @@ export function ConvitePage() {
   useEffect(() => {
     billingService.inviteInfo(token).then(setInfo).catch((e) => setInvalido(e instanceof Error ? e.message : 'Convite inválido.'))
   }, [token])
+
+  async function comGoogle() {
+    setError('')
+    try {
+      localStorage.setItem(CONVITE_PENDENTE, token)
+      await signInWithGoogle()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao entrar com o Google.')
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -63,6 +76,9 @@ export function ConvitePage() {
             <p className="text-secondary" style={{ textAlign: 'center', fontSize: 13, marginBottom: 16 }}>
               Para entrar em <strong>{info.organization}</strong> como {info.role === 'admin' ? 'administrador' : 'atendente'}.
             </p>
+            <GoogleButton label="Aceitar com o Google" onClick={comGoogle} />
+            <p className="text-muted" style={{ textAlign: 'center', fontSize: 12, margin: '8px 0 0' }}>Use a conta Google do e-mail {info.email}.</p>
+            <div className="auth-divisor"><span>ou crie uma senha</span></div>
             <div className="field">
               <label htmlFor="cv-nome">Seu nome</label>
               <input id="cv-nome" className="input" value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} maxLength={80} required />
