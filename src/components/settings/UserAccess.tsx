@@ -398,8 +398,8 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
           : { error: new Error('id do usuário não veio na resposta') }
         if (permErr) {
           toast.error(
-            'Usuário criado, mas as permissões personalizadas não foram salvas — '
-            + 'ele está com o preset do cargo. Ajuste pelo ícone de permissões.',
+            'Usuário criado, mas as permissões personalizadas não foram salvas. '
+            + 'Ele está com o preset do cargo. Ajuste pelo ícone de permissões.',
           )
         } else {
           toast.success('Usuário criado com permissões personalizadas')
@@ -662,7 +662,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
           {!inviteNewOrg && (
             inviteRole === 'admin' ? (
               <p className="text-muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-                Admin tem acesso total por definição — não aceita permissões personalizadas.
+                Admin tem acesso total por definição e não aceita permissões personalizadas.
               </p>
             ) : invitePermError ? (
               <p className="text-muted" style={{ fontSize: 12.5, marginTop: 4 }}>{invitePermError}</p>
@@ -720,7 +720,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
             {deleteTarget.username && <span className="text-muted"> ({deleteTarget.username})</span>}.
           </p>
           <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
-            Esta ação é <strong style={{ color: 'var(--danger)' }}>permanente</strong> — a conta e o acesso são removidos e não podem ser recuperados.
+            Esta ação é <strong style={{ color: 'var(--danger)' }}>permanente</strong>: a conta e o acesso são removidos e não podem ser recuperados.
           </p>
           <div className="field">
             <label>
@@ -794,7 +794,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
             {pwTarget.username && <span className="text-muted"> ({pwTarget.username})</span>}.
           </p>
           <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
-            A senha atual não pode ser vista nem recuperada — esta ação a <strong style={{ color: 'var(--text)' }}>substitui</strong>.
+            A senha atual não pode ser vista nem recuperada. Esta ação a <strong style={{ color: 'var(--text)' }}>substitui</strong>.
             Anote e repasse ao usuário; ele pode trocá-la depois em "Trocar minha senha".
           </p>
           <div className="field">

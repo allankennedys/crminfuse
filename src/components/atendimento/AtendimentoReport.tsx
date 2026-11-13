@@ -114,7 +114,7 @@ export function AtendimentoReport({ label, range }: { label: string; range: { fr
       </div>
 
       <div className="card mb-16">
-        <div className="card-title" style={{ marginBottom: 4 }}>Atendimentos por dia — {label}</div>
+        <div className="card-title" style={{ marginBottom: 4 }}>Atendimentos por dia · {label}</div>
         <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 18 }}>
           Abertos e concluídos em cada dia
         </p>
@@ -142,7 +142,7 @@ export function AtendimentoReport({ label, range }: { label: string; range: { fr
         <div className="card">
           <div className="card-title" style={{ marginBottom: 4 }}>Horário de entrada</div>
           <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 18 }}>
-            Atendimentos abertos por hora do dia — ajuda a montar a escala
+            Atendimentos abertos por hora do dia, para ajudar a montar a escala
           </p>
           {r.abertos === 0 ? (
             <EmptyState icon={<Clock />} text="Sem atendimentos abertos no período." />

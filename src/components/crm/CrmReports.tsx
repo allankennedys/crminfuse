@@ -636,7 +636,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
             {/* O banco inverte se vier de trás para frente, mas dizer isso
                 aqui evita o usuário achar que o relatório zerou. */}
             {rangeDays(range)} dia(s), incluindo as duas datas
-            {customFrom > customTo && ' — datas invertidas, considerando o intervalo entre elas'}
+            {customFrom > customTo && ' (datas invertidas, considerando o intervalo entre elas)'}
           </span>
         </div>
       )}
@@ -669,7 +669,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
             <p>
               Tudo nesta aba conta apenas <b>leads que entraram no período selecionado</b>
               {' '}({label}). Conversões e valores de leads mais antigos, mesmo que tenham
-              fechado dentro desta janela, não entram aqui — para o total faturado no
+              fechado dentro desta janela, não entram aqui. Para o total faturado no
               período, veja a aba Vendas.
             </p>
           </div>
@@ -733,7 +733,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
               <div
                 className="kpi-value kpi-value-money"
                 title={'Dos leads criados no período, quantos chegaram à etapa de '
-                  + 'conversão — inclusive os que fecharam depois do fim da janela. '
+                  + 'conversão, inclusive os que fecharam depois do fim da janela. '
                   + 'Cada cliente conta uma vez: reentrar na etapa não conta de novo.'}
               >
                 {overview.converted.toLocaleString('pt-BR')}
@@ -766,8 +766,8 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
                     className="kpi-value kpi-value-money kpi-value-lg"
                     title={'Soma do valor da 1ª venda dos leads que entraram no período e '
                       + 'converteram. Cada cliente soma uma vez.\n\n'
-                      + 'A aba Vendas responde outra pergunta — quanto foi faturado DENTRO '
-                      + 'da janela, incluindo recompra e cliente antigo —, então os dois '
+                      + 'A aba Vendas responde outra pergunta (quanto foi faturado DENTRO '
+                      + 'da janela, incluindo recompra e cliente antigo), então os dois '
                       + 'números não precisam bater.'}
                   >
                     {formatBRL(overview.revenue_cents)}
@@ -813,7 +813,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
               <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div>
                   <div className="card-title" style={{ marginBottom: 4 }}>
-                    <CheckCircle2 size={14} /> Quem converteu — {label}
+                    <CheckCircle2 size={14} /> Quem converteu · {label}
                   </div>
                   <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 14 }}>
                     Os mesmos {fmtInt(overview.converted)} leads do card: entraram no
@@ -889,8 +889,8 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
                   </div>
                   {convLista.total > convLista.rows.length && (
                     <p className="text-muted" style={{ fontSize: 11.5, marginTop: 10 }}>
-                      Mostrando {fmtInt(convLista.rows.length)} de {fmtInt(convLista.total)} —
-                      escolha um período menor para ver o resto.
+                      Mostrando {fmtInt(convLista.rows.length)} de {fmtInt(convLista.total)}.
+                      Escolha um período menor para ver o resto.
                     </p>
                   )}
                 </>
@@ -901,7 +901,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
           {/* ---------- Série temporal ---------- */}
           <div className="card mb-16">
             <div className="card-title" style={{ marginBottom: 4 }}>
-              Leads e conversões — {label}
+              Leads e conversões · {label}
             </div>
             {/* As duas séries são a mesma coorte dos cards de cima: somar as
                 barras dá exatamente Leads e Convertidos do período. */}
@@ -1248,7 +1248,7 @@ function RepeatReport({ label, range, channel, onOpenContact }: {
                 className="kpi-value"
                 title={'Mediana, não média: um cliente que voltou dois anos depois '
                   + 'puxaria a média para um número que não descreve ninguém. Metade '
-                  + 'de quem volta, volta em até este prazo — e é este o corte da fila '
+                  + 'de quem volta, volta em até este prazo, e é este o corte da fila '
                   + 'de reativação lá embaixo.'}
               >
                 {o.median_days_to_second == null
@@ -1258,7 +1258,7 @@ function RepeatReport({ label, range, channel, onOpenContact }: {
               <div className="kpi-desc">
                 {o.median_days_to_second == null
                   ? 'nenhum cliente recomprou ainda'
-                  : 'mediana — metade volta antes disso'}
+                  : 'mediana (metade volta antes disso)'}
               </div>
             </div>
 
@@ -1299,7 +1299,7 @@ function RepeatReport({ label, range, channel, onOpenContact }: {
           {/* ---------- Estreia x retorno por dia ---------- */}
           <div className="card mb-16">
             <div className="card-title" style={{ marginBottom: 4 }}>
-              Faturamento por dia: 1ª venda x recompra — {label}
+              Faturamento por dia: 1ª venda x recompra · {label}
             </div>
             {!temGrafico ? (
               <EmptyState icon={<Receipt />} text="Nenhuma venda no período selecionado." />
@@ -1332,7 +1332,7 @@ function RepeatReport({ label, range, channel, onOpenContact }: {
                 <Layers size={14} /> Clientes por número de compras
               </div>
               <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 14 }}>
-                Base inteira — a forma da carteira não depende do período
+                Base inteira: a forma da carteira não depende do período
               </p>
               <div className="table-wrap" style={{ border: 'none', background: 'transparent' }}>
                 <table>
@@ -1372,7 +1372,7 @@ function RepeatReport({ label, range, channel, onOpenContact }: {
 
             <CollapsibleCard
               icon={<UserCheck size={14} />}
-              title={`Quem voltou — ${label}`}
+              title={`Quem voltou · ${label}`}
               hint={`${fmtInt(top.length)} cliente(s)`}
             >
               {top.length === 0 ? (
@@ -1430,8 +1430,8 @@ function RepeatReport({ label, range, channel, onOpenContact }: {
                   vale a ligação. */}
               Do maior gasto para o menor
               {onlyOverdue && medianDays > 0
-                ? ` — só quem já passou dos ${medianDays} dias em que metade dos clientes costuma voltar`
-                : ' — toda a carteira de uma compra só'}
+                ? `, só quem já passou dos ${medianDays} dias em que metade dos clientes costuma voltar`
+                : ', toda a carteira de uma compra só'}
             </>}
           >
             {/* O corte só faz sentido quando existe mediana: sem ninguém que
@@ -1698,8 +1698,8 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
       title: 'Tirar do relatório',
       message: `"${row.campaign_name ?? row.campaign_id}" sai do investimento, da `
         + 'entrega e do ROAS, para todos os usuários.\n\n'
-        + 'Faça isso só se ela NÃO gera lead no CRM — recrutamento, vaga, '
-        + 'institucional. Se ela traz cliente, as vendas dele continuam no caixa '
+        + 'Faça isso só se ela NÃO gera lead no CRM (recrutamento, vaga, '
+        + 'institucional). Se ela traz cliente, as vendas dele continuam no caixa '
         + 'e tirar só o custo deixaria o ROAS maior do que é.',
       confirmLabel: 'Tirar do relatório',
     })
@@ -1775,7 +1775,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
             competiria com ela em vez de ficar em segundo plano. */}
         {ehUltimosNDias(preset) && (
           <p style={{ fontSize: 11.5, marginTop: 4, color: 'var(--text-muted)' }}>
-            {shortDate(from)} a {shortDate(to)} — a mesma janela do Gerenciador
+            {shortDate(from)} a {shortDate(to)}: a mesma janela do Gerenciador
             de Anúncios, que termina ontem. Hoje fica de fora só aqui; nas
             outras abas ele entra.
           </p>
@@ -1789,7 +1789,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
           <button
             className={`ads-account-chip${selecionadas.length === 0 ? ' active' : ''}`}
             onClick={() => setSelecionadas([])}
-            title="Soma das contas — é a única visão em que ROAS e CAC fecham com a receita"
+            title="Soma das contas: é a única visão em que ROAS e CAC fecham com a receita"
           >
             <Megaphone size={12} /> Todas
           </button>
@@ -1968,7 +1968,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
           {contasComFalha.map((c) => (
             <p key={c.id} style={{ fontSize: 12.5, marginBottom: 6 }}>
               <strong>{c.label ?? c.name ?? c.id}</strong> · {c.error}
-              {c.hint && <span className="text-muted"> — {c.hint}</span>}
+              {c.hint && <span className="text-muted"> · {c.hint}</span>}
             </p>
           ))}
         </div>
@@ -1983,7 +1983,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
           <p style={{ fontSize: 13 }}>
             Investimento, entrega e as tabelas abaixo são só das contas
             selecionadas. Receita, ticket e LTV continuam sendo de todos os
-            clientes de anúncio — o CRM não sabe de qual conta veio cada lead,
+            clientes de anúncio. O CRM não sabe de qual conta veio cada lead,
             porque nada no contato aponta para uma conta.
           </p>
         </div>
@@ -2003,7 +2003,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
                 + 'abaixo, cada uma na moeda dela.'
               : `A conta fatura em ${currency} e as vendas do CRM estão em BRL. O `
                 + 'investimento aparece na moeda dela, mas ROAS, CAC e CPL '
-                + 'ficam de fora — dividir um pelo outro daria um número inventado.'}
+                + 'ficam de fora, porque dividir um pelo outro daria um número inventado.'}
           </p>
         </div>
       )}
@@ -2036,7 +2036,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
             <SkelValue on={metaLoading} w={150} h={10}>
               {spend == null
                 ? 'sem dados da Meta'
-                : preset === 'hoje' ? 'consumido hoje, até agora' : `consumido — ${label}`}
+                : preset === 'hoje' ? 'consumido hoje, até agora' : `consumido · ${label}`}
             </SkelValue>
           </div>
         </div>
@@ -2139,7 +2139,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
             title={'Tudo que os clientes de anúncio já compraram ÷ quantos são. '
               + 'Ignora o período selecionado de propósito: LTV é valor de cliente, '
               + 'e recortá-lo numa janela mediria outra coisa. É receita realizada, '
-              + 'não projeção — cliente novo ainda vai comprar.'}
+              + 'não projeção: cliente novo ainda vai comprar.'}
           >
             {overview.total_clients > 0 ? formatBRL(overview.total_ltv_cents) : '—'}
           </div>
@@ -2283,7 +2283,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
       {!metaLoading && contas.length > 1 && (
         <div className="card mb-16">
           <div className="card-title" style={{ marginBottom: 4 }}>
-            <Wallet size={14} /> Por conta de anúncios — {label}
+            <Wallet size={14} /> Por conta de anúncios · {label}
           </div>
           <div className="table-wrap" style={{ border: 'none', background: 'transparent' }}>
             <table>
@@ -2346,7 +2346,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
       {/* ---------- Investimento x receita ---------- */}
       <div className="card mb-16">
         <div className="card-title" style={{ marginBottom: 4 }}>
-          Gasto e receita por dia — {label}
+          Gasto e receita por dia · {label}
         </div>
         <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 18 }}>
           Barras = gasto na Meta · linha = vendas dos clientes de anúncio naquele dia
@@ -2407,7 +2407,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
           open={verCampanhas}
           onOpenChange={setVerCampanhas}
           icon={<Megaphone size={14} />}
-          title={`Por campanha — ${label}`}
+          title={`Por campanha · ${label}`}
           hint={metaLoading ? undefined : `${fmtInt(campanhas.length)} campanha(s)`}
           // Quantas campanhas entraram na conta. A tabela sempre soube — a
           // resposta exigia contar linha, e com 20 e poucas campanhas
@@ -2476,7 +2476,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
                             className="icon-btn"
                             onClick={() => ignorarCampanha(c)}
                             aria-label="Tirar do relatório"
-                            title="Tirar do relatório — só para campanha que não gera lead"
+                            title="Tirar do relatório (só para campanha que não gera lead)"
                           >
                             <EyeOff size={14} />
                           </button>
@@ -2497,7 +2497,7 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
           open={verAnuncios}
           onOpenChange={setVerAnuncios}
           icon={<Layers size={14} />}
-          title={`Por anúncio — ${label}`}
+          title={`Por anúncio · ${label}`}
           hint={metaLoading ? undefined : `${fmtInt(anuncios.length)} anúncio(s)`}
         >
           {metaLoading ? <SkelRows rows={6} cols={4} /> : (
@@ -2731,7 +2731,7 @@ function SalesReport({
         <div>
           <h2 style={{ fontSize: 17 }}>Vendas</h2>
           <p>
-            Faturamento por data da venda — 1ª venda e recompras, independente
+            Faturamento por data da venda: 1ª venda e recompras, independente
             de quando o lead entrou · {label}
           </p>
         </div>
@@ -2815,7 +2815,7 @@ function SalesReport({
               </div>
               <div className="kpi-title">Ticket médio</div>
               <div className="kpi-value kpi-value-money">{formatBRL(overview.avg_ticket_cents)}</div>
-              <div className="kpi-desc">por venda — {label}</div>
+              <div className="kpi-desc">por venda · {label}</div>
             </div>
 
             {/* LTV divide por CLIENTE, o ticket médio divide por VENDA — a
@@ -2830,13 +2830,13 @@ function SalesReport({
                 className="kpi-value kpi-value-money"
                 title={'Receita ÷ clientes distintos DENTRO da janela. Quem comprou antes '
                   + 'dela entra só com o que gastou aqui, então este número sobe conforme '
-                  + 'você amplia o período — para o LTV real do cliente, abra um '
+                  + 'você amplia o período. Para o LTV real do cliente, abra um '
                   + 'personalizado que cubra todo o histórico.'}
               >
                 {formatBRL(overview.ltv_cents)}
               </div>
               <div className="kpi-desc">
-                por cliente em {overview.clients.toLocaleString('pt-BR')} cliente(s) — {label}
+                por cliente em {overview.clients.toLocaleString('pt-BR')} cliente(s) · {label}
               </div>
             </div>
 
@@ -2879,7 +2879,7 @@ function SalesReport({
               <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div>
                   <div className="card-title" style={{ marginBottom: 4 }}>
-                    <RotateCcw size={14} /> Vendas reembolsadas — {label}
+                    <RotateCcw size={14} /> Vendas reembolsadas · {label}
                   </div>
                   <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 14 }}>
                     Pela data do reembolso · do mais recente para o mais antigo
@@ -2939,8 +2939,8 @@ function SalesReport({
                   </div>
                   {reembolsos.total > reembolsos.rows.length && (
                     <p className="text-muted" style={{ fontSize: 11.5, marginTop: 10 }}>
-                      Mostrando {fmtInt(reembolsos.rows.length)} de {fmtInt(reembolsos.total)} —
-                      escolha um período menor para ver o resto.
+                      Mostrando {fmtInt(reembolsos.rows.length)} de {fmtInt(reembolsos.total)}.
+                      Escolha um período menor para ver o resto.
                     </p>
                   )}
                 </>
@@ -2975,7 +2975,7 @@ function SalesReport({
           )}
           <div className="card mb-16">
             <div className="card-title" style={{ marginBottom: 18 }}>
-              Faturamento por dia — {label}
+              Faturamento por dia · {label}
             </div>
             {overview.sales === 0 ? (
               <EmptyState icon={<Receipt />} text="Nenhuma venda no período selecionado." />
@@ -3017,7 +3017,7 @@ function SalesReport({
 
           <CollapsibleCard
             icon={<Users size={14} />}
-            title={`Vendas por cliente — ${label}`}
+            title={`Vendas por cliente · ${label}`}
             hint={`${fmtInt(byContact.length)} cliente(s)`}
           >
             {byContact.length === 0 ? (
@@ -3114,7 +3114,7 @@ function SalesBreakdownCard({ title, colHead, icon, label, rows, semRotulo }: {
 }) {
   return (
     <div className="card">
-      <div className="card-title" style={{ marginBottom: 4 }}>{icon} {title} — {label}</div>
+      <div className="card-title" style={{ marginBottom: 4 }}>{icon} {title} · {label}</div>
       {!rows ? (
         <SkelRows rows={4} />
       ) : rows.length === 0 ? (

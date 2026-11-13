@@ -299,7 +299,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
       })
       toast.success(
         isFirst && conversionStage
-          ? `Venda registrada — contato movido para ${conversionStage.name}`
+          ? `Venda registrada. Contato movido para ${conversionStage.name}`
           : 'Venda registrada',
       )
       setSaleValue('')
@@ -482,7 +482,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
         + (outro.salesCount > 0
           ? `, com ${outro.salesCount} venda${outro.salesCount === 1 ? '' : 's'}.`
           : ', sem vendas.')
-        + `\n\nUnificar os dois? “${base.name}” é quem fica — as vendas, as conversões já `
+        + `\n\nUnificar os dois? “${base.name}” é quem fica: as vendas, as conversões já `
         + 'enviadas à Meta e os campos que faltarem sobem para ele, o outro cadastro é apagado e '
         + `o canal passa a ser ${canalLabel(channel)}.`,
       confirmLabel: 'Unificar e salvar',
@@ -621,7 +621,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
       toast.error(
         msg.includes('idx_crm_contacts_numero_canal_unico')
           ? isNew
-            ? 'Já existe um contato com este telefone neste canal — procure por ele em Contatos.'
+            ? 'Já existe um contato com este telefone neste canal. Procure por ele em Contatos.'
             : `Já existe outro contato com este telefone ${channel.trim() ? `em ${canalLabel(channel)}` : 'sem canal preenchido'}. `
               + (isAdmin
                 ? 'Use “Unificar”, aqui embaixo, para juntar os dois cadastros num só.'
@@ -745,7 +745,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                   : '.'}
                 {' '}
                 {isNew
-                  ? 'Salve neste canal e você fica com dois cadastros do mesmo cliente — melhor lançar no que já existe.'
+                  ? 'Salve neste canal e você fica com dois cadastros do mesmo cliente. Melhor lançar no que já existe.'
                   : isAdmin
                     ? 'Ao salvar, os dois serão unificados num só (com sua confirmação).'
                     : 'Só um administrador pode unificar os dois cadastros.'}
@@ -816,10 +816,10 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                     : !hasSales
                       // Sem o campo Valor, a conversão pela etapa vai com o
                       // valor do contato — zero enquanto não houver venda.
-                      ? 'Etapa de conversão — sem venda registrada, a Meta é avisada sem valor. Registre a venda na seção abaixo.'
+                      ? 'Etapa de conversão: sem venda registrada, a Meta é avisada sem valor. Registre a venda na seção abaixo.'
                       : hasClick
-                        ? 'Etapa de conversão — ao salvar, a Meta é avisada da venda e sabe de qual anúncio este contato veio.'
-                        : 'Etapa de conversão — ao salvar, a Meta é avisada da venda. Sem o clique do anúncio, ela não vai saber de qual anúncio veio.'}
+                        ? 'Etapa de conversão: ao salvar, a Meta é avisada da venda e sabe de qual anúncio este contato veio.'
+                        : 'Etapa de conversão: ao salvar, a Meta é avisada da venda. Sem o clique do anúncio, ela não vai saber de qual anúncio veio.'}
                 </p>
               )}
             </div>
@@ -921,7 +921,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                                     className="badge badge-red"
                                     style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                                     onClick={() => setDetalheReembolso(s.id)}
-                                    title={`Reembolsada em ${formatSP(s.refunded_at)} — ver notas e anexos`}
+                                    title={`Reembolsada em ${formatSP(s.refunded_at)} (ver notas e anexos)`}
                                   >
                                     {s.refunded_cents != null ? `Reembolso de ${formatBRL(s.refunded_cents)}` : 'Reembolsada'}
                                   </button>
@@ -1011,9 +1011,9 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                             : '. Como não veio de anúncio, a Meta não é avisada.')
                         : 'Nenhuma etapa está marcada como conversão: a venda fica registrada, mas o contato não entra no funil.'
                       : (fromAd
-                          ? 'Recompras não movem o contato de etapa, mas cada uma avisa a Meta com o seu próprio valor — '
+                          ? 'Recompras não movem o contato de etapa, mas cada uma avisa a Meta com o seu próprio valor: '
                             + 'cliente de anúncio manda toda compra, não só a primeira. '
-                          : 'Recompras ficam só registradas aqui — não movem o contato e não avisam a Meta. ')
+                          : 'Recompras ficam só registradas aqui. Não movem o contato e não avisam a Meta. ')
                         + 'Corrigir o valor de uma venda não reenvia nada: só se o aviso dela ainda não '
                         + 'tiver saído (até 30 min), aí o valor novo vai junto. Excluir a venda antes disso cancela o aviso.'}
                   </p>
@@ -1116,7 +1116,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
             {!removendo.refunded_at && (
               <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: '-4px 0 6px' }}>
                 A venda continua no sistema e nenhum sistema externo é avisado. No
-                relatório de vendas o valor devolvido — total ou parcial — sai do
+                relatório de vendas o valor devolvido (total ou parcial) sai do
                 líquido do período de hoje.
               </p>
             )}

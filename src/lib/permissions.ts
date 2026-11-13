@@ -70,7 +70,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     id: 'painel.mensagens',
     sistema: 'painel',
     label: 'Mensagens',
-    hint: 'Compor e disparar envios — inclui subir mídia',
+    hint: 'Compor e disparar envios, incluindo subir mídia',
     actions: [
       { key: 'painel.mensagens.ver', label: 'Ver' },
       { key: 'painel.mensagens.enviar', label: 'Enviar' },
@@ -153,7 +153,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     id: 'painel.numeros',
     sistema: 'crm',
     label: 'Números de WhatsApp',
-    hint: 'Conectar pelo QR Code, desconectar e remover — sempre só os próprios números',
+    hint: 'Conectar pelo QR Code, desconectar e remover (sempre só os próprios números)',
     actions: [
       { key: 'painel.numeros.ver', label: 'Ver' },
       { key: 'painel.numeros.editar', label: 'Gerenciar' },
@@ -163,7 +163,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     id: 'crm.contatos',
     sistema: 'crm',
     label: 'Contatos',
-    hint: 'Leads e clientes — inclui mover de etapa',
+    hint: 'Leads e clientes, incluindo mover de etapa',
     actions: [
       { key: 'crm.contatos.ver', label: 'Ver' },
       { key: 'crm.contatos.editar', label: 'Editar' },

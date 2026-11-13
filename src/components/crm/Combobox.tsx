@@ -258,7 +258,7 @@ export function Combobox({ value, onChange, options, placeholder, ariaLabel, cre
           )}
 
           {rows === 0 && (
-            <p className="combo-empty">Nada registrado ainda — digite para criar.</p>
+            <p className="combo-empty">Nada registrado ainda. Digite para criar.</p>
           )}
         </AnchoredList>
       )}

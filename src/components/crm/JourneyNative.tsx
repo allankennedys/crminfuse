@@ -138,12 +138,12 @@ export function JourneyNative({ label, range, channel, origem }: {
             <div>
               <MessageCircle size={16} />
               <strong>{r.aguardando_equipe}</strong>
-              <span>esperando a equipe — o cliente falou por último</span>
+              <span>esperando a equipe (o cliente falou por último)</span>
             </div>
             <div>
               <UserX size={16} />
               <strong>{r.aguardando_cliente}</strong>
-              <span>cliente sumiu — a equipe falou por último há mais de 24 h</span>
+              <span>cliente sumiu (a equipe falou por último há mais de 24 h)</span>
             </div>
           </div>
         </div>

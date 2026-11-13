@@ -155,7 +155,7 @@ export function MoveSalesChannelDialog({
       {!destinoTravado && channel.trim() && mesmoCanal && (
         <div className="card ads-notice merge-warn">
           <p style={{ fontSize: 12.5 }}>
-            <TriangleAlert size={13} /> As vendas já estão neste canal — escolha outro.
+            <TriangleAlert size={13} /> As vendas já estão neste canal. Escolha outro.
           </p>
         </div>
       )}

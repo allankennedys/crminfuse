@@ -125,8 +125,8 @@ export function MergeContactsDialog({ contact, onClose, onMerged }: {
       {!outro ? (
         <>
           <p className="text-muted merge-intro">
-            Procure o outro cadastro do mesmo cliente — normalmente o que a
-            automação criou com o número que ele digitou no checkout.
+            Procure o outro cadastro do mesmo cliente, por exemplo um que foi
+            criado com outro número ou em outro canal.
           </p>
 
           <label className="crm-search crm-search-block">
@@ -177,7 +177,7 @@ export function MergeContactsDialog({ contact, onClose, onMerged }: {
           <p className="text-muted merge-intro">
             Escolha qual cadastro <strong>fica</strong>. Ele mantém o telefone, o
             canal, a etapa e a conversa; do outro sobe só o que estiver
-            faltando nele — e-mail, clique do anúncio, origem e etiquetas.
+            faltando nele: e-mail, clique do anúncio, origem e etiquetas.
           </p>
 
           <div className="merge-sides">
@@ -247,8 +247,8 @@ export function MergeContactsDialog({ contact, onClose, onMerged }: {
               </div>
               <p style={{ fontSize: 12.5 }}>
                 “{sai.name}” é quem tem o vínculo com o WhatsApp. Ele sobe para o
-                cadastro que fica, mas confira se é mesmo esse o lado certo —
-                é por ele que a automação encontra o cliente.
+                cadastro que fica, mas confira se é mesmo esse o lado certo,
+                porque é por ele que o atendimento encontra o cliente.
               </p>
             </div>
           )}

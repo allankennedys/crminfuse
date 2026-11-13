@@ -352,7 +352,7 @@ export function ChatThread({
     (e) => toast.error(
       e === 'sem-permissao' ? 'Permita o uso do microfone no navegador para gravar áudio.'
         : e === 'sem-suporte' ? 'Este navegador não grava áudio. Use Chrome, Edge ou Firefox atualizados.'
-        : 'Áudio muito curto — grave pelo menos 1 segundo.',
+        : 'Áudio muito curto. Grave pelo menos 1 segundo.',
     ),
   )
   const podeGravar = !text.trim() && !file
@@ -462,7 +462,7 @@ export function ChatThread({
     : session && !session.chat_enabled
       ? 'Este número foi desligado do atendimento: mensagens novas do cliente não chegam aqui.'
       : session && session.status !== 'connected'
-        ? 'O número está desconectado do WhatsApp — o envio vai falhar até ele ser reconectado.'
+        ? 'O número está desconectado do WhatsApp. O envio vai falhar até ele ser reconectado.'
         : null
 
   return (
@@ -792,7 +792,7 @@ function TransferDialog({ conversationName, currentUser, attendants, onClose, on
   }
 
   return (
-    <Modal title={`Transferir — ${conversationName}`} onClose={onClose}>
+    <Modal title={`Transferir conversa de ${conversationName}`} onClose={onClose}>
       <form onSubmit={submit}>
         <div className="field">
           <label htmlFor="transfer-to">Para</label>
@@ -803,7 +803,7 @@ function TransferDialog({ conversationName, currentUser, attendants, onClose, on
           </select>
         </div>
         <div className="field">
-          <label htmlFor="transfer-note">Nota <span className="text-muted">(opcional — fica no histórico da conversa)</span></label>
+          <label htmlFor="transfer-note">Nota <span className="text-muted">(opcional, fica no histórico da conversa)</span></label>
           <textarea
             id="transfer-note"
             className="input"
@@ -863,7 +863,7 @@ function Bubble({ m, pos, url, author, onMediaLoad, onOpen, onRetry, onDiscard }
   let media: React.ReactNode = null
   if (hasMedia) {
     if (m.media_status === 'falhou') {
-      media = <div className="at-media-missing">Não foi possível baixar este arquivo — veja no celular.</div>
+      media = <div className="at-media-missing">Não foi possível baixar este arquivo. Veja no celular.</div>
     } else if (aCaminho) {
       media = (
         <div className="at-media-missing">

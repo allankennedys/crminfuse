@@ -107,7 +107,7 @@ export function PermissionEditor({
 
       <p className="text-muted perm-note">
         {custom
-          ? 'O cargo virou só um rótulo — vale exatamente o que está marcado aqui.'
+          ? 'O cargo virou só um rótulo: vale exatamente o que está marcado aqui.'
           : `Seguindo o preset de ${presetLabel}: mudanças no preset valem para este usuário automaticamente. Mexer em qualquer caixa abaixo passa a valer só para ele.`}
       </p>
 

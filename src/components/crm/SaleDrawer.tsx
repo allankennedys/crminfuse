@@ -230,8 +230,8 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
           contactName = achado.name
           primeira = achado.sales_count === 0
           toast.info(alvo.copiedFrom
-            ? `${achado.name} já tinha cadastro em outro canal — abrimos um para ${canalLabel(channel)} com os dados dele.`
-            : `Este número já era de ${achado.name} — a venda foi lançada nesse cadastro.`)
+            ? `${achado.name} já tinha cadastro em outro canal. Abrimos um para ${canalLabel(channel)} com os dados dele.`
+            : `Este número já era de ${achado.name}. A venda foi lançada nesse cadastro.`)
         }
       } else if (trocouDeCanal && contact.phone) {
         // O CASO DA 080. A venda saiu por um WhatsApp diferente do que está no
@@ -263,8 +263,8 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
           contactName = achado.name
           primeira = achado.sales_count === 0
           toast.info(alvo.created
-            ? `${contact.name} já era de outro canal — a venda foi para um cadastro novo em ${canalLabel(channel)}.`
-            : `${contact.name} já tinha cadastro em ${canalLabel(channel)} — a venda foi lançada nele.`)
+            ? `${contact.name} já era de outro canal. A venda foi para um cadastro novo em ${canalLabel(channel)}.`
+            : `${contact.name} já tinha cadastro em ${canalLabel(channel)}. A venda foi lançada nele.`)
         }
 
         // Origem digitada agora vale no cadastro que recebeu a venda quando
@@ -305,7 +305,7 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
 
       toast.success(
         primeira && conversionStage
-          ? `Venda registrada — ${contactName} entrou em ${conversionStage.name}`
+          ? `Venda registrada. ${contactName} entrou em ${conversionStage.name}`
           : `Venda registrada para ${contactName}`,
       )
 
@@ -317,7 +317,7 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
         // Índice único do número por canal (069). Só chega aqui em corrida
         // com outro caminho de cadastro; a mensagem crua não ajudaria.
         msg.includes('idx_crm_contacts_numero_canal_unico')
-          ? 'Este telefone já tem contato neste canal — busque por ele acima e lance a venda nele.'
+          ? 'Este telefone já tem contato neste canal. Busque por ele acima e lance a venda nele.'
           : msg,
       )
     } finally {
@@ -458,7 +458,7 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
                   )
                 ) : (
                   <p className="text-muted sale-pick-msg">
-                    Seu usuário não pode criar contatos — escolha um já cadastrado.
+                    Seu usuário não pode criar contatos. Escolha um já cadastrado.
                   </p>
                 )}
               </>
@@ -548,9 +548,9 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
                   ? `O canal do contato passa de “${contact.channel}” para “${channel.trim()}”.`
                   : `O contato passa a ter canal “${channel.trim()}”.`)
                 : !contact.channel
-                  ? `O cadastro passa a ser do canal “${channel.trim()}” — ele ainda não tinha canal.`
+                  ? `O cadastro passa a ser do canal “${channel.trim()}”, porque ele ainda não tinha canal.`
                   : `A venda vai para o cadastro deste cliente em “${channel.trim()}”. Se ainda não `
-                    + `existir, abrimos um agora com os dados de anúncio deste — e o cadastro em `
+                    + `existir, abrimos um agora com os dados de anúncio deste, e o cadastro em `
                     + `“${contact.channel}” fica como está.`}
             </p>
           )}
@@ -561,7 +561,7 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
               className="input"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Opcional — o que foi vendido, condição, etc."
+              placeholder="Opcional: o que foi vendido, condição, etc."
             />
           </div>
 
@@ -578,7 +578,7 @@ export function SaleDrawer({ stages, initialContact, onClose, onSaved }: {
               // Desde a 072 cada venda tem seu próprio evento: recompra de
               // cliente de anúncio também é avisada.
               : fromAd
-                ? 'Recompra: não move o contato de etapa, mas a Meta é avisada desta venda também — cliente de anúncio manda toda compra, não só a primeira.'
+                ? 'Recompra: não move o contato de etapa, mas a Meta é avisada desta venda também: cliente de anúncio manda toda compra, não só a primeira.'
                 : 'Recompra: fica registrada no cliente, não move o contato de etapa e não avisa a Meta.'}
           </p>
         </div>
