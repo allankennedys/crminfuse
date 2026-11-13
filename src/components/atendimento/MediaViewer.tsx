@@ -11,6 +11,8 @@ export type MediaItem = {
   id: string
   kind: MediaKind
   url: string
+  /** Mesmo arquivo, com o link que baixa em vez de abrir. */
+  download: string
   name: string | null
   caption: string | null
   at: string
@@ -31,12 +33,6 @@ export function mediaKind(m: Pick<WaMessage, 'type' | 'media_mime' | 'media_name
   if (mime.startsWith('image/')) return 'image'
   if (mime.startsWith('video/')) return 'video'
   return null
-}
-
-/** Link assinado que baixa em vez de abrir (o Storage aceita ?download=). */
-function downloadUrl(item: MediaItem) {
-  const nome = item.name || (item.kind === 'pdf' ? 'documento.pdf' : item.kind === 'video' ? 'video.mp4' : 'imagem.jpg')
-  return `${item.url}${item.url.includes('?') ? '&' : '?'}download=${encodeURIComponent(nome)}`
 }
 
 /**
@@ -136,7 +132,7 @@ export function MediaViewer({ items, startId, onClose }: {
               <ExternalLink size={18} />
             </a>
           )}
-          <a className="mv-btn" href={downloadUrl(item)} title="Baixar" aria-label="Baixar">
+          <a className="mv-btn" href={item.download} title="Baixar" aria-label="Baixar">
             <Download size={18} />
           </a>
           <button type="button" className="mv-btn" onClick={onClose} title="Fechar (Esc)" aria-label="Fechar">

@@ -28,6 +28,7 @@
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { putMedia } from '../_shared/media.ts'
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -35,7 +36,6 @@ const admin = createClient(
   { auth: { persistSession: false } },
 )
 
-const BUCKET = 'wa-media'
 
 interface Session {
   id: string
@@ -333,16 +333,23 @@ async function saveMedia(
   }
 
   const bytes = decodeBase64(b64)
-  const path = `${row.organization_id}/${row.conversation_id}/${row.message_id}.${extension(mime, parsed.name)}`
+  const key = `${row.organization_id}/${row.conversation_id}/${row.message_id}.${extension(mime, parsed.name)}`
   const contentType = (mime ?? 'application/octet-stream').split(';')[0].trim()
 
-  const { error } = await admin.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: true })
+  // R2 quando configurado; senão o Storage do Supabase (_shared/media.ts).
+  let path: string | null = null
+  let erro: unknown = null
+  try {
+    path = await putMedia(admin, key, bytes, contentType)
+  } catch (e) {
+    erro = e
+  }
 
   await admin.from('wa_messages')
-    .update(error ? { media_status: 'falhou' } : { media_path: path, media_status: 'ok', media_mime: mime })
+    .update(path ? { media_path: path, media_status: 'ok', media_mime: mime } : { media_status: 'falhou' })
     .eq('id', row.message_id)
 
-  if (error) throw error
+  if (erro) throw erro
 }
 
 // ---------------------------------------------------------------------------

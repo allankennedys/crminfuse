@@ -12,7 +12,7 @@ import { Loader, Modal } from '@/components/ui'
 import { LinkifiedText } from '@/components/LinkifiedText'
 import { toast } from '@/store/toastStore'
 import {
-  atendimentoService, conversationName, formatPhone, sessionLabel,
+  atendimentoService, conversationName, formatPhone, sessionLabel, type MediaLinks,
 } from '@/services/atendimentoService'
 import { formatBytes, formatDayLabel, formatTime, sameDay } from './format'
 import { ClientPanel } from './ClientPanel'
@@ -55,7 +55,9 @@ export function ChatThread({
   const [showClient, setShowClient] = useState(() => window.innerWidth >= 1280)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [urls, setUrls] = useState<Map<string, string>>(new Map())
+  // Links (abrir/baixar) das mídias, por id da mensagem.
+  const [urls, setUrls] = useState<Map<string, MediaLinks>>(new Map())
+  const pedidosRef = useRef<Set<string>>(new Set())
   // Mídia aberta no visualizador (id da mensagem).
   const [mediaAberta, setMediaAberta] = useState<string | null>(null)
   const fecharMidia = useCallback(() => setMediaAberta(null), [])
@@ -153,17 +155,19 @@ export function ChatThread({
     return () => { supabase.removeChannel(channel) }
   }, [conv.id, merge, userId])
 
-  // Links assinados das mídias (bucket privado, 1 h).
+  // Links temporários das mídias (1 h), gerados pelo servidor depois de
+  // conferir a permissão — o arquivo pode estar no R2 ou no Storage. Cada
+  // mensagem é pedida uma vez só (pedidosRef), mesmo se não vier link.
   useEffect(() => {
     if (!messages) return
-    const missing = messages.map((m) => m.media_path).filter((p): p is string => Boolean(p) && !urls.has(p!))
+    const missing = messages
+      .filter((m) => m.media_path && !urls.has(m.id) && !pedidosRef.current.has(m.id))
+      .map((m) => m.id)
     if (!missing.length) return
-    let alive = true
-    atendimentoService.signedUrls([...new Set(missing)]).then((got) => {
-      if (!alive || !got.size) return
-      setUrls((cur) => new Map([...cur, ...got]))
-    })
-    return () => { alive = false }
+    missing.forEach((id) => pedidosRef.current.add(id))
+    atendimentoService.mediaUrls(missing)
+      .then((got) => { if (got.size) setUrls((cur) => new Map([...cur, ...got])) })
+      .catch(() => { missing.forEach((id) => pedidosRef.current.delete(id)) })
   }, [messages, urls])
 
   // "Lida" só quando a conversa é de quem está olhando (ou está na fila e ele
@@ -404,12 +408,12 @@ export function ChatThread({
     const m = it.m
     if (!m || m.id.startsWith('tmp-') || m.media_status === 'falhou' || !m.media_path) return []
     const kind = mediaKind(m)
-    const url = urls.get(m.media_path)
-    if (!kind || !url) return []
+    const links = urls.get(m.id)
+    if (!kind || !links) return []
     const author = m.from_me
       ? (m.sent_by ? names.get(m.sent_by) ?? 'Equipe' : 'Enviada pelo celular')
       : name
-    return [{ id: m.id, kind, url, name: m.media_name, caption: m.body, at: m.wa_timestamp, author }]
+    return [{ id: m.id, kind, url: links.url, download: links.download, name: m.media_name, caption: m.body, at: m.wa_timestamp, author }]
   })
   const assignedName = conv.assigned_to ? names.get(conv.assigned_to) ?? 'Atendente' : null
   // O responsável atual pode ter perdido a permissão; continua na lista para
@@ -514,7 +518,7 @@ export function ChatThread({
                 {item.m ? (
                   <Bubble
                     m={item.m}
-                    url={item.m.media_path ? urls.get(item.m.media_path) : undefined}
+                    url={item.m.media_path ? urls.get(item.m.id)?.url : undefined}
                     author={item.m.from_me ? (item.m.sent_by ? names.get(item.m.sent_by) ?? 'Painel' : 'Celular') : null}
                     onMediaLoad={followIfStuck}
                     onOpen={mediaKind(item.m) ? () => setMediaAberta(item.m!.id) : undefined}

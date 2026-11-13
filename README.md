@@ -40,6 +40,15 @@ npx supabase secrets set EVOLUTION_API_URL=... EVOLUTION_API_KEY=... WORKER_SECR
 
 `supabase/config.toml` já diz quais funções vão sem JWT.
 
+## Mídias (fotos, vídeos, áudios, documentos)
+
+O WhatsApp apaga as mídias dos servidores dele depois de um tempo e a Evolution não guarda o arquivo — por isso cada mídia é baixada assim que chega e guardada aqui.
+
+- **Com o R2 configurado** (secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`), as mídias novas vão para o Cloudflare R2. O bucket precisa de CORS liberando `GET`, `PUT` e `HEAD` (o navegador sobe os anexos da equipe direto para lá).
+- **Sem ele**, vão para o Storage do Supabase (bucket `wa-media`).
+- O `media_path` diz onde cada arquivo está (`r2:` na frente = R2), então os dois convivem.
+- Nada é público: os links são temporários e só saem pela `wa-chat` (ação `media_urls`), depois de a RLS confirmar que o usuário vê aquela conversa.
+
 ## Atendimento
 
 - Conversas individuais (grupos ficam de fora) dos números ligados em Atendimento → Números.
