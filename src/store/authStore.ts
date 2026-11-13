@@ -32,6 +32,8 @@ interface AuthState {
   loading: boolean
   initialize: () => Promise<void>
   signIn: (username: string, password: string) => Promise<void>
+  /** Login com a conta Google (só entra quem já tem conta com esse e-mail). */
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   /** Marca a tour de boas-vindas como vista (151). */
   concluirTour: () => Promise<void>
@@ -129,6 +131,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       password,
     })
     if (error) throw new Error(mensagemDeLogin(error))
+  },
+
+  signInWithGoogle: async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/login`, queryParams: { prompt: 'select_account' } },
+    })
+    if (error) throw new Error('Não foi possível entrar com o Google agora.')
   },
 
   concluirTour: async () => {
