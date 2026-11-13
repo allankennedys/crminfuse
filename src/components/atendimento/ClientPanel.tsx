@@ -118,7 +118,7 @@ export function ClientPanel({ conversation: conv, situacao, conclusao, onClose, 
 
               {ct && onOpenContact && can('crm.contatos.ver') && (
                 <button className="btn btn-ghost btn-sm" onClick={() => onOpenContact(ct.id)}>
-                  <ExternalLink size={13} /> Abrir no funil
+                  <ExternalLink size={13} /> Ver Contato
                 </button>
               )}
             </section>
