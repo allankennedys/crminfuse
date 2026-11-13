@@ -48,7 +48,7 @@ export function PrivacidadePage() {
         <li><strong>Conta:</strong> nome, e-mail, senha (guardada de forma criptografada, nunca em texto) e função na organização.</li>
         <li><strong>Login com o Google:</strong> se você escolher entrar com o Google, recebemos apenas o seu e-mail, nome e foto de perfil. Não acessamos seus e-mails, contatos, arquivos nem qualquer outro dado da sua conta Google.</li>
         <li><strong>Uso do sistema:</strong> conversas, mensagens, arquivos, contatos, etiquetas, campos personalizados, vendas, lembretes e relatórios que você ou sua equipe registram ou recebem pelos números de WhatsApp conectados.</li>
-        <li><strong>Cobrança:</strong> plano, status da assinatura e dados de cobrança informados. Os dados do cartão são tratados pelo Stripe e não passam pelos nossos servidores.</li>
+        <li><strong>Cobrança:</strong> plano, status da assinatura e dados de cobrança informados. Os dados do cartão são tratados pelo processador de pagamentos e não passam pelos nossos servidores.</li>
         <li><strong>Notificações:</strong> se você ativar, o identificador técnico do seu navegador ou aparelho para enviar avisos push.</li>
         <li><strong>Dados técnicos:</strong> registros de acesso e de erros, necessários para segurança e funcionamento.</li>
       </ul>
@@ -64,13 +64,12 @@ export function PrivacidadePage() {
       <p>Não vendemos dados pessoais e não os usamos para publicidade.</p>
 
       <h2>4. Com quem compartilhamos</h2>
-      <p>Usamos prestadores de infraestrutura que tratam dados em nosso nome, somente para o funcionamento do serviço:</p>
+      <p>Compartilhamos dados com prestadores de serviço que tratam dados em nosso nome, somente para o funcionamento do serviço. Eles se enquadram nas categorias abaixo (a lista completa pode ser solicitada pelo e-mail de contato):</p>
       <ul>
-        <li>Supabase (banco de dados, autenticação e funções do servidor);</li>
-        <li>Vercel e Cloudflare (hospedagem do sistema e armazenamento de arquivos);</li>
-        <li>Resend (envio de e-mails);</li>
-        <li>Stripe (pagamentos por cartão);</li>
-        <li>Google (apenas se você escolher o login com o Google);</li>
+        <li>provedores de infraestrutura em nuvem (hospedagem do sistema, banco de dados e armazenamento de arquivos);</li>
+        <li>provedor de envio de e-mails do sistema;</li>
+        <li>processador de pagamentos, para cobranças por cartão;</li>
+        <li>Google, apenas se você escolher o login com o Google;</li>
         <li>WhatsApp e a plataforma de integração com ele, para entregar as mensagens.</li>
       </ul>
       <p>Alguns desses prestadores podem processar dados fora do Brasil, com salvaguardas contratuais adequadas.</p>
@@ -128,7 +127,7 @@ export function TermosPage() {
       <h2>3. Teste, planos e pagamento</h2>
       <ul>
         <li>O teste grátis dura 7 dias. Depois dele, o uso continua mediante assinatura de um dos planos, com limites de números de WhatsApp e de usuários.</li>
-        <li>A cobrança no cartão é recorrente e mensal, pelo Stripe. Outras formas de pagamento são combinadas com o nosso time.</li>
+        <li>A cobrança no cartão é recorrente e mensal, por um processador de pagamentos. Outras formas de pagamento são combinadas com o nosso time.</li>
         <li>Em caso de atraso, o acesso passa por avisos, depois modo somente leitura e, por fim, suspensão. Os dados são mantidos para quando o pagamento for regularizado.</li>
         <li>Você pode cancelar a qualquer momento; o cancelamento vale ao fim do período já pago.</li>
       </ul>
