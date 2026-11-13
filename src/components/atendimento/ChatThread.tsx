@@ -572,7 +572,7 @@ export function ChatThread({
     const links = urls.get(m.id)
     if (!kind || !links) return []
     const author = m.from_me
-      ? (m.sent_by ? names.get(m.sent_by) ?? 'Equipe' : 'Enviada pelo celular')
+      ? (m.sent_by ? names.get(m.sent_by) ?? 'Equipe' : m.is_system ? 'Sistema (automática)' : 'Enviada pelo celular')
       : name
     return [{ id: m.id, kind, url: links.url, download: links.download, name: m.media_name, caption: m.body, at: m.wa_timestamp, author }]
   })
@@ -705,7 +705,7 @@ export function ChatThread({
                     m={item.m}
                     pos={blocos.get(item.m.id) ?? 'solo'}
                     url={item.m.media_path ? urls.get(item.m.id)?.url : undefined}
-                    author={item.m.from_me ? (item.m.sent_by ? names.get(item.m.sent_by) ?? 'Equipe' : 'Enviada pelo celular') : null}
+                    author={item.m.from_me ? (item.m.sent_by ? names.get(item.m.sent_by) ?? 'Equipe' : item.m.is_system ? 'Sistema (automática)' : 'Enviada pelo celular') : null}
                     onMediaLoad={followIfStuck}
                     onOpen={mediaKind(item.m) ? () => setMediaAberta(item.m!.id) : undefined}
                     onRetry={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => despachar(item.m!) : undefined}
