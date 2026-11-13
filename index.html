@@ -50,12 +50,15 @@
       } catch (e) {}
     </script>
     <style>
-      /* Tela de abertura: aparece no primeiro quadro, antes do app carregar
-         (some quando o React desenha). Cores iguais às do app, para não haver
+      /* Tela de abertura: aparece no primeiro quadro, antes do app carregar.
+         Fica por cima do app e só sai (com fade) quando o app está pronto e já
+         passou um tempo mínimo (main.tsx), senão pisca e some. Cores iguais às do app, para não haver
          piscada preta nem troca de fundo. */
       html { background: #0a0a0b; }
       html[data-theme="light"] { background: #f4f5f7; }
-      #splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; }
+      #splash { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; background: #0a0a0b; }
+      html[data-theme="light"] #splash { background: #f4f5f7; }
+      #splash.saindo { opacity: 0; transition: opacity .35s ease; pointer-events: none; }
       #splash img { width: 92px; height: 92px; animation: splash-pulse 1.6s ease-in-out infinite; }
       #splash .dots { display: flex; gap: 7px; }
       #splash .dots i { width: 7px; height: 7px; border-radius: 50%; background: #1f6fe0; opacity: .25; animation: splash-dot 1.2s ease-in-out infinite; }
@@ -67,7 +70,8 @@
     </style>
   </head>
   <body>
-    <div id="root"><div id="splash" aria-hidden="true"><img src="/favicon.png?v=2" alt="" width="92" height="92" /><span class="dots"><i></i><i></i><i></i></span></div></div>
+    <div id="splash" aria-hidden="true"><img src="/favicon.png?v=2" alt="" width="92" height="92" /><span class="dots"><i></i><i></i><i></i></span></div>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
