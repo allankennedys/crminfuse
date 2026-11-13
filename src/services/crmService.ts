@@ -1638,6 +1638,18 @@ export const crmService = {
 
   // ---------- Campos personalizados (140) ----------
 
+  /** Importação de contatos (154). `dry` só confere e conta, sem gravar. */
+  async importContacts(
+    rows: unknown[],
+    opts: { stageId: string | null; tag: string; assignedTo: string | null; dry: boolean },
+  ): Promise<{ created: number; duplicates: number; invalid: { n: number; reason: string }[] }> {
+    const { data, error } = await supabase.rpc('crm_import_contacts', {
+      p_rows: rows, p_stage: opts.stageId, p_tag: opts.tag || null, p_assigned: opts.assignedTo, p_dry: opts.dry,
+    })
+    if (error) throw asError(error)
+    return data as { created: number; duplicates: number; invalid: { n: number; reason: string }[] }
+  },
+
   async listCustomFields(): Promise<CrmCustomField[]> {
     const { data, error } = await supabase
       .from('crm_custom_fields')
