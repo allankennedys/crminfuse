@@ -318,6 +318,7 @@ function AvaliacaoDoAtendimento({ conversationId }: { conversationId: string }) 
       ) : (
         <span className="text-muted" style={{ fontSize: 12.5 }}>Pedido agendado para envio.</span>
       )}
+      {r.feedback && <blockquote className="at-rating-feedback">“{r.feedback}”</blockquote>}
     </div>
   )
 }

@@ -193,6 +193,30 @@ export function AvaliacaoCard({ settings, set, dirty, saving, save }: {
               onChange={(e) => set({ rating_thanks_text: e.target.value })}
             />
           </div>
+          <label className="at-toggle" style={{ margin: 0 }}>
+            <input type="checkbox" checked={settings.rating_comment_on} onChange={(e) => set({ rating_comment_on: e.target.checked })} />
+            <span>
+              <strong>Perguntar o que aconteceu quando a nota for 1, 2 ou 3</strong>
+              <span className="text-muted">
+                O agradecimento ganha uma pergunta, e a resposta seguinte do cliente (em até 6 horas) vira o comentário da avaliação.
+                Não reabre o atendimento.
+              </span>
+            </span>
+          </label>
+          {settings.rating_comment_on && (
+            <div className="field" style={{ margin: '0 0 0 28px' }}>
+              <label htmlFor="rt-comentario">Pergunta do comentário</label>
+              <textarea
+                id="rt-comentario"
+                className="input"
+                rows={2}
+                maxLength={400}
+                placeholder="Sentimos muito que não tenha sido uma boa experiência. Quer nos contar o que aconteceu? É só responder esta mensagem."
+                value={settings.rating_comment_text ?? ''}
+                onChange={(e) => set({ rating_comment_text: e.target.value })}
+              />
+            </div>
+          )}
           <div className="field" style={{ margin: 0 }}>
             <label htmlFor="rt-atraso">Enviar depois de</label>
             <div className="flex" style={{ alignItems: 'center', gap: 8 }}>

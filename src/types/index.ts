@@ -969,6 +969,9 @@ export interface WaSettings {
   rating_text: string | null
   rating_thanks_text: string | null
   rating_delay_minutes: number
+  /** Nota 1 a 3: o agradecimento pergunta o que aconteceu e a resposta vira comentário. */
+  rating_comment_on: boolean
+  rating_comment_text: string | null
 }
 
 /** Exceção ao limite padrão (120). max_open null = livre para esta pessoa. */
@@ -1024,6 +1027,7 @@ export interface WaRatingReport {
   media: number | null
   distribuicao: { nota: number; total: number }[]
   por_atendente: { id: string; media: number | null; total: number; enviadas: number }[]
+  comentarios: { nota: number; texto: string; agente: string | null; quando: string }[]
 }
 
 /** Avaliação de um atendimento (155). score null = ainda sem resposta. */
@@ -1035,6 +1039,8 @@ export interface WaRating {
   sent_at: string | null
   answered_at: string | null
   expires_at: string
+  /** Comentário do cliente depois de uma nota baixa. */
+  feedback: string | null
 }
 
 export interface WaRoutingRule {
