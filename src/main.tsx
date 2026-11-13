@@ -11,3 +11,11 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 )
+
+// PWA: registra o service worker só em produção (no desenvolvimento ele
+// atrapalharia o recarregamento a quente). Falha de registro não afeta o app.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* sem service worker o app segue normal */ })
+  })
+}
