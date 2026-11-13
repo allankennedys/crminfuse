@@ -262,6 +262,13 @@ export const atendimentoService = {
     return data as WaClientCard
   },
 
+  /** Troca as etiquetas do contato da conversa. */
+  async clientSetTags(conversationId: string, tags: string[]): Promise<WaClientCard> {
+    const { data, error } = await supabase.rpc('wa_client_set_tags', { p_conversation: conversationId, p_tags: tags })
+    if (error) throw error
+    return data as WaClientCard
+  },
+
   /** Lança a venda no contato da conversa. from_ad = vai para a Meta. */
   async launchSale(
     conversationId: string,
