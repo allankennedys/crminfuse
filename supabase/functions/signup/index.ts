@@ -119,6 +119,7 @@ Deno.serve(async (req) => {
     }
 
     // E-mail de verificação (a conta só entra depois de confirmar).
+    const { data: diasTeste } = await admin.rpc('trial_days')
     const base = APP_URL_FIXO || (req.headers.get('origin') ?? '').replace(/\/+$/, '')
     let emailSent = false
     if (base) {
@@ -131,7 +132,7 @@ Deno.serve(async (req) => {
         to: email, base,
         subject: 'Confirme seu e-mail no Infuse CRM',
         titulo: 'Confirme seu e-mail',
-        paragrafos: [`Olá, ${fullName}! Sua conta da empresa ${organizationName} foi criada. Falta só confirmar que este e-mail é seu para começar o teste grátis.`],
+        paragrafos: [`Olá, ${fullName}! Sua conta da empresa ${organizationName} foi criada. Falta só confirmar que este e-mail é seu para ${Number(diasTeste ?? 0) > 0 ? 'começar o teste grátis' : 'escolher o seu plano e começar'}.`],
         botao: { texto: 'Confirmar e-mail', url: `${base}/verificar-email/${codigo}` },
         rodape: 'O link vale por 24 horas e só pode ser usado uma vez.',
         aviso: 'Você recebeu este e-mail porque alguém criou uma conta no Infuse CRM com este endereço. Se não foi você, ignore.',

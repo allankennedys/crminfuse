@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
-import { billingService } from '@/services/billingService'
+import { billingService, trialDays } from '@/services/billingService'
 import { toast } from '@/store/toastStore'
 import { GoogleButton } from '@/components/GoogleButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -19,6 +19,8 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   const [naoConfirmado, setNaoConfirmado] = useState(false)
+  const [dias, setDias] = useState<number | null>(null)
+  useEffect(() => { void trialDays().then(setDias) }, [])
 
   // Volta do Google: já logado segue para o CRM; se deu erro, explica em português.
   useEffect(() => {
@@ -111,7 +113,7 @@ export function LoginPage() {
 
           <p className="login-signup">
             Ainda não usa o Infuse? <Link to="/cadastro">Criar conta da minha empresa</Link>
-            <span>Teste grátis por 7 dias, sem cartão.</span>
+            {dias ? <span>Teste grátis por {dias} dias, sem cartão.</span> : null}
           </p>
           <p className="login-invite">Sua empresa já usa o Infuse? Peça o link de convite a um administrador.</p>
         </div>

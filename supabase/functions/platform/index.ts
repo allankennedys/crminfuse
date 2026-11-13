@@ -48,6 +48,18 @@ Deno.serve(async (req) => {
       return json({ settings: Object.fromEntries((data ?? []).map((r) => [r.key, r.value])) })
     }
 
+    if (action === 'trial_days') {
+      const { data } = await admin.rpc('trial_days')
+      return json({ days: Number(data ?? 7) })
+    }
+
+    if (action === 'save_trial_days') {
+      const dias = Math.min(90, Math.max(0, Math.round(Number(body?.days ?? 0)) || 0))
+      const { error } = await admin.from('platform_settings').upsert({ key: 'trial_days', value: String(dias) })
+      if (error) return json({ error: 'Falha ao salvar.' }, 500)
+      return json({ ok: true, days: dias })
+    }
+
     if (action === 'save_pix_settings') {
       const rows = (['pix_key', 'pix_holder', 'pix_contact'] as const)
         .map((k) => ({ key: k, value: String(body?.[k] ?? '').trim().slice(0, 200) }))

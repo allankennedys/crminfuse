@@ -116,8 +116,8 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
         <div className="plano-resumo">
           <div>
             <div className="plano-nome">{sub.plan.name} <span className="text-muted">· {formatPrice(sub.plan.price_cents)}/mês</span></div>
-            <span className={`badge ${sub.status === 'ativa' ? 'badge-green' : sub.status === 'trial' ? 'badge-blue' : 'badge-yellow'}`}>
-              {sub.courtesy ? 'Cortesia' : STATUS_LABEL[sub.status]}
+            <span className={`badge ${sub.status === 'ativa' ? 'badge-green' : sub.status === 'trial' && !sub.no_trial ? 'badge-blue' : 'badge-yellow'}`}>
+              {sub.courtesy ? 'Cortesia' : sub.no_trial && sub.status === 'trial' ? 'Aguardando assinatura' : STATUS_LABEL[sub.status]}
             </span>
             {!sub.courtesy && sub.payment_mode && (
               <span className="text-muted" style={{ fontSize: 12, marginLeft: 8 }}>{sub.payment_mode === 'pix' ? 'Pagamento por Pix' : 'Cartão'}</span>
@@ -125,6 +125,7 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
           </div>
           <div className="text-secondary" style={{ fontSize: 12.5, textAlign: 'right' }}>
             {sub.courtesy ? 'Sem cobrança.'
+              : sub.no_trial && sub.status === 'trial' ? 'Escolha um plano para começar a usar.'
               : sub.status === 'trial' && dTeste !== null
                 ? dTeste > 0 ? `O teste acaba em ${formatSP(sub.trial_ends_at!).slice(0, 10)} (${dTeste} dia${dTeste > 1 ? 's' : ''}).` : 'O teste acabou.'
                 : sub.current_period_end ? `${sub.cancel_at_period_end ? 'Cancela em' : noPix ? 'Pago até' : 'Próxima cobrança em'} ${formatSP(sub.current_period_end).slice(0, 10)}.` : null}
@@ -137,7 +138,7 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
             <span>
               {sub.acesso === 'leitura'
                 ? 'Sua conta está em modo leitura: dá para ver tudo, mas não enviar mensagens nem editar. Escolha um plano ou regularize o pagamento para voltar ao normal.'
-                : 'Sua conta está suspensa. Escolha um plano ou regularize o pagamento para voltar a usar. Seus dados continuam guardados.'}
+                : (sub.no_trial ? 'Escolha um plano para começar a usar o Infuse CRM.' : 'Sua conta está suspensa. Escolha um plano ou regularize o pagamento para voltar a usar. Seus dados continuam guardados.')}
             </span>
           </div>
         )}

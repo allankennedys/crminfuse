@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/lib/theme'
-import { billingService, formatPrice, type Plan } from '@/services/billingService'
+import { billingService, formatPrice, trialDays, type Plan } from '@/services/billingService'
 
 /** Guarda o convite enquanto a pessoa vai e volta do Google. */
 export const CONVITE_PENDENTE = 'infuse-convite-pendente'
@@ -34,7 +34,8 @@ export function CompletarCadastroPage() {
   })
   const tentou = useRef(false)
 
-  useEffect(() => { billingService.listPlans().then(setPlans) }, [])
+  const [dias, setDias] = useState<number | null>(null)
+  useEffect(() => { billingService.listPlans().then(setPlans); void trialDays().then(setDias) }, [])
 
   // Veio de um convite: aceita sozinho.
   useEffect(() => {
@@ -82,7 +83,7 @@ export function CompletarCadastroPage() {
           <>
             <h1 style={{ fontSize: 18, textAlign: 'center', marginBottom: 4 }}>Complete seu cadastro</h1>
             <p className="text-secondary" style={{ textAlign: 'center', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-              Você entrou como <strong>{session?.user.email}</strong>. Para criar a conta da sua empresa, 7 dias grátis e sem cartão, preencha abaixo.
+              Você entrou como <strong>{session?.user.email}</strong>. Para criar a conta da sua empresa{dias ? `, ${dias} dias grátis e sem cartão,` : ''} preencha abaixo.
               Foi convidado para uma empresa que já usa o Infuse? Abra o link do convite que recebeu por e-mail.
             </p>
 
@@ -112,7 +113,7 @@ export function CompletarCadastroPage() {
               </div>
               {error && <p className="error-text">{error}</p>}
               <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} disabled={loading}>
-                {loading ? <span className="spinner" /> : 'Criar conta e começar o teste'}
+                {loading ? <span className="spinner" /> : dias ? 'Criar conta e começar o teste' : 'Criar conta'}
               </button>
             </form>
             <p style={{ textAlign: 'center', marginTop: 16, fontSize: 12.5 }} className="text-secondary">
