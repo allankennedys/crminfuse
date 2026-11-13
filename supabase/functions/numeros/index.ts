@@ -26,6 +26,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import QRCode from 'npm:qrcode@1.5.4'
 import { autoEnableChat } from '../_shared/chatEnable.ts'
+import { acessoDaOrganizacao, MSG_SEM_ACESSO } from '../_shared/assinatura.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -87,7 +88,23 @@ Deno.serve(async (req) => {
     if (permErro) throw new HttpError(500, 'Falha ao verificar permissão')
     if (pode !== true) throw new HttpError(403, 'Seu perfil não tem permissão para gerenciar números')
 
-    if (action === 'create') return json(await criar(profile.organization_id, user.id))
+    if (action === 'create') {
+      const acesso = await acessoDaOrganizacao(admin, profile.organization_id)
+      if (acesso !== 'total') throw new HttpError(402, MSG_SEM_ACESSO[acesso] ?? MSG_SEM_ACESSO.bloqueado)
+      // Limite do plano: confere ANTES de criar a instância no servidor de WhatsApp
+      // (o gatilho do banco também barra, mas aí a instância já existiria).
+      const { data: ass } = await admin
+        .from('subscriptions').select('plans(max_whatsapps)').eq('organization_id', profile.organization_id).maybeSingle()
+      // deno-lint-ignore no-explicit-any
+      const max = (ass as any)?.plans?.max_whatsapps as number | undefined
+      if (max !== undefined) {
+        const { count } = await admin.from('whatsapp_sessions').select('id', { count: 'exact', head: true }).eq('organization_id', profile.organization_id)
+        if ((count ?? 0) >= max) {
+          throw new HttpError(402, `Limite de números do seu plano atingido (${count} de ${max}). Faça upgrade em Configurações → Plano e cobrança.`)
+        }
+      }
+      return json(await criar(profile.organization_id, user.id))
+    }
 
     const sessao = await sessaoDoUsuario(body?.session_id, profile, user.id)
     switch (action) {

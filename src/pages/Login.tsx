@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/lib/theme'
@@ -55,7 +55,9 @@ export function LoginPage() {
         </form>
 
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12.5 }} className="text-secondary">
-          Acesso restrito - solicite ao administrador.
+          Quer usar com a sua empresa? <Link to="/cadastro">Teste grátis por 7 dias</Link>
+          <br />
+          Vai entrar numa empresa que já usa? Peça o link de convite ao administrador.
         </p>
       </div>
     </div>

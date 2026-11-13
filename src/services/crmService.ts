@@ -473,6 +473,9 @@ async function listContactsFimTelefone(
 /** Quantas linhas o PostgREST devolve por vez na exportação. */
 const EXPORT_CHUNK = 1000
 
+/** Atendente do relatório (146): só entra na chamada quando escolhido. */
+const userArg = (userId?: string) => (userId ? { p_user: userId } : {})
+
 export const crmService = {
   // ---------- Etapas ----------
 
@@ -710,6 +713,23 @@ export const crmService = {
     }))
   },
 
+  /** Cria ou troca a regra desta etapa: parado `hours` horas, vai para `toStageId` (050). */
+  async saveStageAutomation(organizationId: string, fromStageId: string, toStageId: string, hours: number): Promise<void> {
+    const { error } = await supabase.from('crm_stage_automations').upsert(
+      {
+        organization_id: organizationId, from_stage_id: fromStageId, to_stage_id: toStageId,
+        after_interval: `${Math.max(1, Math.round(hours))} hours`, enabled: true,
+      },
+      { onConflict: 'from_stage_id' },
+    )
+    if (error) throw error
+  },
+
+  async deleteStageAutomation(fromStageId: string): Promise<void> {
+    const { error } = await supabase.from('crm_stage_automations').delete().eq('from_stage_id', fromStageId)
+    if (error) throw error
+  },
+
   // ---------- Relatórios ----------
   // As RPCs devolvem bigint/numeric como string; convertemos para number
   // aqui, na fronteira, para o resto do front lidar só com números.
@@ -725,8 +745,8 @@ export const crmService = {
   },
 
   /** KPIs de topo do período. channel vazio = todos os canais. */
-  async reportOverview(range: DateRange, channel?: string): Promise<CrmReportOverview> {
-    const { data, error } = await supabase.rpc('crm_report_overview', { ...rangeArgs(range), p_channel: channel || null })
+  async reportOverview(range: DateRange, channel?: string, userId?: string): Promise<CrmReportOverview> {
+    const { data, error } = await supabase.rpc('crm_report_overview', { ...rangeArgs(range), p_channel: channel || null, ...userArg(userId) })
     if (error) throw error
     const r = (data as Record<string, unknown>[] | null)?.[0]
     return {
@@ -743,9 +763,9 @@ export const crmService = {
    * Conversões ocorridas na janela (fluxo), venha o lead de quando vier — a
    * contrapartida do `converted` do reportOverview, que é coorte.
    */
-  async reportConversionsInPeriod(range: DateRange, channel?: string): Promise<CrmConversionsInPeriod> {
+  async reportConversionsInPeriod(range: DateRange, channel?: string, userId?: string): Promise<CrmConversionsInPeriod> {
     const { data, error } = await supabase.rpc('crm_report_conversions_in_period', {
-      ...rangeArgs(range), p_channel: channel || null,
+      ...rangeArgs(range), p_channel: channel || null, ...userArg(userId),
     })
     if (error) throw error
     const r = (data as Record<string, unknown>[] | null)?.[0]
@@ -760,8 +780,8 @@ export const crmService = {
   },
 
   /** Série diária: leads que entraram x conversões ocorridas. */
-  async reportTimeseries(range: DateRange, channel?: string): Promise<CrmReportPeriodRow[]> {
-    const { data, error } = await supabase.rpc('crm_report_timeseries', { ...rangeArgs(range), p_channel: channel || null })
+  async reportTimeseries(range: DateRange, channel?: string, userId?: string): Promise<CrmReportPeriodRow[]> {
+    const { data, error } = await supabase.rpc('crm_report_timeseries', { ...rangeArgs(range), p_channel: channel || null, ...userArg(userId) })
     if (error) throw error
     return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
       day: String(r.day),
@@ -771,15 +791,15 @@ export const crmService = {
   },
 
   /** Conversão por origem (só origens preenchidas). */
-  async reportByOrigem(range: DateRange, channel?: string): Promise<CrmReportBreakdownRow[]> {
-    const { data, error } = await supabase.rpc('crm_report_by_origem', { ...rangeArgs(range), p_channel: channel || null })
+  async reportByOrigem(range: DateRange, channel?: string, userId?: string): Promise<CrmReportBreakdownRow[]> {
+    const { data, error } = await supabase.rpc('crm_report_by_origem', { ...rangeArgs(range), p_channel: channel || null, ...userArg(userId) })
     if (error) throw error
     return mapBreakdown(data, 'origem')
   },
 
   /** Conversão por canal (só canais preenchidos). */
-  async reportByChannel(range: DateRange, channel?: string): Promise<CrmReportBreakdownRow[]> {
-    const { data, error } = await supabase.rpc('crm_report_by_channel', { ...rangeArgs(range), p_channel: channel || null })
+  async reportByChannel(range: DateRange, channel?: string, userId?: string): Promise<CrmReportBreakdownRow[]> {
+    const { data, error } = await supabase.rpc('crm_report_by_channel', { ...rangeArgs(range), p_channel: channel || null, ...userArg(userId) })
     if (error) throw error
     return mapBreakdown(data, 'channel')
   },
@@ -789,8 +809,8 @@ export const crmService = {
   // relatórios acima são de coorte por criação do lead — perguntas diferentes.
 
   /** Totais de vendas do período + histórico completo. */
-  async reportSales(range: DateRange, channel?: string): Promise<CrmSalesOverview> {
-    const { data, error } = await supabase.rpc('crm_report_sales', { ...rangeArgs(range), p_channel: channel || null })
+  async reportSales(range: DateRange, channel?: string, userId?: string): Promise<CrmSalesOverview> {
+    const { data, error } = await supabase.rpc('crm_report_sales', { ...rangeArgs(range), p_channel: channel || null, ...userArg(userId) })
     if (error) throw error
     const r = (data as Record<string, unknown>[] | null)?.[0]
     return {
@@ -810,8 +830,8 @@ export const crmService = {
   },
 
   /** Série diária de vendas: quantidade e faturamento. */
-  async reportSalesTimeseries(range: DateRange, channel?: string): Promise<CrmSalesDayRow[]> {
-    const { data, error } = await supabase.rpc('crm_report_sales_timeseries', { ...rangeArgs(range), p_channel: channel || null })
+  async reportSalesTimeseries(range: DateRange, channel?: string, userId?: string): Promise<CrmSalesDayRow[]> {
+    const { data, error } = await supabase.rpc('crm_report_sales_timeseries', { ...rangeArgs(range), p_channel: channel || null, ...userArg(userId) })
     if (error) throw error
     return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
       day: String(r.day),
@@ -1029,11 +1049,12 @@ export const crmService = {
   },
 
   /** Quem mais comprou no período. */
-  async reportSalesByContact(range: DateRange, channel?: string, limit = 20): Promise<CrmSalesContactRow[]> {
+  async reportSalesByContact(range: DateRange, channel?: string, limit = 20, userId?: string): Promise<CrmSalesContactRow[]> {
     const { data, error } = await supabase.rpc('crm_report_sales_by_contact', {
       ...rangeArgs(range),
       p_channel: channel || null,
       p_limit: limit,
+      ...userArg(userId),
     })
     if (error) throw error
     return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
@@ -1057,11 +1078,13 @@ export const crmService = {
     range: DateRange,
     channel?: string,
     limit = 100,
+    userId?: string,
   ): Promise<{ rows: CrmConvertedContactRow[]; total: number }> {
     const { data, error } = await supabase.rpc('crm_report_converted_contacts', {
       ...rangeArgs(range),
       p_channel: channel || null,
       p_limit: limit,
+      ...userArg(userId),
     })
     if (error) throw error
     const raw = (data as Record<string, unknown>[] | null) ?? []
@@ -1093,11 +1116,13 @@ export const crmService = {
     range: DateRange,
     dim: 'origem' | 'canal',
     channel?: string,
+    userId?: string,
   ): Promise<CrmSalesBreakdownRow[]> {
     const { data, error } = await supabase.rpc('crm_report_sales_breakdown', {
       ...rangeArgs(range),
       p_channel: channel || null,
       p_dim: dim,
+      ...userArg(userId),
     })
     if (error) throw error
     return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({
@@ -1121,11 +1146,13 @@ export const crmService = {
     range: DateRange,
     channel?: string,
     limit = 200,
+    userId?: string,
   ): Promise<{ rows: CrmRefundRow[]; total: number; cents: number }> {
     const { data, error } = await supabase.rpc('crm_report_refunds', {
       ...rangeArgs(range),
       p_channel: channel || null,
       p_limit: limit,
+      ...userArg(userId),
     })
     if (error) throw asError(error)
     const raw = (data as Record<string, unknown>[] | null) ?? []
@@ -1633,6 +1660,17 @@ export const crmService = {
 
   async deleteCustomField(id: string): Promise<void> {
     const { error } = await supabase.from('crm_custom_fields').delete().eq('id', id)
+    if (error) throw error
+  },
+
+  /** Abas dos relatórios que o admin desligou (146). */
+  async getReportTabsOff(): Promise<string[]> {
+    const { data } = await supabase.from('crm_funil_settings').select('report_tabs_off').maybeSingle<{ report_tabs_off: string[] }>()
+    return data?.report_tabs_off ?? []
+  },
+
+  async saveReportTabsOff(organizationId: string, off: string[]): Promise<void> {
+    const { error } = await supabase.from('crm_funil_settings').upsert({ organization_id: organizationId, report_tabs_off: off })
     if (error) throw error
   },
 

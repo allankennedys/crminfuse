@@ -5110,3 +5110,50 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 .install-text strong { font-size: 13.5px; }
 .install-text > span { color: var(--text-secondary); }
 .install-text .install-how { color: var(--text); margin-top: 4px; }
+
+/* Cadastro (147) */
+.signup-card { max-width: 460px; }
+.signup-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+.signup-plan {
+  display: flex; flex-direction: column; gap: 3px; text-align: left;
+  padding: 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); font-size: 11.5px; cursor: pointer;
+}
+.signup-plan strong { font-size: 13px; }
+.signup-plan.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); }
+.signup-price { font-size: 15px; font-weight: 700; }
+.signup-price small { font-size: 10.5px; font-weight: 400; color: var(--text-muted); }
+.signup-plan svg { color: var(--primary-text); vertical-align: -1px; }
+@media (max-width: 460px) { .signup-plans { grid-template-columns: 1fr; } }
+
+/* Plano e cobrança (147) */
+.plano-resumo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.plano-nome { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.plano-usos { display: grid; gap: 12px; margin: 12px 0; }
+.plano-uso-top { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; }
+.plano-alerta {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 12px;
+  border-radius: var(--radius-sm); background: var(--warning-dim); font-size: 12.5px; line-height: 1.45;
+}
+.plano-alerta svg { flex-shrink: 0; color: var(--warning); margin-top: 1px; }
+.plano-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.plano-card {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px; font-size: 12.5px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface);
+}
+.plano-card.atual { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); }
+.plano-card strong { font-size: 14px; }
+.plano-preco { font-size: 20px; font-weight: 700; }
+.plano-preco small { font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.plano-card .btn { margin-top: 8px; justify-content: center; }
+.assinatura-banner {
+  flex-shrink: 0; display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap;
+  padding: 6px 14px; font-size: 12.5px; background: var(--primary-dim); color: var(--text);
+}
+.assinatura-banner.alerta { background: var(--warning-dim); }
+.assinatura-banner svg { flex-shrink: 0; }
+.bloqueio-assinatura { max-width: 640px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 14px; }
+.bloqueio-overlay {
+  position: fixed; inset: 0; z-index: 800; overflow-y: auto; background: var(--bg);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}

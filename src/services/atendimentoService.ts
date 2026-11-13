@@ -435,8 +435,8 @@ export const atendimentoService = {
     if (error) throw error
   },
 
-  async report(from: string, to: string): Promise<WaReport> {
-    const { data, error } = await supabase.rpc('wa_report', { p_from: from, p_to: to })
+  async report(from: string, to: string, userId?: string): Promise<WaReport> {
+    const { data, error } = await supabase.rpc('wa_report', { p_from: from, p_to: to, ...(userId ? { p_user: userId } : {}) })
     if (error) throw error
     return data as WaReport
   },

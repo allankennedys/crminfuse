@@ -193,6 +193,12 @@ Deno.serve(async (req) => {
       return json({ error: 'A senha precisa ter ao menos 6 caracteres.' }, 400)
     }
 
+    // Usuário novo na organização só entra por convite (função invite): a
+    // criação direta com senha foi desativada.
+    if (!newOrganization) {
+      return json({ error: 'Para adicionar uma pessoa, gere um convite em Configurações → Usuários.' }, 410)
+    }
+
     // Só o dono da plataforma pode provisionar novas organizações.
     if (newOrganization && !isOwner) {
       return json({ error: 'Apenas o dono da plataforma pode criar novas organizações.' }, 403)
@@ -204,6 +210,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
+
+    // Assinatura em atraso ou suspensa: não cria usuário novo na organização.
+    if (!newOrganization) {
+      const { data: acesso } = await admin.rpc('org_acesso', { p_org: profile.organization_id })
+      if (acesso && acesso !== 'total') {
+        return json({ error: 'Sua assinatura precisa estar em dia para criar usuários. Veja Configurações → Plano e cobrança.' }, 402)
+      }
+    }
 
     // Cria o usuário já confirmado — sem tocar na sessão de quem chamou.
     // O trigger handle_new_user lê `organization_name` do metadata para
@@ -252,6 +266,8 @@ Deno.serve(async (req) => {
     if (updErr) {
       // Não deixa auth user solto se o vínculo falhou.
       await admin.auth.admin.deleteUser(newId)
+      // Limite do plano (gatilho limite_atendentes): a mensagem já é para o usuário.
+      if (/Limite de atendentes/.test(updErr.message ?? '')) return json({ error: updErr.message }, 402)
       return json({ error: 'Falha ao vincular o usuário à organização' }, 500)
     }
 

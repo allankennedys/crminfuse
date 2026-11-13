@@ -22,6 +22,10 @@ import { TituloDaAba } from '@/components/atendimento/TituloDaAba'
 import { PushSetup } from '@/components/PushSetup'
 import { InstallBanner } from '@/components/InstallBanner'
 import { desativarPush } from '@/lib/push'
+import { billingService, type MySubscription } from '@/services/billingService'
+import { AssinaturaBanner } from '@/components/billing/AssinaturaBanner'
+import { BloqueioAssinatura } from '@/components/billing/BloqueioAssinatura'
+import { useConfigNav } from '@/store/configNav'
 import { CentralAvisos } from '@/components/atendimento/CentralAvisos'
 import { LancarVendaDoContato } from '@/components/atendimento/LancarVendaDoContato'
 import { StartConversation } from '@/components/atendimento/StartConversation'
@@ -94,6 +98,18 @@ export function CRMPage() {
   const { profile, signOut } = useAuthStore()
   // Ao sair, este aparelho deixa de receber os avisos desta pessoa (quem divide
   // o aparelho não recebe os dela). A permissão do aparelho não é mexida.
+  // Assinatura (147): teste, atraso e bloqueio. Recarrega ao voltar para a aba,
+  // para o cliente que acabou de pagar ver o acesso voltar sem sair.
+  const [assinatura, setAssinatura] = useState<MySubscription | null>(null)
+  const carregarAssinatura = useCallback(() => { billingService.mySubscription().then(setAssinatura) }, [])
+  useEffect(() => {
+    carregarAssinatura()
+    window.addEventListener('focus', carregarAssinatura)
+    const i = setInterval(carregarAssinatura, 5 * 60_000)
+    return () => { window.removeEventListener('focus', carregarAssinatura); clearInterval(i) }
+  }, [carregarAssinatura])
+  const pedirConfig = useConfigNav((s) => s.pedir)
+
   const sair = async () => {
     await desativarPush().catch(() => {})
     await signOut()
@@ -380,6 +396,13 @@ export function CRMPage() {
           </button>
         </div>
       </header>
+
+      {assinatura && (
+        <AssinaturaBanner sub={assinatura} onOpenPlano={() => { pedirConfig('plano'); setTab('config') }} />
+      )}
+      {assinatura?.acesso === 'bloqueado' && (
+        <BloqueioAssinatura sub={assinatura} onChanged={carregarAssinatura} onSignOut={sair} />
+      )}
 
       <TituloDaAba />
       {can('atendimento.ver') && <PushSetup />}

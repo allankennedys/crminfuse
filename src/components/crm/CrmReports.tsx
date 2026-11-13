@@ -15,6 +15,7 @@ import {
   SkelChart, SkelChartCard, SkelKpis, SkelRows, SkelValue,
 } from './skeletons'
 import { JourneyNative } from './JourneyNative'
+import { atendimentoService } from '@/services/atendimentoService'
 import { crmService, formatBRL } from '@/services/crmService'
 import { metaAdsService } from '@/services/metaAdsService'
 import type { DateRange } from '@/services/crmService'
@@ -35,6 +36,7 @@ import type {
   CrmAdAccount, CrmReportBreakdownRow, CrmReportOverview, CrmReportPeriodRow,
   CrmExcludedCampaign, CrmSalesContactRow, CrmSalesDayRow, CrmSalesOverview, CrmStage,
   MetaAdsAccountResult, MetaAdsInsights, MetaAdsRow,
+  WaAttendant,
 } from '@/types'
 import type { ChannelCount, OrigemCount } from '@/services/crmService'
 import { AtendimentoReport } from '@/components/atendimento/AtendimentoReport'
@@ -100,7 +102,7 @@ type PeriodId = (typeof PERIODS)[number]['id'] | 'mes' | 'custom'
  * compara com as outras — juntas numa página só, davam a impressão de que
  * os números deveriam bater entre si.
  */
-const REPORT_TABS = [
+export const REPORT_TABS = [
   { id: 'atendimento', label: 'Atendimento', sub: 'Volume, tempos de resposta e de atendimento, motivos de conclusão e desempenho por atendente' },
   { id: 'vendas', label: 'Vendas', sub: 'Faturamento por data da venda, com recompras' },
   { id: 'funil', label: 'Funil', sub: 'Leads criados no período e o que fechou nele, por origem e canal' },
@@ -402,6 +404,21 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
   // Abre na primeira aba da barra (Vendas): destacar uma e abrir outra deixa
   // a barra com duas "primeiras".
   const [tab, setTab] = useState<ReportTab>(REPORT_TABS[0].id)
+  // Abas que o admin desligou em Configurações (146): somem da barra.
+  const [abasOff, setAbasOff] = useState<string[]>([])
+  useEffect(() => { crmService.getReportTabsOff().then(setAbasOff).catch(() => setAbasOff([])) }, [])
+  const abasVisiveis = REPORT_TABS.filter((t) => !abasOff.includes(t.id))
+  useEffect(() => {
+    if (abasVisiveis.length > 0 && !abasVisiveis.some((t) => t.id === tab)) setTab(abasVisiveis[0].id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abasOff])
+  // Atendente (146): só onde faz sentido. Jornada, Recompra e Meta ADS não têm
+  // atendente (o anúncio e o caminho do lead não dependem de quem atende).
+  const [atendente, setAtendente] = useState('')
+  const [atendentes, setAtendentes] = useState<WaAttendant[]>([])
+  useEffect(() => { atendimentoService.attendants().then(setAtendentes).catch(() => setAtendentes([])) }, [])
+  const atendenteFiltro = atendente || undefined
+  const abaComAtendente = tab === 'atendimento' || tab === 'vendas' || tab === 'funil'
   // Contato aberto a partir de uma linha do relatório. null = fechado; o
   // drawer trata null como "novo contato", então ele só é montado com dado.
   const [openContact, setOpenContact] = useState<CrmContact | null>(null)
@@ -470,15 +487,15 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
         overview, timeseries, byOrigem, byChannel, sales, salesSeries, salesByContact,
         prevOverview, prevSales,
       ] = await Promise.all([
-        crmService.reportOverview({ from, to }, channel),
-        crmService.reportTimeseries({ from, to }, channel),
-        crmService.reportByOrigem({ from, to }, channel),
-        crmService.reportByChannel({ from, to }, channel),
-        crmService.reportSales({ from, to }, channel),
-        crmService.reportSalesTimeseries({ from, to }, channel),
-        crmService.reportSalesByContact({ from, to }, channel),
-        crmService.reportOverview(anterior, channel),
-        crmService.reportSales(anterior, channel),
+        crmService.reportOverview({ from, to }, channel, atendenteFiltro),
+        crmService.reportTimeseries({ from, to }, channel, atendenteFiltro),
+        crmService.reportByOrigem({ from, to }, channel, atendenteFiltro),
+        crmService.reportByChannel({ from, to }, channel, atendenteFiltro),
+        crmService.reportSales({ from, to }, channel, atendenteFiltro),
+        crmService.reportSalesTimeseries({ from, to }, channel, atendenteFiltro),
+        crmService.reportSalesByContact({ from, to }, channel, undefined, atendenteFiltro),
+        crmService.reportOverview(anterior, channel, atendenteFiltro),
+        crmService.reportSales(anterior, channel, atendenteFiltro),
       ])
       setData({
         overview, timeseries, byOrigem, byChannel, sales, salesSeries, salesByContact,
@@ -487,7 +504,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Falha ao carregar os relatórios')
     }
-  }, [from, to, channel, preset])
+  }, [from, to, channel, preset, atendenteFiltro])
 
   useEffect(() => { refresh() }, [refresh])
 
@@ -497,7 +514,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
     if (!convListaAberta) return
     let cancelado = false
     setConvLista(null)
-    crmService.reportConvertedContacts({ from, to }, channel, CONV_LISTA_LIMITE)
+    crmService.reportConvertedContacts({ from, to }, channel, CONV_LISTA_LIMITE, atendenteFiltro)
       .then((r) => { if (!cancelado) setConvLista({ ...r, erro: null }) })
       .catch((err) => {
         if (!cancelado) {
@@ -509,7 +526,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
         }
       })
     return () => { cancelado = true }
-  }, [convListaAberta, from, to, channel])
+  }, [convListaAberta, from, to, channel, atendenteFiltro])
 
   // Abre o painel do contato a partir do relatório: é lá que a venda é
   // editada, em vez de duplicar o formulário aqui.
@@ -554,12 +571,21 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
             <label className="channel-filter">
               <WhatsAppIcon size={14} color="var(--primary-text)" />
               <select value={channel} onChange={(e) => setChannel(e.target.value)}>
-                <option value="">Todos os vendedores</option>
+                <option value="">Todos os canais</option>
                 {channels.map((c) => (
                   <option key={c.channel} value={c.channel}>
                     {c.channel} ({c.contact_count})
                   </option>
                 ))}
+              </select>
+            </label>
+          )}
+          {abaComAtendente && atendentes.length > 0 && (
+            <label className="channel-filter">
+              <Users size={14} />
+              <select value={atendente} onChange={(e) => setAtendente(e.target.value)} aria-label="Atendente">
+                <option value="">Todos os atendentes</option>
+                {atendentes.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </label>
           )}
@@ -642,7 +668,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
           repetir o seletor em cada uma faria o usuário reconfigurar a cada
           troca. */}
       <div className="report-tabs">
-        {REPORT_TABS.map((t) => (
+        {abasVisiveis.map((t) => (
           <button
             key={t.id}
             className={`report-tab${tab === t.id ? ' active' : ''}`}
@@ -968,6 +994,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
           label={label}
           range={range}
           channel={channel}
+          atendente={atendenteFiltro}
           overview={sales}
           series={salesSeries}
           byContact={salesByContact}
@@ -978,7 +1005,7 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
         />
       )}
 
-      {tab === 'atendimento' && <AtendimentoReport label={label} range={range} />}
+      {tab === 'atendimento' && <AtendimentoReport label={label} range={range} userId={atendenteFiltro} />}
 
       {tab === 'jornada' && (
         <JourneyNative label={label} range={range} channel={channel} origem={origem} />
@@ -2629,10 +2656,12 @@ function AdsReport({ label, preset, range, previous, channel, isAdmin }: {
  *     igual à "receita convertida" do topo — a diferença é recompra.
  */
 function SalesReport({
-  label, range, channel, overview, series, byContact, onOpenContact, onLaunchSale,
+  label, range, channel, atendente, overview, series, byContact, onOpenContact, onLaunchSale,
   prevRevenueCents, onRefundChanged,
 }: {
   label: string
+  /** Só as vendas dos clientes deste atendente (146). */
+  atendente?: string
   /** As quebras do fim da aba consultam sozinhas — ver o comentário delas. */
   range: DateRange
   channel: string
@@ -2682,7 +2711,7 @@ function SalesReport({
   // vem depois de marcar um reembolso no drawer — e o card acompanha.
   useEffect(() => {
     let cancelado = false
-    crmService.reportRefunds({ from, to }, channel, 200)
+    crmService.reportRefunds({ from, to }, channel, 200, atendente)
       .then((r) => { if (!cancelado) setReembolsos(r) })
       .catch((err) => {
         if (cancelado) return
@@ -2692,7 +2721,7 @@ function SalesReport({
         })
       })
     return () => { cancelado = true }
-  }, [from, to, channel, overview])
+  }, [from, to, channel, overview, atendente])
 
   useEffect(() => {
     let cancelado = false
@@ -2700,8 +2729,8 @@ function SalesReport({
     setPorCanal(null)
     setErroQuebras(null)
     Promise.all([
-      crmService.reportSalesBreakdown({ from, to }, 'origem', channel),
-      crmService.reportSalesBreakdown({ from, to }, 'canal', channel),
+      crmService.reportSalesBreakdown({ from, to }, 'origem', channel, atendente),
+      crmService.reportSalesBreakdown({ from, to }, 'canal', channel, atendente),
     ])
       .then(([o, c]) => {
         if (cancelado) return
@@ -2715,7 +2744,7 @@ function SalesReport({
         setErroQuebras(err instanceof Error ? err.message : 'falha desconhecida')
       })
     return () => { cancelado = true }
-  }, [from, to, channel])
+  }, [from, to, channel, atendente])
 
   const revenueSeries = series.map((r) => r.revenue_cents)
   const chartDays = series.map((r) => ({
