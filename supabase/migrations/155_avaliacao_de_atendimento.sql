@@ -6,9 +6,11 @@
 -- próprio WhatsApp e depois de alguns minutos, uma nota de 1 a 5. A próxima
 -- mensagem do cliente com só esse número (em até 24 h) vira a avaliação: não
 -- reabre o atendimento, não cria atendimento novo e recebe um agradecimento.
+-- Com nota 1, 2 ou 3 o agradecimento pergunta o que aconteceu: a resposta seguinte
+-- (em até 6 h) vira o comentário, também sem reabrir.
 --
 --   wa_settings.rating_*   configuração
---   wa_ratings             um pedido por atendimento, com a nota quando vem
+--   wa_ratings             um pedido por atendimento, com a nota (e o comentário, se nota baixa)
 --   wa_rating_due/sent     usadas pelo worker para enviar os pedidos
 --   wa_rating_report       médias para o relatório
 -- ============================================================
@@ -18,7 +20,10 @@ alter table public.wa_settings
   add column if not exists rating_text text,
   add column if not exists rating_thanks_text text,
   add column if not exists rating_delay_minutes int not null default 2
-    check (rating_delay_minutes between 0 and 120);
+    check (rating_delay_minutes between 0 and 120),
+  -- Nota 1, 2 ou 3: o agradecimento já pergunta o que aconteceu e a resposta vira comentário.
+  add column if not exists rating_comment_on boolean not null default true,
+  add column if not exists rating_comment_text text;
 
 create table if not exists public.wa_ratings (
   id              uuid primary key default gen_random_uuid(),
@@ -35,7 +40,10 @@ create table if not exists public.wa_ratings (
   sent_at         timestamptz,
   score           smallint check (score between 1 and 5),
   answered_at     timestamptz,
-  thanks_sent_at  timestamptz
+  thanks_sent_at  timestamptz,
+  comment_requested_at timestamptz,
+  feedback        text,
+  comment_at      timestamptz
 );
 create index if not exists idx_wa_ratings_conv on public.wa_ratings(conversation_id, created_at desc);
 create index if not exists idx_wa_ratings_due on public.wa_ratings(send_at) where sent_at is null;
@@ -176,7 +184,10 @@ begin
     'por_atendente', coalesce((
       select jsonb_agg(jsonb_build_object('id', agent_id, 'media', m, 'total', c, 'enviadas', e) order by c desc)
       from (select agent_id, round(avg(score)::numeric, 2) m, count(score) c, count(*) e
-            from r where agent_id is not null group by agent_id) q), '[]'::jsonb)
+            from r where agent_id is not null group by agent_id) q), '[]'::jsonb),
+    'comentarios', coalesce((
+      select jsonb_agg(jsonb_build_object('nota', score, 'texto', feedback, 'agente', agent_id, 'quando', comment_at) order by comment_at desc)
+      from (select * from r where feedback is not null order by comment_at desc limit 20) k), '[]'::jsonb)
   ) into v;
   return v;
 end $$;
@@ -196,7 +207,7 @@ begin
   if v_def is null then raise exception 'wa_ingest_message não encontrada'; end if;
 
   if position('v_rating' in v_def) = 0 then
-    v_new := replace(v_def, 'v_keeper   uuid;', E'v_keeper   uuid;\n  v_rating   boolean := false;');
+    v_new := replace(v_def, 'v_keeper   uuid;', E'v_keeper   uuid;\n  v_rating   boolean := false;\n  v_comment  boolean := false;');
     v_new := replace(v_new, E'if v_inserted then\n    v_preview := left(coalesce(',
       $r$if v_inserted then
     -- Avaliação do atendimento: só um número de 1 a 5, respondendo a um pedido recente.
@@ -210,16 +221,23 @@ begin
         v_rating := true;
         insert into public.wa_conversation_events (organization_id, conversation_id, kind, note)
         values (v_org, v_conv.id, 'avaliada', substring(btrim(p_body) from 1 for 1));
+      else
+        -- Comentário depois de uma nota baixa: a próxima mensagem de texto em até 6 h.
+        update public.wa_ratings r
+           set feedback = left(btrim(p_body), 1000), comment_at = now()
+         where r.conversation_id = v_conv.id and r.feedback is null and r.comment_requested_at is not null
+           and r.comment_requested_at > now() - interval '6 hours' and btrim(coalesce(p_body, '')) <> '';
+        if found then v_rating := true; v_comment := true; end if;
       end if;
     end if;
     v_preview := left(coalesce($r$);
     v_new := replace(v_new, 'status               = case when p_from_me then c.status else ''aberta'' end,',
                             'status               = case when p_from_me or v_rating then c.status else ''aberta'' end,');
-    v_new := replace(v_new, 'else c.unread_count + 1 end,', 'else c.unread_count + (case when v_rating then 0 else 1 end) end,');
+    v_new := replace(v_new, 'else c.unread_count + 1 end,', 'else c.unread_count + (case when v_rating and not v_comment then 0 else 1 end) end,');
     v_new := replace(v_new, E'if not p_from_me then\n      -- Cliente escreveu', E'if not p_from_me and not v_rating then\n      -- Cliente escreveu');
-    if position('v_rating then c.status' in v_new) = 0 or position('case when v_rating then 0' in v_new) = 0
+    if position('v_rating then c.status' in v_new) = 0 or position('v_rating and not v_comment' in v_new) = 0
        or position('not v_rating then' in v_new) = 0 or position('wa_ratings r' in v_new) = 0
-       or position('v_rating   boolean' in v_new) = 0 then
+       or position('v_rating   boolean' in v_new) = 0 or position('v_comment  boolean' in v_new) = 0 then
       raise exception 'wa_ingest_message: trechos esperados não encontrados';
     end if;
     execute v_new;
@@ -233,11 +251,26 @@ begin
 
   if position('thanks_sent_at' in v_def) = 0 then
     v_new := replace(v_def, 'v_hours := coalesce(v_set.business_hours,',
-      $r$if exists (select 1 from public.wa_ratings r where r.conversation_id = v_conv.id and r.score is not null and r.thanks_sent_at is null) then
-    update public.wa_ratings r set thanks_sent_at = now()
+      $r$-- Acabou de chegar o comentário da avaliação: não responde nada.
+  if exists (select 1 from public.wa_ratings r where r.conversation_id = v_conv.id and r.comment_at > now() - interval '1 minute') then
+    return null;
+  end if;
+
+  if exists (select 1 from public.wa_ratings r where r.conversation_id = v_conv.id and r.score is not null and r.thanks_sent_at is null) then
+    select r.score into v_n from public.wa_ratings r
+     where r.conversation_id = v_conv.id and r.score is not null and r.thanks_sent_at is null
+     order by r.answered_at desc limit 1;
+    update public.wa_ratings r
+       set thanks_sent_at = now(),
+           comment_requested_at = case when v_n <= 3 and v_set.rating_comment_on then now() end
      where r.conversation_id = v_conv.id and r.score is not null and r.thanks_sent_at is null;
     if v_set.rating_on then
-      return coalesce(nullif(btrim(v_set.rating_thanks_text), ''), 'Obrigado pela sua avaliação! Ela nos ajuda a melhorar.');
+      v_text := coalesce(nullif(btrim(v_set.rating_thanks_text), ''), 'Obrigado pela sua avaliação! Ela nos ajuda a melhorar.');
+      if v_n <= 3 and v_set.rating_comment_on then
+        v_text := v_text || E'\n\n' || coalesce(nullif(btrim(v_set.rating_comment_text), ''),
+          'Sentimos muito que não tenha sido uma boa experiência. Quer nos contar o que aconteceu? É só responder esta mensagem.');
+      end if;
+      return v_text;
     end if;
     return null;
   end if;

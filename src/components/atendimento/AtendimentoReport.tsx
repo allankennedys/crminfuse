@@ -69,6 +69,7 @@ export function AtendimentoReport({ label, range, userId }: { label: string; ran
   const totalMotivos = data.por_motivo.reduce((s, m) => s + m.total, 0)
   const maxMotivo = Math.max(1, ...data.por_motivo.map((m) => m.total))
   const av = data.avaliacoes
+  const nomes = new Map(data.por_atendente.map((a) => [a.id, a.nome]))
   const notaDe = new Map((av?.por_atendente ?? []).map((x) => [x.id, x]))
   const maxNota = Math.max(1, ...(av?.distribuicao ?? []).map((d) => d.total))
   const agentes = [...data.por_atendente].sort((a, b) => b.atendimentos - a.atendimentos || a.nome.localeCompare(b.nome))
@@ -251,6 +252,28 @@ export function AtendimentoReport({ label, range, userId }: { label: string; ran
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {av && av.comentarios.length > 0 && (
+        <div className="card mb-16">
+          <div className="card-title" style={{ marginBottom: 4 }}><MessageCircle size={15} /> Comentários dos clientes</div>
+          <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 14 }}>
+            O que os clientes contaram depois de uma nota baixa (últimos 20 do período)
+          </p>
+          <ul className="at-comments">
+            {av.comentarios.map((k, i) => (
+              <li key={i}>
+                <div className="at-comments-top">
+                  <span className="at-comments-nota">{k.nota} de 5</span>
+                  <span className="text-muted">
+                    {k.agente ? (nomes.get(k.agente) ?? 'atendente') : 'sem atendente'} · {new Date(k.quando).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                <p>{k.texto}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

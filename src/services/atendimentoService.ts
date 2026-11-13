@@ -379,7 +379,7 @@ export const atendimentoService = {
   async getSettings(organizationId: string): Promise<WaSettings> {
     const { data } = await supabase
       .from('wa_settings')
-      .select('organization_id, restrict_to_assigned, auto_conclude_hours, allow_edit_messages, allow_delete_messages, auto_greeting_on, auto_greeting_text, auto_away_on, auto_away_text, business_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons, rating_on, rating_text, rating_thanks_text, rating_delay_minutes')
+      .select('organization_id, restrict_to_assigned, auto_conclude_hours, allow_edit_messages, allow_delete_messages, auto_greeting_on, auto_greeting_text, auto_away_on, auto_away_text, business_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons, rating_on, rating_text, rating_thanks_text, rating_delay_minutes, rating_comment_on, rating_comment_text')
       .eq('organization_id', organizationId)
       .maybeSingle<WaSettings>()
     return data ?? {
@@ -388,7 +388,7 @@ export const atendimentoService = {
       assign_mode: 'manual', fixed_user: null, pool: [],
       max_open_per_agent: null,
       conclusion_reasons: ['Dúvida resolvida', 'Venda realizada', 'Sem retorno do cliente', 'Encaminhado para outro setor'],
-      rating_on: false, rating_text: null, rating_thanks_text: null, rating_delay_minutes: 2,
+      rating_on: false, rating_text: null, rating_thanks_text: null, rating_delay_minutes: 2, rating_comment_on: true, rating_comment_text: null,
     }
   },
 
@@ -450,7 +450,7 @@ export const atendimentoService = {
   async lastRating(conversationId: string): Promise<WaRating | null> {
     const { data } = await supabase
       .from('wa_ratings')
-      .select('id, ticket_id, agent_id, score, sent_at, answered_at, expires_at')
+      .select('id, ticket_id, agent_id, score, sent_at, answered_at, expires_at, feedback')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
       .limit(1)
