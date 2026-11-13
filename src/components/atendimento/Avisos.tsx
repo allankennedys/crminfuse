@@ -6,8 +6,6 @@ import { useConversaStore } from '@/store/conversaStore'
 import { atendimentoService, conversationName } from '@/services/atendimentoService'
 import type { WaMessage } from '@/types'
 
-const TITULO = typeof document !== 'undefined' ? document.title : ''
-
 let audioCtx: AudioContext | null = null
 /** Dois tons curtos. Sem arquivo de áudio: nada para carregar nem hospedar. */
 function beep() {
@@ -46,7 +44,6 @@ function notificar(titulo: string, corpo: string, tag: string, onClick: () => vo
  */
 export function AvisosAtendimento() {
   const userId = useAuthStore((s) => s.profile?.id ?? '')
-  const naoLidas = useRef(0)
   const avisados = useRef<Set<string>>(new Set())
   const abrirConversa = useConversaStore((s) => s.abrirConversa)
 
@@ -67,21 +64,6 @@ export function AvisosAtendimento() {
     return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
   }, [abrirConversa])
 
-  // Título da aba: "(2) ..." enquanto há mensagem que ninguém viu.
-  useEffect(() => {
-    const zera = () => {
-      naoLidas.current = 0
-      document.title = TITULO
-    }
-    const onVis = () => { if (document.visibilityState === 'visible') zera() }
-    document.addEventListener('visibilitychange', onVis)
-    window.addEventListener('focus', zera)
-    return () => {
-      document.removeEventListener('visibilitychange', onVis)
-      window.removeEventListener('focus', zera)
-    }
-  }, [])
-
   useEffect(() => {
     if (!userId) return
     const channel = supabase
@@ -101,8 +83,6 @@ export function AvisosAtendimento() {
 
         beep()
         if (escondida) {
-          naoLidas.current += 1
-          document.title = `(${naoLidas.current}) ${TITULO}`
           notificar(
             conversationName(conv),
             (m.body ?? '').slice(0, 120) || 'Nova mensagem',

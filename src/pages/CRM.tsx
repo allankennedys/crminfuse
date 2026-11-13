@@ -18,6 +18,7 @@ import { CrmSettingsPanel } from '@/components/crm/CrmSettings'
 import { CrmReports } from '@/components/crm/CrmReports'
 import { Atendimento } from '@/components/atendimento/Atendimento'
 import { AvisosAtendimento } from '@/components/atendimento/Avisos'
+import { TituloDaAba } from '@/components/atendimento/TituloDaAba'
 import { CentralAvisos } from '@/components/atendimento/CentralAvisos'
 import { LancarVendaDoContato } from '@/components/atendimento/LancarVendaDoContato'
 import { StartConversation } from '@/components/atendimento/StartConversation'
@@ -207,11 +208,6 @@ export function CRMPage() {
     }
   }, [boardFilters])
 
-  // Título da aba do navegador para o módulo CRM.
-  useEffect(() => {
-    document.title = 'Infuse - CRM'
-  }, [])
-
   // Quem só atende (cargo atendente) não enxerga nada do funil: carregar
   // etapas e contatos só daria erro na tela dele.
   const temCrm = permissions.some((p) => p.startsWith('crm.'))
@@ -376,6 +372,7 @@ export function CRMPage() {
         </div>
       </header>
 
+      <TituloDaAba />
       {can('atendimento.ver') && <AvisosAtendimento />}
 
       <main className={tab === 'funil' ? 'crm-main crm-main-board' : tab === 'atendimento' ? 'crm-main crm-main-chat' : 'crm-main'}>
