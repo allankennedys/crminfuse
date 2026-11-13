@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell, BellOff } from 'lucide-react'
 import { Modal } from '@/components/ui'
 import { toast } from '@/store/toastStore'
-import { ativarPush, desativarPush, pushAtivo, pushSuportado } from '@/lib/push'
+import { ativarPush, desativarPush, gravarDecisaoPush, pushAtivo, pushSuportado } from '@/lib/push'
 import { useAuthStore } from '@/store/authStore'
 import { useAvisosStore } from '@/store/avisosStore'
 import { useConversaStore } from '@/store/conversaStore'
@@ -33,8 +33,10 @@ export function CentralAvisos() {
     try {
       if (pushOn) {
         await desativarPush()
+        gravarDecisaoPush(userId, 'nao')
         setPushOn(false)
       } else {
+        gravarDecisaoPush(userId, 'sim')
         const r = await ativarPush(userId, organizationId)
         if (r.ok) { setPushOn(true); toast.success('Notificações ligadas neste aparelho.') }
         else toast.error(r.motivo)

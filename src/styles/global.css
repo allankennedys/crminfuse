@@ -5096,3 +5096,17 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
   .at-msg-more { width: 28px; height: 24px; }
   .at-attach-menu button, .at-qr button, .at-msg-menu > button { min-height: 40px; }
 }
+
+/* Faixa de instalação do app (celular, fora do app instalado) */
+.install-banner {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-strong);
+}
+.install-banner img { border-radius: 10px; flex-shrink: 0; }
+.install-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; line-height: 1.4; }
+.install-text strong { font-size: 13.5px; }
+.install-text > span { color: var(--text-secondary); }
+.install-text .install-how { color: var(--text); margin-top: 4px; }

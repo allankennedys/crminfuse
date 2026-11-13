@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Megaphone, Plus, ShieldCheck, Trash2, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
+import { BellRing, KeyRound, Megaphone, Plus, ShieldCheck, Trash2, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
 import { CustomFieldsSettings } from './CustomFields'
 import { AtendimentoSettings } from '@/components/atendimento/AtendimentoSettings'
+import { NotificacoesSettings } from '@/components/atendimento/NotificacoesSettings'
 import { supabase } from '@/lib/supabase'
 import { crmService } from '@/services/crmService'
 import { useAuthStore, useCan } from '@/store/authStore'
@@ -12,6 +13,7 @@ import { confirmDialog } from '@/store/confirmStore'
 import type { CrmAdAccount, CrmSettings as Settings } from '@/types'
 
 const SETTINGS_TAB_ALL = [
+  { id: 'notificacoes', label: 'Notificações', icon: BellRing },
   { id: 'org', label: 'Organização', icon: Building2 },
   { id: 'atendimento', label: 'Atendimento', icon: MessageCircle },
   { id: 'users', label: 'Usuários', icon: UsersIcon },
@@ -40,12 +42,14 @@ export function CrmSettingsPanel() {
   const can = useCan()
   const podeConfigurarAtendimento = can('atendimento.configurar')
   const settingsTabs = SETTINGS_TAB_ALL.filter((t) => {
+    // Notificações: de cada pessoa, qualquer um que atende (ou é admin).
+    if (t.id === 'notificacoes') return isAdmin || can('atendimento.ver')
     if (t.id === 'atendimento') return podeConfigurarAtendimento
     if (t.id === 'users' || t.id === 'org') return isAdmin
     // Integrações (Meta): só admin.
     return isAdmin
   })
-  const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'org' : podeConfigurarAtendimento ? 'atendimento' : 'integrations')
+  const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'org' : podeConfigurarAtendimento ? 'atendimento' : 'notificacoes')
 
   const [settings, setSettings] = useState<Settings | null>(null)
   const [pixel, setPixel] = useState('')
@@ -131,6 +135,8 @@ export function CrmSettingsPanel() {
       {/* ---------- Usuários e acessos ----------
           Só para admin da organização. Usuários "crm_only" nunca são admin,
           então a gestão de acessos não aparece para eles (a aba nem existe). */}
+      {tab === 'notificacoes' && <NotificacoesSettings />}
+
       {tab === 'org' && isAdmin && <OrganizationSection />}
       {tab === 'org' && isAdmin && <CustomFieldsSettings />}
 
