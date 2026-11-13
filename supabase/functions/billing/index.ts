@@ -162,6 +162,10 @@ Deno.serve(async (req) => {
         client_reference_id: org,
         payment_method_types: ['card'],
         locale: 'pt-BR',
+        // Preço sempre em reais: sem isso o Stripe mostra o valor convertido para a
+        // moeda de quem abre a página (dólar, euro…) quando ele está fora do Brasil.
+        // deno-lint-ignore no-explicit-any
+        ...({ adaptive_pricing: { enabled: false } } as any),
         line_items: [{ quantity: 1, price_data: priceData() }],
         subscription_data: {
           metadata: { organization_id: org, plan_id: plano.id },
