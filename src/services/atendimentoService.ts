@@ -207,11 +207,11 @@ export const atendimentoService = {
   async getSettings(organizationId: string): Promise<WaSettings> {
     const { data } = await supabase
       .from('wa_settings')
-      .select('organization_id, restrict_to_assigned, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons')
+      .select('organization_id, restrict_to_assigned, auto_conclude_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons')
       .eq('organization_id', organizationId)
       .maybeSingle<WaSettings>()
     return data ?? {
-      organization_id: organizationId, restrict_to_assigned: true, assign_mode: 'manual', fixed_user: null, pool: [],
+      organization_id: organizationId, restrict_to_assigned: true, auto_conclude_hours: null, assign_mode: 'manual', fixed_user: null, pool: [],
       max_open_per_agent: null,
       conclusion_reasons: ['Dúvida resolvida', 'Venda realizada', 'Sem retorno do cliente', 'Encaminhado para outro setor'],
     }

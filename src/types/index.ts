@@ -932,6 +932,8 @@ export interface WaSettings {
   organization_id: string
   /** true = quem não tem "ver todas" só vê as conversas atribuídas a si. */
   restrict_to_assigned: boolean
+  /** Conclui sozinho o atendimento sem mensagens por tantas horas (135). null = desligado. */
+  auto_conclude_hours: number | null
   assign_mode: WaAssignMode
   fixed_user: string | null
   /** Quem participa do sorteio/rodízio. Vazio = todos com atendimento. */
