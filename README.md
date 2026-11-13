@@ -21,6 +21,17 @@ As migrations ficam em `supabase/migrations` e são aplicadas em ordem. Duas tra
 
 A 115 (cargo atendente) roda numa execução separada da 116.
 
+## Domínio da API (api.infusesoftware.com)
+
+O navegador não fala direto com o backend: tudo (login, banco, funções, arquivos e o tempo real) passa pelo Worker `infuse-api` da Cloudflare, publicado em `api.infusesoftware.com` — código em `cloudflare/api-proxy/worker.js`. Ele repassa as chamadas e tira dos retornos os cabeçalhos que identificam o fornecedor.
+
+- `VITE_SUPABASE_URL=https://api.infusesoftware.com` (local e na Vercel).
+- Secret `PUBLIC_API_URL=https://api.infusesoftware.com` nas funções: os links de mídia que vão para o navegador saem por esse domínio.
+- O webhook da Evolution continua apontando direto para o projeto (servidor com servidor; o navegador não vê).
+- Plano grátis de Workers: 100 mil requisições/dia. Se o login começar a dar "rate limit" com muita gente, os limites ficam em Authentication → Rate Limits no painel do backend (todo mundo chega pelo mesmo proxy).
+
+Para publicar uma versão nova do Worker: painel da Cloudflare → Workers → `infuse-api` → editar código, ou `PUT /accounts/{conta}/workers/scripts/infuse-api` pela API.
+
 ## Edge Functions
 
 | Função | Para quê | JWT |
