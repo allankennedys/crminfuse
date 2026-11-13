@@ -4,6 +4,8 @@ CRM com atendimento de WhatsApp: funil de vendas, conversas individuais com aten
 
 React + Vite + TypeScript · Supabase (Auth, banco, Realtime, Storage, Edge Functions) · Evolution API (WhatsApp).
 
+O navegador não vê nenhum desses nomes: tudo passa por `api.infusesoftware.com` (ver abaixo), e o servidor de WhatsApp só é acessado pelas funções.
+
 ## Rodar
 
 ```bash
@@ -36,7 +38,7 @@ O Worker tem dois vínculos: o bucket R2 `infuse-crm-midias` (`MIDIAS`) e o secr
 
 | Função | Para quê | JWT |
 |---|---|---|
-| `evolution` | Números de WhatsApp: criar (nome gerado pelo sistema), QR, status, remover — sempre só os do próprio usuário | sim |
+| `numeros` | Números de WhatsApp: criar (nome gerado pelo sistema), QR Code (desenhado aqui, nas cores da Infuse), status, reconectar, desconectar, remover — sempre só os do próprio usuário. O painel manda só ações e recebe só o que a tela usa: nada do servidor de WhatsApp chega ao navegador | sim |
 | `wa-chat` | Atendimento: enviar texto/arquivo, marcar como lida, ligar/desligar número | sim |
 | `wa-webhook` | Recebe da Evolution as mensagens (só conversas individuais), os status (entregue/lida) e a conexão do número | não |
 | `admin-users` | Criar e administrar usuários (cargos Admin e Atendente) | sim |
