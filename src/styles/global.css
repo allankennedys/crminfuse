@@ -5211,3 +5211,7 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
   .tour-spot.animando, .tour-card.animando { transition: none; }
   .tour-body { animation: none; }
 }
+
+/* Login: separador entre entrar e criar conta */
+.auth-divisor { display: flex; align-items: center; gap: 12px; margin: 22px 0 16px; color: var(--text-muted); font-size: 12px; }
+.auth-divisor::before, .auth-divisor::after { content: ''; flex: 1; height: 1px; background: var(--border); }
