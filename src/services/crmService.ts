@@ -1938,6 +1938,16 @@ export const crmService = {
     if (error) throw error
   },
 
+  /**
+   * Página do Facebook que veicula os anúncios Click-to-WhatsApp (129). RPC
+   * própria: crm_settings_save não conhece a coluna, então salvar pixel ou
+   * token nunca apaga a Página. Vazio = remove.
+   */
+  async savePageId(page: string) {
+    const { error } = await supabase.rpc('crm_settings_set_page', { p_page: page })
+    if (error) throw error
+  },
+
   // ---------- Contas de anúncios ----------
   //
   // Uma org lê mais de uma conta no relatório de Meta ADS (058). A lista é

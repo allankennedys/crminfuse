@@ -53,6 +53,9 @@ export function CrmSettingsPanel() {
   // pede pra trocar — evita o input mascarado + placeholder-dica ocioso.
   const [editingToken, setEditingToken] = useState(false)
   const [testCode, setTestCode] = useState('')
+  // Página do Facebook dos anúncios: sem ela a venda de quem clicou no
+  // anúncio não é aceita pela Meta (o clique é validado contra a Página).
+  const [pageId, setPageId] = useState('')
   // Leitura dos anúncios (Marketing API). As CONTAS moram em tabela própria
   // e têm seção própria (AdAccountsSection) — aqui fica só o token da
   // organização, que serve de padrão para as contas sem token próprio. Ele é
@@ -69,6 +72,7 @@ export function CrmSettingsPanel() {
         setSettings(s)
         setPixel(s.meta_pixel_id ?? '')
         setTestCode(s.meta_test_event_code ?? '')
+        setPageId(s.meta_page_id ?? '')
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Falha ao carregar configurações'))
   }, [])
@@ -93,6 +97,9 @@ export function CrmSettingsPanel() {
         testCode: testCode.trim(),
         adsToken: adsToken.trim() || undefined,
       })
+      if (pageId.replace(/\D/g, '') !== (settings?.meta_page_id ?? '')) {
+        await crmService.savePageId(pageId)
+      }
       toast.success('Configurações salvas')
       setToken('')
       setAdsToken('')
@@ -157,6 +164,31 @@ export function CrmSettingsPanel() {
           <p className="text-muted" style={{ fontSize: 11.5, marginTop: 6 }}>
             É o mesmo pixel que você já usa nos anúncios. O número fica no
             Gerenciador de Eventos da Meta, ao lado do nome dele.
+          </p>
+        </div>
+
+        <div className="field">
+          <label>
+            ID da Página do Facebook
+            {settings.meta_page_id && (
+              <span className="badge badge-green" style={{ marginLeft: 8 }}>Configurada</span>
+            )}
+          </label>
+          <input
+            className="input mono"
+            value={pageId}
+            onChange={(e) => setPageId(e.target.value)}
+            placeholder="102938475610293"
+            inputMode="numeric"
+            disabled={!canEditMeta}
+          />
+          <p className="text-muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+            A Página que aparece como anunciante nos anúncios de mensagem para o
+            WhatsApp. Sem ela, a Meta não aceita o aviso das vendas de quem clicou
+            no anúncio — elas ficam guardadas e saem sozinhas assim que a Página
+            for salva. O número fica no Facebook, na Página → <em>Sobre</em> →{' '}
+            <em>Transparência da Página</em> (ou no Meta Business Suite, em
+            Configurações → Página).
           </p>
         </div>
 
