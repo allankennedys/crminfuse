@@ -4,7 +4,7 @@ import { CustomFieldsSettings } from './CustomFields'
 import { ReportTabsSettings } from './ReportTabsSettings'
 import { AtendimentoSettings } from '@/components/atendimento/AtendimentoSettings'
 import { NotificacoesSettings } from '@/components/atendimento/NotificacoesSettings'
-import { ContaSettings } from '@/components/settings/ContaSettings'
+import { ContaSettings, ReverTour } from '@/components/settings/ContaSettings'
 import { PlanoCobranca } from '@/components/billing/PlanoCobranca'
 import { PlataformaSettings } from '@/components/billing/PlataformaSettings'
 import { useIsOwner } from '@/components/billing/useIsOwner'
@@ -158,7 +158,7 @@ export function CrmSettingsPanel() {
       {/* ---------- Usuários e acessos ----------
           Só para admin da organização. Usuários "crm_only" nunca são admin,
           então a gestão de acessos não aparece para eles (a aba nem existe). */}
-      {tab === 'conta' && <ContaSettings />}
+      {tab === 'conta' && (<><ContaSettings /><ReverTour /></>)}
       {tab === 'notificacoes' && <NotificacoesSettings />}
 
       {tab === 'plano' && isAdmin && (assinatura

@@ -3,6 +3,7 @@ import { MailCheck } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import { billingService } from '@/services/billingService'
+import { useTour } from '@/store/tourStore'
 
 /**
  * Configurações → Minha conta: e-mail de acesso. Quem entra com o usuário antigo
@@ -54,6 +55,20 @@ export function ContaSettings() {
           </button>
         </form>
       )}
+    </section>
+  )
+}
+
+/** Rever a tour de boas-vindas. */
+export function ReverTour() {
+  const pedirRever = useTour((s) => s.pedirRever)
+  return (
+    <section className="card">
+      <h3 className="card-title">Tour de boas-vindas</h3>
+      <p className="text-secondary" style={{ marginBottom: 12, lineHeight: 1.5 }}>
+        Quer rever o passo a passo com o básico do sistema?
+      </p>
+      <button className="btn btn-ghost" onClick={pedirRever}>Rever a tour</button>
     </section>
   )
 }

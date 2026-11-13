@@ -33,6 +33,8 @@ interface AuthState {
   initialize: () => Promise<void>
   signIn: (username: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  /** Marca a tour de boas-vindas como vista (151). */
+  concluirTour: () => Promise<void>
 }
 
 /**
@@ -127,6 +129,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       password,
     })
     if (error) throw new Error(mensagemDeLogin(error))
+  },
+
+  concluirTour: async () => {
+    set((s) => (s.profile ? { profile: { ...s.profile, tour_done_at: new Date().toISOString() } } : {}))
+    await supabase.rpc('tour_complete')
   },
 
   signOut: async () => {
