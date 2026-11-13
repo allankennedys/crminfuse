@@ -119,6 +119,9 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
   const noPix = sub.payment_mode === 'pix'
   const valorAtual = pixPlano ?? sub.plan
   const pix = sub.pix
+  // Em teste (ou sem assinatura paga) mostra todos; assinante vê só os mais caros (upgrade).
+  const emTeste = sub.status === 'trial' || sub.status === 'cancelada' || sub.courtesy
+  const opcoes = emTeste ? plans : plans.filter((p) => p.price_cents > sub.plan.price_cents)
 
   return (
     <>
@@ -209,10 +212,10 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
         </section>
       )}
 
-      <section className="card">
-        <h3 className="card-title">{sub.status === 'trial' ? 'Escolher um plano' : 'Trocar de plano'}</h3>
+      {opcoes.length > 0 && <section className="card">
+        <h3 className="card-title">{emTeste ? 'Escolher um plano' : 'Fazer upgrade'}</h3>
         <div className="plano-grid">
-          {plans.map((p) => {
+          {opcoes.map((p) => {
             const atual = p.id === sub.plan.id && (sub.status === 'ativa' || sub.status === 'atrasada') && !sub.courtesy
             return (
               <div key={p.id} className={`plano-card${p.id === sub.plan.id ? ' atual' : ''}`}>
@@ -235,7 +238,7 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
             )
           })}
         </div>
-      </section>
+      </section>}
     </>
   )
 }
