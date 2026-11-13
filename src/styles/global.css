@@ -5093,7 +5093,10 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 
 /* Toque (celular e tablet): alvos de ~40 px e campos que o iPhone não amplia ao focar. */
 @media (pointer: coarse) {
-  input, select, textarea, .input { font-size: 16px; }
+  /* !important: vários campos têm tamanho próprio (.sale-form .input etc.) com mais
+     peso que este seletor, e abaixo de 16 px o iPhone dá zoom ao tocar no campo. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  select, textarea, .input, [contenteditable='true'] { font-size: 16px !important; }
   .icon-btn { width: 40px; height: 40px; }
   .btn { min-height: 40px; }
   .btn-sm { min-height: 36px; }
