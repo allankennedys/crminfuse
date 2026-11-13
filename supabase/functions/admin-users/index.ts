@@ -18,6 +18,7 @@
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { chaveServidor } from '../_shared/servidor.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -267,6 +268,7 @@ Deno.serve(async (req) => {
       password,
       email_confirm: true,
       user_metadata: {
+        servidor_key: await chaveServidor(admin),
         username,
         full_name: fullName || null,
         ...(newOrganization && organizationName ? { organization_name: organizationName } : {}),
