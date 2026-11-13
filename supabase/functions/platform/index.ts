@@ -14,7 +14,8 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
 }
-const OWNER_EMAIL = (Deno.env.get('OWNER_EMAIL') ?? '').toLowerCase()
+// Mais de um e-mail separado por vírgula é aceito (troca de e-mail do dono).
+const OWNER_EMAILS = (Deno.env.get('OWNER_EMAIL') ?? '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean)
 
 const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
   auth: { persistSession: false },
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
     })
     const { data: { user } } = await userClient.auth.getUser()
     if (!user) return json({ error: 'Não autenticado' }, 401)
-    if (!OWNER_EMAIL || (user.email ?? '').toLowerCase() !== OWNER_EMAIL) {
+    if (!OWNER_EMAILS.includes((user.email ?? '').toLowerCase())) {
       return json({ error: 'Só o dono da plataforma' }, 403)
     }
 

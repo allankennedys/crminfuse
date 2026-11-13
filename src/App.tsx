@@ -7,6 +7,7 @@ import { Loader } from '@/components/ui'
 import { LoginPage } from '@/pages/Login'
 import { SignupPage } from '@/pages/Signup'
 import { ConvitePage } from '@/pages/Convite'
+import { ConfirmarEmailPage, EsqueciSenhaPage, RedefinirSenhaPage } from '@/pages/EmailLinks'
 import { CRMPage } from '@/pages/CRM'
 
 export default function App() {
@@ -25,6 +26,10 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/cadastro" element={<SignupPage />} />
           <Route path="/convite/:token" element={<ConvitePage />} />
+          <Route path="/verificar-email/:token" element={<ConfirmarEmailPage />} />
+          <Route path="/confirmar-email/:token" element={<ConfirmarEmailPage troca />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+          <Route path="/redefinir-senha/:token" element={<RedefinirSenhaPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
         <ToastContainer />
@@ -39,6 +44,8 @@ export default function App() {
       <Routes>
         <Route path="/crm" element={<CRMPage />} />
         <Route path="/convite/:token" element={<ConvitePage />} />
+        <Route path="/confirmar-email/:token" element={<ConfirmarEmailPage troca />} />
+        <Route path="/verificar-email/:token" element={<ConfirmarEmailPage />} />
         <Route path="*" element={<Navigate to="/crm" replace />} />
       </Routes>
       <ToastContainer />

@@ -5,12 +5,12 @@
  * aceita pelo link (sem login).
  *
  *   JWT de administrador:
- *     { action: 'create', role: 'atendente'|'admin', email?, permissions? } → { url, email_sent }
+ *     { action: 'create', role: 'atendente'|'admin', email, permissions? } → { url, email_sent }
  *     { action: 'list' }                                                      → { invites }
  *     { action: 'revoke', id }                                                → { ok }
  *   Público (o código do link é o segredo):
  *     { action: 'info', token }                                  → { organization, role }
- *     { action: 'accept', token, full_name, username, password } → { ok, username }
+ *     { action: 'accept', token, full_name, password }            → { ok, email }
  *
  * Secrets opcionais para enviar o convite por e-mail: RESEND_API_KEY e
  * MAIL_FROM (ex.: "Infuse <convites@seudominio.com>"). Sem eles, o link só é
@@ -18,12 +18,12 @@
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { acessoDaOrganizacao, MSG_SEM_ACESSO } from '../_shared/assinatura.ts'
+import { enviarEmailMarca, novoCodigo, sha256 } from '../_shared/email.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
 }
-const AUTH_EMAIL_DOMAIN = 'infuse.local'
 const APP_URL_FIXO = (Deno.env.get('APP_URL') ?? '').replace(/\/+$/, '')
 
 const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -36,16 +36,6 @@ class HttpError extends Error {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
-}
-
-async function sha256(texto: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto))
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-function novoCodigo(): string {
-  const b = crypto.getRandomValues(new Uint8Array(24))
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
 /** O convite válido (existe, não usado, não revogado, não vencido) ou erro em português. */
@@ -63,51 +53,6 @@ async function convitePorCodigo(token: string) {
   return inv
 }
 
-async function enviarEmail(para: string, orgNome: string, url: string, base: string): Promise<boolean> {
-  const key = Deno.env.get('RESEND_API_KEY') ?? ''
-  const from = Deno.env.get('MAIL_FROM') ?? ''
-  if (!key || !from) return false
-  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
-  const org = esc(orgNome)
-  const link = esc(url)
-  const html = `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:0;background:#f4f5f7;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 12px;">
-  <tr><td align="center">
-    <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#ffffff;border-radius:14px;border:1px solid #e3e6ec;">
-      <tr><td style="padding:28px 32px 8px;">
-        <img src="${esc(base)}/logo-navy.png" alt="Infuse" height="30" style="display:block;height:30px;border:0;">
-      </td></tr>
-      <tr><td style="padding:8px 32px 0;font-family:Arial,Helvetica,sans-serif;color:#0b1b3a;">
-        <h1 style="font-size:20px;line-height:1.3;margin:12px 0 10px;">Você foi convidado</h1>
-        <p style="font-size:15px;line-height:1.55;margin:0 0 18px;color:#3b4660;">
-          Você foi convidado para entrar em <strong style="color:#0b1b3a;">${org}</strong> no Infuse CRM.
-          Clique no botão para escolher seu usuário e senha.
-        </p>
-      </td></tr>
-      <tr><td style="padding:0 32px 8px;">
-        <a href="${link}" style="display:inline-block;background:#1f6fe0;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:9px;">Aceitar convite</a>
-      </td></tr>
-      <tr><td style="padding:16px 32px 28px;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;line-height:1.5;color:#6b7690;">
-        O link vale por 7 dias e só pode ser usado uma vez. Se o botão não abrir, copie este endereço no navegador:<br>
-        <span style="word-break:break-all;color:#1f6fe0;">${link}</span>
-      </td></tr>
-    </table>
-    <p style="font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#8a93a8;margin:14px 0 0;">
-      Você recebeu este e-mail porque alguém da empresa ${org} convidou este endereço. Se não esperava, ignore.
-    </p>
-  </td></tr>
-</table></body></html>`
-  const text = `Você foi convidado para entrar em ${orgNome} no Infuse CRM.\n\nAceite o convite aqui: ${url}\n\nO link vale por 7 dias e só pode ser usado uma vez. Se você não esperava este convite, ignore este e-mail.`
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [para], subject: `Você foi convidado para ${orgNome} no Infuse CRM`, html, text }),
-    signal: AbortSignal.timeout(15_000),
-  }).catch(() => null)
-  if (!res?.ok) console.error('[invite] resend', res?.status, await res?.text().catch(() => ''))
-  return Boolean(res?.ok)
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'Método não permitido' }, 405)
@@ -121,16 +66,17 @@ Deno.serve(async (req) => {
       const inv = await convitePorCodigo(String(body?.token ?? ''))
       // deno-lint-ignore no-explicit-any
       const org = (inv as any).organizations
-      return json({ organization: (Array.isArray(org) ? org[0]?.name : org?.name) ?? '', role: inv.role })
+      return json({ organization: (Array.isArray(org) ? org[0]?.name : org?.name) ?? '', role: inv.role, email: inv.email })
     }
 
     if (action === 'accept') {
       const inv = await convitePorCodigo(String(body?.token ?? ''))
       const fullName = String(body?.full_name ?? '').trim()
-      const username = String(body?.username ?? '').trim().toLowerCase()
       const password = String(body?.password ?? '')
       if (fullName.length < 2 || fullName.length > 80) throw new HttpError(400, 'Informe o seu nome.')
-      if (!/^[a-z0-9._-]{3,30}$/.test(username)) throw new HttpError(400, 'Usuário: 3 a 30 caracteres, só letras, números, ponto, hífen ou underline.')
+      // O e-mail do convite é o login: o convidado só escolhe nome e senha.
+      const email = String(inv.email ?? '').toLowerCase()
+      if (!email) throw new HttpError(400, 'Este convite não tem e-mail. Peça um novo ao administrador.')
       if (password.length < 8) throw new HttpError(400, 'A senha precisa ter ao menos 8 caracteres.')
 
       const acesso = await acessoDaOrganizacao(admin, inv.organization_id)
@@ -144,16 +90,17 @@ Deno.serve(async (req) => {
 
       const desfazer = async () => { await admin.from('invitations').update({ used_at: null }).eq('id', inv.id) }
 
+      // Quem abriu o link recebido nesse e-mail provou que ele é dele: já nasce confirmado.
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email: `${username}@${AUTH_EMAIL_DOMAIN}`,
+        email,
         password,
         email_confirm: true,
-        user_metadata: { username, full_name: fullName },
+        user_metadata: { username: email, full_name: fullName },
       })
       if (createErr || !created?.user) {
         await desfazer()
         const jaExiste = /already been registered|already exists|duplicate/i.test(createErr?.message ?? '')
-        throw new HttpError(400, jaExiste ? 'Esse nome de usuário já está em uso. Escolha outro.' : 'Não foi possível criar a conta.')
+        throw new HttpError(400, jaExiste ? 'Este e-mail já tem uma conta. Entre com ela, ou peça um convite para outro e-mail.' : 'Não foi possível criar a conta.')
       }
       const newId = created.user.id
 
@@ -180,7 +127,7 @@ Deno.serve(async (req) => {
         if ((count ?? 0) === 0) await admin.from('organizations').delete().eq('id', orfa)
       }
       await admin.from('invitations').update({ used_by: newId }).eq('id', inv.id)
-      return json({ ok: true, username })
+      return json({ ok: true, email })
     }
 
     // ---------- Administrador ----------
@@ -214,7 +161,7 @@ Deno.serve(async (req) => {
     if (action === 'create') {
       const role = body?.role === 'admin' ? 'admin' : 'atendente'
       const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) throw new HttpError(400, 'E-mail inválido.')
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.endsWith('@infuse.local')) throw new HttpError(400, 'Informe o e-mail da pessoa que vai entrar.')
       const permissions = Array.isArray(body?.permissions) && role !== 'admin'
         ? (body.permissions as unknown[]).filter((p): p is string => typeof p === 'string').slice(0, 200)
         : null
@@ -246,11 +193,17 @@ Deno.serve(async (req) => {
       const base = APP_URL_FIXO || (req.headers.get('origin') ?? '').replace(/\/+$/, '')
       if (!base) throw new HttpError(500, 'Endereço do sistema não configurado (secret APP_URL).')
       const url = `${base}/convite/${token}`
-      let emailSent = false
-      if (email) {
-        const { data: o } = await admin.from('organizations').select('name').eq('id', org).maybeSingle()
-        emailSent = await enviarEmail(email, o?.name ?? 'sua empresa', url, base)
-      }
+      const { data: o } = await admin.from('organizations').select('name').eq('id', org).maybeSingle()
+      const orgNome = o?.name ?? 'sua empresa'
+      const emailSent = await enviarEmailMarca({
+        to: email, base,
+        subject: `Você foi convidado para ${orgNome} no Infuse CRM`,
+        titulo: 'Você foi convidado',
+        paragrafos: [`Você foi convidado para entrar em ${orgNome} no Infuse CRM. Clique no botão para criar sua senha e entrar.`],
+        botao: { texto: 'Aceitar convite', url },
+        rodape: 'O link vale por 7 dias e só pode ser usado uma vez.',
+        aviso: `Você recebeu este e-mail porque alguém da empresa ${orgNome} convidou este endereço. Se não esperava, ignore.`,
+      })
       return json({ url, email_sent: emailSent })
     }
 
