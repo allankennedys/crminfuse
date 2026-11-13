@@ -18,6 +18,7 @@ import { CrmSettingsPanel } from '@/components/crm/CrmSettings'
 import { CrmReports } from '@/components/crm/CrmReports'
 import { Atendimento } from '@/components/atendimento/Atendimento'
 import { AvisosAtendimento } from '@/components/atendimento/Avisos'
+import { CentralAvisos } from '@/components/atendimento/CentralAvisos'
 import { LancarVendaDoContato } from '@/components/atendimento/LancarVendaDoContato'
 import { StartConversation } from '@/components/atendimento/StartConversation'
 import { useConversaStore } from '@/store/conversaStore'
@@ -367,6 +368,7 @@ export function CRMPage() {
           <span className="text-secondary crm-user">
             {profile?.full_name ?? profile?.email}
           </span>
+          {can('atendimento.ver') && <CentralAvisos />}
           <ThemeToggle />
           <button className="icon-btn" onClick={signOut} title="Sair" aria-label="Sair">
             <LogOut size={16} />

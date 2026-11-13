@@ -4972,3 +4972,11 @@ td.col-acao { width: 44px; text-align: right; }
 .at-deleted { font-style: italic; opacity: 0.8; }
 .at-deleted-orig { display: block; font-size: 11.5px; opacity: 0.65; margin-top: 2px; text-decoration: line-through; overflow-wrap: anywhere; }
 .at-edit { display: grid; gap: 6px; min-width: 240px; }
+
+/* Sino da central de avisos, no topo (junto ao nome do usuário) */
+.at-bell { position: relative; }
+.at-bell-count {
+  position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 4px;
+  border-radius: 8px; background: var(--danger); color: #fff;
+  font-size: 9.5px; font-weight: 700; line-height: 15px; text-align: center;
+}
