@@ -5292,3 +5292,27 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 .at-comments p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.5; }
 .at-comments-top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 12px; }
 .at-comments-nota { font-weight: 700; color: var(--warning); }
+
+/* ---------- Relatórios e telas largas no celular ---------- */
+.crm-main, .page-content { min-width: 0; overflow-x: clip; }
+.card, .kpi-card, .table-wrap { min-width: 0; max-width: 100%; }
+.recharts-responsive-container { min-width: 0; }
+/* Abas dos relatórios: rolam de lado em vez de empurrar a página. */
+.report-tabs { display: flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.report-tabs::-webkit-scrollbar { display: none; }
+.report-tab { flex: none; }
+
+@media (max-width: 600px) {
+  .page-header { flex-direction: column; align-items: stretch; }
+  .crm-range { gap: 10px; padding: 10px; }
+  .crm-range > * { flex: 1 1 140px; min-width: 0; }
+  .crm-range .date-input, .crm-range .input, .crm-range select { width: 100%; }
+  .channel-filter, .channel-filter select { max-width: 100%; }
+  .crm-kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi-card { padding: 14px; border-radius: 18px; }
+  .kpi-value { font-size: clamp(20px, 6.4vw, 28px); overflow-wrap: anywhere; }
+  .kpi-featured-row { flex-wrap: wrap; gap: 10px; }
+  .kpi-sparkline { width: 96px; height: 40px; }
+  th, td { padding: 10px 12px; }
+  .report-legend { padding: 10px 12px; }
+}
