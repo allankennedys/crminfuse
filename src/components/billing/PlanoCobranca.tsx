@@ -35,7 +35,8 @@ function Uso({ icon, label, usado, max }: { icon: React.ReactNode; label: string
  * cobrança automática todo mês. Pix: o cliente paga pela chave da empresa e o
  * dono da plataforma registra o pagamento (aba Plataforma).
  */
-export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChanged: () => void }) {
+/** `somenteLeitura`: quem não é admin vê plano, status e uso, sem nenhuma ação. */
+export function PlanoCobranca({ sub, onChanged, somenteLeitura = false }: { sub: MySubscription; onChanged: () => void; somenteLeitura?: boolean }) {
   const [plans, setPlans] = useState<Plan[]>([])
   const [cartaoOk, setCartaoOk] = useState<boolean | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -148,8 +149,8 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
             <AlertTriangle size={16} />
             <span>
               {sub.acesso === 'leitura'
-                ? 'Sua conta está em modo leitura: dá para ver tudo, mas não enviar mensagens nem editar. Escolha um plano ou regularize o pagamento para voltar ao normal.'
-                : 'Sua conta está suspensa. Escolha um plano ou regularize o pagamento para voltar a usar. Seus dados continuam guardados.'}
+                ? `Sua conta está em modo leitura: dá para ver tudo, mas não enviar mensagens nem editar. ${somenteLeitura ? 'Avise um administrador da sua organização.' : 'Escolha um plano ou regularize o pagamento para voltar ao normal.'}`
+                : `Sua conta está suspensa. ${somenteLeitura ? 'Avise um administrador da sua organização.' : 'Escolha um plano ou regularize o pagamento para voltar a usar.'} Seus dados continuam guardados.`}
             </span>
           </div>
         )}
@@ -159,7 +160,8 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
           <Uso icon={<Users size={13} />} label="Usuários" usado={sub.uso.agents} max={sub.plan.max_agents} />
         </div>
 
-        <div className="flex" style={{ gap: 8, flexWrap: 'wrap' }}>
+        {somenteLeitura && <p className="text-muted" style={{ fontSize: 12.5 }}>Só administradores podem alterar o plano e o pagamento.</p>}
+        {!somenteLeitura && <div className="flex" style={{ gap: 8, flexWrap: 'wrap' }}>
           {noCartao && (
             <button className="btn btn-ghost btn-sm" onClick={gerenciarCartao} disabled={busy !== null}>
               <ExternalLink size={14} /> Trocar cartão, ver faturas
@@ -173,10 +175,10 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
               <QrCode size={14} /> Ver como pagar por Pix
             </button>
           )}
-        </div>
+        </div>}
       </section>
 
-      {pixPlano && (
+      {!somenteLeitura && pixPlano && (
         <section className="card">
           <h3 className="card-title"><QrCode size={15} /> Pagar por Pix</h3>
           {pix?.pix_key ? (
@@ -209,7 +211,7 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
         </section>
       )}
 
-      <section className="card">
+      {!somenteLeitura && <section className="card">
         <h3 className="card-title">{sub.status === 'trial' ? 'Escolher um plano' : 'Trocar de plano'}</h3>
         <div className="plano-grid">
           {plans.map((p) => {
@@ -235,7 +237,7 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
             )
           })}
         </div>
-      </section>
+      </section>}
     </>
   )
 }
