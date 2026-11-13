@@ -66,6 +66,31 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}))
     const isOwner = isOwnerEmail(user.email)
 
+    // Reatribui as conversas abertas de `fromId` (mesma organização do admin, ou
+    // qualquer uma se for o dono). Devolve quantas mudaram de mãos.
+    const reassign = async (fromId: string, mode: unknown, to: unknown):
+      Promise<{ moved?: number; error?: string; status?: number }> => {
+      if (!fromId) return { error: 'Usuário não informado.' }
+      if (mode !== 'user' && mode !== 'random' && mode !== 'queue') return { error: 'Escolha o destino das conversas.' }
+      const svc = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      const { data: from } = await svc.from('users').select('organization_id').eq('id', fromId).maybeSingle()
+      if (!from) return { error: 'Usuário não encontrado.', status: 404 }
+      if (from.organization_id !== profile.organization_id && !isOwner) {
+        return { error: 'Sem permissão para usuários de outra organização.', status: 403 }
+      }
+      if (mode === 'user') {
+        const { data: dest } = await svc.from('users').select('organization_id, is_active').eq('id', String(to ?? '')).maybeSingle()
+        if (!dest || !dest.is_active || dest.organization_id !== from.organization_id) {
+          return { error: 'Escolha um atendente ativo da mesma organização.' }
+        }
+      }
+      const { data, error } = await svc.rpc('wa_reassign_user', {
+        p_from: fromId, p_mode: mode, p_to: mode === 'user' ? String(to) : null,
+      })
+      if (error) { console.error('reassign:', error.message); return { error: 'Falha ao transferir os atendimentos.', status: 500 } }
+      return { moved: Number(data ?? 0) }
+    }
+
     // Ação: informar se quem chamou é o dono da plataforma. Assim a UI decide
     // o que mostrar sem precisar conhecer o email do dono (não vai no bundle).
     if (body?.action === 'whoami') {
@@ -92,6 +117,14 @@ Deno.serve(async (req) => {
       return json({ ok: true, users: data ?? [] })
     }
 
+    // Ação: passar as conversas abertas de um atendente para outro, para a fila
+    // ou distribuir ao acaso. Usada antes de excluir ou desativar.
+    if (body?.action === 'reassign') {
+      const r = await reassign(String(body?.user_id ?? ''), body?.mode, body?.to)
+      if (r.error) return json({ error: r.error }, r.status ?? 400)
+      return json({ ok: true, moved: r.moved })
+    }
+
     // Ação: excluir um usuário (remove o auth user; o perfil cai por cascade).
     if (body?.action === 'delete') {
       const targetId = String(body?.user_id ?? '')
@@ -116,6 +149,11 @@ Deno.serve(async (req) => {
       const crossOrg = target.organization_id !== profile.organization_id
       if (crossOrg && !isOwner) {
         return json({ error: 'Sem permissão para excluir usuários de outra organização.' }, 403)
+      }
+
+      if (body?.mode) {
+        const r = await reassign(targetId, body.mode, body.to)
+        if (r.error) return json({ error: r.error }, r.status ?? 400)
       }
 
       const { error: delErr } = await adminDel.auth.admin.deleteUser(targetId)
