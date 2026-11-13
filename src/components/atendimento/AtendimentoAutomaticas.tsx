@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clock, MessageSquareText, Trash2, Zap } from 'lucide-react'
+import { Clock, MessageSquareText, Star, Trash2, Zap } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import { atendimentoService } from '@/services/atendimentoService'
@@ -127,6 +127,82 @@ export function AutoMessagesCard({ settings, set, dirty, saving, save }: {
             <HoraInput label="Início" value={h.start} onChange={(v) => set({ business_hours: { ...h, start: v } })} />
             <span>às</span>
             <HoraInput label="Fim" value={h.end} onChange={(v) => set({ business_hours: { ...h, end: v } })} />
+          </div>
+        </div>
+      )}
+
+      <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+        <button className="btn btn-primary" onClick={save} disabled={saving || !dirty}>
+          {saving ? <span className="spinner" /> : 'Salvar'}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+/** Avaliação do atendimento (155): pede uma nota de 1 a 5 ao concluir. Salva junto com as outras configurações. */
+export function AvaliacaoCard({ settings, set, dirty, saving, save }: {
+  settings: WaSettings
+  set: (patch: Partial<WaSettings>) => void
+  dirty: boolean
+  saving: boolean
+  save: () => void
+}) {
+  return (
+    <section className="card">
+      <h3 className="card-title"><Star size={15} /> Avaliação do atendimento</h3>
+
+      <label className="at-toggle">
+        <input type="checkbox" checked={settings.rating_on} onChange={(e) => set({ rating_on: e.target.checked })} />
+        <span>
+          <strong>Pedir avaliação ao concluir o atendimento</strong>
+          <span className="text-muted">
+            Depois que um atendente conclui, o cliente recebe pelo WhatsApp um pedido de nota de 1 a 5. Só pede se o atendente
+            chegou a responder, não pede nos concluídos automaticamente por falta de interação e no máximo uma vez a cada 24 horas por cliente.
+          </span>
+        </span>
+      </label>
+
+      {settings.rating_on && (
+        <div style={{ margin: '4px 0 4px 28px', display: 'grid', gap: 12 }}>
+          <div className="field" style={{ margin: 0 }}>
+            <label htmlFor="rt-texto">Mensagem do pedido</label>
+            <textarea
+              id="rt-texto"
+              className="input"
+              rows={3}
+              maxLength={600}
+              placeholder="Olá {nome}! Seu atendimento com {atendente} foi concluído. Como você avalia? Responda com uma nota de 1 a 5 (1 = ruim, 5 = excelente)."
+              value={settings.rating_text ?? ''}
+              onChange={(e) => set({ rating_text: e.target.value })}
+            />
+            <span className="text-muted" style={{ fontSize: 12 }}>
+              Use {'{nome}'} (primeiro nome do cliente) e {'{atendente}'} (primeiro nome de quem atendeu). Deixe em branco para usar o texto sugerido.
+              Peça sempre uma nota de 1 a 5: é a resposta que o sistema reconhece.
+            </span>
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <label htmlFor="rt-obrigado">Agradecimento depois da nota</label>
+            <textarea
+              id="rt-obrigado"
+              className="input"
+              rows={2}
+              maxLength={400}
+              placeholder="Obrigado pela sua avaliação! Ela nos ajuda a melhorar."
+              value={settings.rating_thanks_text ?? ''}
+              onChange={(e) => set({ rating_thanks_text: e.target.value })}
+            />
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <label htmlFor="rt-atraso">Enviar depois de</label>
+            <div className="flex" style={{ alignItems: 'center', gap: 8 }}>
+              <input
+                id="rt-atraso" className="input" style={{ width: 84 }} type="number" min={0} max={120}
+                value={settings.rating_delay_minutes}
+                onChange={(e) => set({ rating_delay_minutes: Math.min(120, Math.max(0, Number(e.target.value) || 0)) })}
+              />
+              <span className="text-muted">minutos da conclusão. O cliente tem 24 horas para responder.</span>
+            </div>
           </div>
         </div>
       )}

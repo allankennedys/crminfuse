@@ -506,6 +506,37 @@ async function cleanupMedia() {
   }
 }
 
+// ---------- 7. Pedidos de avaliação do atendimento (155) ----------
+
+/** Envia pelo WhatsApp os pedidos de avaliação que venceram e grava a mensagem como "auto". */
+async function processRatings() {
+  const { data: due, error } = await svc.rpc('wa_rating_due', { p_limit: 20 })
+  if (error) { console.error('[worker] avaliações:', error.message); return }
+  for (const r of (due ?? []) as Json[]) {
+    let ok = false
+    try {
+      const pn = r.pn_jid ? String(r.pn_jid) : null
+      const lid = r.lid_jid ? String(r.lid_jid) : null
+      const number = pn ? pn.split('@')[0] : lid
+      if (!number || !r.text_out) throw new Error('sem destino ou texto')
+      const res = await evo(`/message/sendText/${encodeURIComponent(String(r.instance_name))}`, 'POST', { number, text: String(r.text_out) })
+      const key = (res.data as { key?: { id?: string } } | null)?.key
+      if (!res.ok || !key?.id) throw new Error(`Evolution recusou (${res.status})`)
+      ok = true
+      // Se a gravação falhar, o pedido já foi enviado: não reenvia.
+      const { error: e2 } = await svc.rpc('wa_ingest_message', {
+        p_session: r.session_id, p_pn_jid: pn, p_lid_jid: lid, p_push_name: null, p_wa_id: String(key.id),
+        p_from_me: true, p_type: 'text', p_body: String(r.text_out), p_has_media: false,
+        p_ts: new Date().toISOString(), p_status: 'auto',
+      })
+      if (e2) console.error('[worker] avaliação gravada com erro:', e2.message)
+    } catch (err) {
+      console.error('[worker] avaliação:', err instanceof Error ? err.message : err)
+    }
+    await svc.rpc('wa_rating_sent', { p_id: r.id, p_ok: ok })
+  }
+}
+
 // ---------- Entrada ----------
 
 Deno.serve(async (req) => {
@@ -537,6 +568,7 @@ Deno.serve(async (req) => {
     await refreshSessions()
     await processSchedules()
     await processQueue()
+    await processRatings().catch((e) => console.error('[worker] avaliações:', e))
     await processParticipantJobs()
     await processSyncJobs()
     await cleanupMedia()

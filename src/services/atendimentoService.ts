@@ -9,7 +9,7 @@
 import { supabase, FunctionRegion } from '@/lib/supabase'
 import { addDaysISO, spDayStartISO } from '@/lib/datetime'
 import type {
-  WaAgentLimit, WaAttendant, WaNote, WaQuickReply, WaTask, WaClientCard, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport,
+  WaAgentLimit, WaAttendant, WaNote, WaQuickReply, WaTask, WaClientCard, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport, WaRating, WaRatingReport,
   WaRoutingRule, WaSession, WaSettings, WaSourceRule,
 } from '@/types'
 
@@ -379,7 +379,7 @@ export const atendimentoService = {
   async getSettings(organizationId: string): Promise<WaSettings> {
     const { data } = await supabase
       .from('wa_settings')
-      .select('organization_id, restrict_to_assigned, auto_conclude_hours, allow_edit_messages, allow_delete_messages, auto_greeting_on, auto_greeting_text, auto_away_on, auto_away_text, business_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons')
+      .select('organization_id, restrict_to_assigned, auto_conclude_hours, allow_edit_messages, allow_delete_messages, auto_greeting_on, auto_greeting_text, auto_away_on, auto_away_text, business_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons, rating_on, rating_text, rating_thanks_text, rating_delay_minutes')
       .eq('organization_id', organizationId)
       .maybeSingle<WaSettings>()
     return data ?? {
@@ -388,6 +388,7 @@ export const atendimentoService = {
       assign_mode: 'manual', fixed_user: null, pool: [],
       max_open_per_agent: null,
       conclusion_reasons: ['Dúvida resolvida', 'Venda realizada', 'Sem retorno do cliente', 'Encaminhado para outro setor'],
+      rating_on: false, rating_text: null, rating_thanks_text: null, rating_delay_minutes: 2,
     }
   },
 
@@ -438,7 +439,23 @@ export const atendimentoService = {
   async report(from: string, to: string, userId?: string): Promise<WaReport> {
     const { data, error } = await supabase.rpc('wa_report', { p_from: from, p_to: to, ...(userId ? { p_user: userId } : {}) })
     if (error) throw error
-    return data as WaReport
+    const rel = data as WaReport
+    // Avaliações dos clientes: se a consulta falhar, o relatório segue sem elas.
+    const av = await supabase.rpc('wa_rating_report', { p_from: from, p_to: to, ...(userId ? { p_user: userId } : {}) })
+    if (!av.error && av.data) rel.avaliacoes = av.data as WaRatingReport
+    return rel
+  },
+
+  /** A avaliação mais recente da conversa (155), ou null se nunca foi pedida. */
+  async lastRating(conversationId: string): Promise<WaRating | null> {
+    const { data } = await supabase
+      .from('wa_ratings')
+      .select('id, ticket_id, agent_id, score, sent_at, answered_at, expires_at')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<WaRating>()
+    return data ?? null
   },
 
   // ---------- Cartão do cliente (121) ----------

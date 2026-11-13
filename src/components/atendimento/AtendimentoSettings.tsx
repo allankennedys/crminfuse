@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AutoMessagesCard, QuickRepliesCard } from './AtendimentoAutomaticas'
+import { AutoMessagesCard, AvaliacaoCard, QuickRepliesCard } from './AtendimentoAutomaticas'
 import { NumerosPorAtendenteCard } from './NumerosPorAtendente'
 import { ArrowDown, ArrowUp, CheckCircle2, Eye, Gauge, Megaphone, Plus, Shuffle, Tag, Trash2, Workflow, X as XIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -292,6 +292,7 @@ export function AtendimentoSettings() {
       </section>
 
       <AutoMessagesCard settings={settings} set={set} dirty={dirty} saving={saving} save={save} />
+      <AvaliacaoCard settings={settings} set={set} dirty={dirty} saving={saving} save={save} />
       <QuickRepliesCard />
       <NumerosPorAtendenteCard attendants={attendants} />
 
