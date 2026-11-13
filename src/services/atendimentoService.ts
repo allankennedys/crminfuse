@@ -21,6 +21,12 @@ export interface WaListFilters {
   /** Só com scope 'todas': recorta por atendente. */
   assignee?: string
   search?: string
+  /** Contato com todas estas etiquetas. */
+  tags?: string[]
+  /** Contato com ou sem compra. */
+  compra?: 'com' | 'sem'
+  /** Veio de anúncio ou não. */
+  anuncio?: 'sim' | 'nao'
 }
 
 const BUCKET = 'wa-media'
@@ -49,8 +55,15 @@ export type MediaLinks = { url: string; download: string }
 
 export const atendimentoService = {
   async listConversations(f: WaListFilters): Promise<WaConversation[]> {
-    let q = supabase
-      .from('wa_conversations')
+    // Com filtro de contato, o recorte roda no banco (o atendente sem acesso
+    // ao CRM não lê os contatos); sem filtro, leitura direta como sempre.
+    const porContato = Boolean(f.tags?.length || f.compra || f.anuncio)
+    const base = porContato
+      ? supabase.rpc('wa_conversas_filtradas', {
+          p_tags: f.tags?.length ? f.tags : null, p_compra: f.compra ?? null, p_anuncio: f.anuncio ?? null,
+        })
+      : supabase.from('wa_conversations')
+    let q = base
       .select('*, crm_contacts(name)')
       .eq('status', f.status)
       .order('last_message_at', { ascending: false, nullsFirst: false })
@@ -68,9 +81,17 @@ export const atendimentoService = {
       q = q.or(parts.join(','))
     }
 
-    const { data, error } = await q.returns<WaConversation[]>()
+    // O construtor do rpc devolve um tipo diferente do da tabela; o formato das linhas é o mesmo.
+    const { data, error } = await (q as unknown as PromiseLike<{ data: WaConversation[] | null; error: Error | null }>)
     if (error) throw error
     return data ?? []
+  },
+
+  /** Etiquetas da organização, para o filtro. */
+  async tagOptions(): Promise<string[]> {
+    const { data, error } = await supabase.rpc('wa_etiquetas')
+    if (error) return []
+    return (data as string[] | null) ?? []
   },
 
   /** Conversas abertas sem atendente — o número do selo "Fila". */

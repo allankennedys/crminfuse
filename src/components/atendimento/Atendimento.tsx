@@ -46,6 +46,10 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   const [scope, setScope] = useState<WaScope>('minhas')
   const [status, setStatus] = useState<WaConversationStatus>('aberta')
   const [assignee, setAssignee] = useState('')
+  const [tagFiltro, setTagFiltro] = useState('')
+  const [compra, setCompra] = useState<'' | 'com' | 'sem'>('')
+  const [anuncio, setAnuncio] = useState<'' | 'sim' | 'nao'>('')
+  const [tagOptions, setTagOptions] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
@@ -79,6 +83,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
 
   useEffect(() => {
     loadSessions()
+    atendimentoService.tagOptions().then(setTagOptions)
     atendimentoService.userNames().then(setNames).catch(() => {})
     if (podeAtribuir || verTodas || podeTransferir) atendimentoService.attendants().then(setAttendants).catch(() => setAttendants([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,7 +96,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   // atualiza por baixo, em vez de esperar a rede com a lista antiga na tela.
   const cacheRef = useRef<Map<string, WaConversation[]>>(new Map())
   const keyRef = useRef('')
-  const filtroKey = `${scope}|${status}|${scope === 'todas' ? assignee : ''}|${debouncedSearch}`
+  const filtroKey = `${scope}|${status}|${scope === 'todas' ? assignee : ''}|${debouncedSearch}|${tagFiltro}|${compra}|${anuncio}`
   keyRef.current = filtroKey
   useLayoutEffect(() => {
     const cached = cacheRef.current.get(filtroKey)
@@ -107,6 +112,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
       else setQueueCount(0)
       const list = await atendimentoService.listConversations({
         scope, status, userId, assignee: scope === 'todas' ? assignee || undefined : undefined, search: debouncedSearch,
+        tags: tagFiltro ? [tagFiltro] : undefined, compra: compra || undefined, anuncio: anuncio || undefined,
       })
       cacheRef.current.set(key, list)
       if (keyRef.current !== key) return // trocou de aba enquanto buscava
@@ -140,15 +146,15 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
 
   // Aquece as outras abas: a primeira troca também já é instantânea.
   useEffect(() => {
-    if (!userId || debouncedSearch) return
+    if (!userId || debouncedSearch || tagFiltro || compra || anuncio) return
     const outras = (['minhas', 'fila', 'todas'] as WaScope[]).filter((sc) => sc !== scope && (veTudo || sc === 'minhas'))
     outras.forEach((sc) => {
-      const k = `${sc}|${status}||`
+      const k = `${sc}|${status}|||||`
       atendimentoService.listConversations({ scope: sc, status, userId, search: '' })
         .then((l) => { cacheRef.current.set(k, l) })
         .catch(() => {})
     })
-  }, [userId, status, veTudo, debouncedSearch, scope])
+  }, [userId, status, veTudo, debouncedSearch, scope, tagFiltro, compra, anuncio])
 
   // Ao vivo: qualquer mudança visível (mensagem nova, atribuição) recarrega a
   // lista — 300 linhas leves, e assim filtro e ordem nunca saem do lugar.
@@ -267,6 +273,28 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
                 <option value="resolvida">Concluídas</option>
               </select>
             </label>
+            {tagOptions.length > 0 && (
+              <label className="channel-filter">
+                <select value={tagFiltro} onChange={(e) => setTagFiltro(e.target.value)} aria-label="Etiqueta">
+                  <option value="">Todas as etiquetas</option>
+                  {tagOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="channel-filter">
+              <select value={compra} onChange={(e) => setCompra(e.target.value as '' | 'com' | 'sem')} aria-label="Compras">
+                <option value="">Com ou sem compra</option>
+                <option value="com">Com compra</option>
+                <option value="sem">Sem compra</option>
+              </select>
+            </label>
+            <label className="channel-filter">
+              <select value={anuncio} onChange={(e) => setAnuncio(e.target.value as '' | 'sim' | 'nao')} aria-label="Anúncio">
+                <option value="">Qualquer origem</option>
+                <option value="sim">Veio de anúncio</option>
+                <option value="nao">Não veio de anúncio</option>
+              </select>
+            </label>
             {veTudo && scope === 'todas' && attendants.length > 0 && (
               <label className="channel-filter">
                 <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Atendente">
@@ -285,7 +313,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
             <EmptyState
               icon={<MessageCircle />}
               text={
-                debouncedSearch ? 'Nenhuma conversa encontrada.'
+                (debouncedSearch || tagFiltro || compra || anuncio) ? 'Nenhuma conversa encontrada.'
                   : scope === 'minhas' ? (status === 'aberta' ? 'Nenhuma conversa atribuída a você.' : 'Nenhum atendimento concluído.')
                   : scope === 'fila' ? 'Fila vazia. Toda conversa tem atendente.'
                   : 'Nenhuma conversa ainda.'
