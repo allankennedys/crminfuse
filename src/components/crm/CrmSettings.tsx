@@ -21,10 +21,10 @@ import type { CrmAdAccount, CrmSettings as Settings } from '@/types'
 const SETTINGS_TAB_ALL = [
   { id: 'plano', label: 'Plano e cobrança', icon: CreditCard },
   { id: 'plataforma', label: 'Plataforma', icon: Building2 },
-  { id: 'notificacoes', label: 'Notificações', icon: BellRing },
   { id: 'org', label: 'Organização', icon: Building2 },
   { id: 'atendimento', label: 'Atendimento', icon: MessageCircle },
   { id: 'users', label: 'Usuários', icon: UsersIcon },
+  { id: 'notificacoes', label: 'Notificações', icon: BellRing },
   { id: 'integrations', label: 'Integrações', icon: ShieldCheck },
 ] as const
 
