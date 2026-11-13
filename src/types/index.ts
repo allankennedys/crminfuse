@@ -907,6 +907,8 @@ export interface WaMessage {
   wa_message_id: string
   from_me: boolean
   sent_by: string | null
+  /** Enviada pelo sistema: saudação, ausência, pedido de avaliação (155). */
+  is_system?: boolean
   type: WaMessageType
   body: string | null
   media_path: string | null

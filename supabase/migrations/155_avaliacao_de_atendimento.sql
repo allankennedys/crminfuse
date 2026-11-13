@@ -55,6 +55,10 @@ create policy wa_ratings_select on public.wa_ratings
   for select using (exists (select 1 from public.wa_conversations c where c.id = conversation_id));
 -- Sem policy de escrita: só pelo banco (gatilho e funções abaixo).
 
+-- Mensagem enviada pelo sistema (saudação, ausência, pedido de avaliação, agradecimento):
+-- aparece como "Sistema" na conversa, em vez de "Enviada pelo celular".
+alter table public.wa_messages add column if not exists is_system boolean not null default false;
+
 -- Evento na linha do tempo da conversa.
 alter table public.wa_conversation_events drop constraint if exists wa_conversation_events_kind_check;
 alter table public.wa_conversation_events
@@ -210,6 +214,9 @@ begin
     v_new := replace(v_def, 'v_keeper   uuid;', E'v_keeper   uuid;\n  v_rating   boolean := false;\n  v_comment  boolean := false;');
     v_new := replace(v_new, E'if v_inserted then\n    v_preview := left(coalesce(',
       $r$if v_inserted then
+    if p_status = 'auto' then
+      update public.wa_messages set is_system = true where id = v_msg;
+    end if;
     -- Avaliação do atendimento: só um número de 1 a 5, respondendo a um pedido recente.
     if not p_from_me and p_type = 'text' then
       update public.wa_ratings r
@@ -236,7 +243,7 @@ begin
     v_new := replace(v_new, 'else c.unread_count + 1 end,', 'else c.unread_count + (case when v_rating and not v_comment then 0 else 1 end) end,');
     v_new := replace(v_new, E'if not p_from_me then\n      -- Cliente escreveu', E'if not p_from_me and not v_rating then\n      -- Cliente escreveu');
     if position('v_rating then c.status' in v_new) = 0 or position('v_rating and not v_comment' in v_new) = 0
-       or position('not v_rating then' in v_new) = 0 or position('wa_ratings r' in v_new) = 0
+       or position('not v_rating then' in v_new) = 0 or position('wa_ratings r' in v_new) = 0 or position('is_system = true' in v_new) = 0
        or position('v_rating   boolean' in v_new) = 0 or position('v_comment  boolean' in v_new) = 0 then
       raise exception 'wa_ingest_message: trechos esperados não encontrados';
     end if;
