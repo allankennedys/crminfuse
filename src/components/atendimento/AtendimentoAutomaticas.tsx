@@ -198,7 +198,7 @@ export function AvaliacaoCard({ settings, set, dirty, saving, save }: {
             <span>
               <strong>Perguntar o que aconteceu quando a nota for 1, 2 ou 3</strong>
               <span className="text-muted">
-                O agradecimento ganha uma pergunta, e a resposta seguinte do cliente (em até 6 horas) vira o comentário da avaliação.
+                O agradecimento ganha uma pergunta, e a resposta seguinte do cliente (em até 2 horas) vira o comentário da avaliação.
                 Não reabre o atendimento.
               </span>
             </span>
@@ -221,11 +221,11 @@ export function AvaliacaoCard({ settings, set, dirty, saving, save }: {
             <label htmlFor="rt-atraso">Enviar depois de</label>
             <div className="flex" style={{ alignItems: 'center', gap: 8 }}>
               <input
-                id="rt-atraso" className="input" style={{ width: 84 }} type="number" min={0} max={120}
+                id="rt-atraso" className="input" style={{ width: 84 }} type="number" min={0} max={60}
                 value={settings.rating_delay_minutes}
-                onChange={(e) => set({ rating_delay_minutes: Math.min(120, Math.max(0, Number(e.target.value) || 0)) })}
+                onChange={(e) => set({ rating_delay_minutes: Math.min(60, Math.max(0, Number(e.target.value) || 0)) })}
               />
-              <span className="text-muted">minutos da conclusão. O cliente tem 24 horas para responder.</span>
+              <span className="text-muted">minutos da conclusão (até 60). O cliente tem até 2 horas depois da conclusão para dar a nota.</span>
             </div>
           </div>
         </div>

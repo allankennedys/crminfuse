@@ -4,10 +4,10 @@
 -- O admin liga o recurso e escreve a mensagem. Ao CONCLUIR um atendimento (por
 -- uma pessoa, depois de ela ter respondido o cliente), o sistema pede, pelo
 -- próprio WhatsApp e depois de alguns minutos, uma nota de 1 a 5. A próxima
--- mensagem do cliente com só esse número (em até 24 h) vira a avaliação: não
+-- mensagem do cliente com só esse número (em até 2 h depois da conclusão) vira a avaliação: não
 -- reabre o atendimento, não cria atendimento novo e recebe um agradecimento.
 -- Com nota 1, 2 ou 3 o agradecimento pergunta o que aconteceu: a resposta seguinte
--- (em até 6 h) vira o comentário, também sem reabrir.
+-- (em até 2 h) vira o comentário, também sem reabrir.
 --
 --   wa_settings.rating_*   configuração
 --   wa_ratings             um pedido por atendimento, com a nota (e o comentário, se nota baixa)
@@ -20,7 +20,7 @@ alter table public.wa_settings
   add column if not exists rating_text text,
   add column if not exists rating_thanks_text text,
   add column if not exists rating_delay_minutes int not null default 2
-    check (rating_delay_minutes between 0 and 120),
+    check (rating_delay_minutes between 0 and 60),
   -- Nota 1, 2 ou 3: o agradecimento já pergunta o que aconteceu e a resposta vira comentário.
   add column if not exists rating_comment_on boolean not null default true,
   add column if not exists rating_comment_text text;
@@ -89,7 +89,7 @@ begin
   v_send := now() + make_interval(mins => v_set.rating_delay_minutes);
   insert into public.wa_ratings (organization_id, ticket_id, conversation_id, session_id, agent_id, send_at, expires_at)
   values (new.organization_id, new.id, new.conversation_id, new.session_id,
-          coalesce(new.assigned_to, new.closed_by), v_send, v_send + interval '24 hours')
+          coalesce(new.assigned_to, new.closed_by), v_send, coalesce(new.closed_at, now()) + interval '2 hours')
   on conflict (ticket_id) do nothing;
   return new;
 end $$;
@@ -229,11 +229,11 @@ begin
         insert into public.wa_conversation_events (organization_id, conversation_id, kind, note)
         values (v_org, v_conv.id, 'avaliada', substring(btrim(p_body) from 1 for 1));
       else
-        -- Comentário depois de uma nota baixa: a próxima mensagem de texto em até 6 h.
+        -- Comentário depois de uma nota baixa: a próxima mensagem de texto em até 2 h.
         update public.wa_ratings r
            set feedback = left(btrim(p_body), 1000), comment_at = now()
          where r.conversation_id = v_conv.id and r.feedback is null and r.comment_requested_at is not null
-           and r.comment_requested_at > now() - interval '6 hours' and btrim(coalesce(p_body, '')) <> '';
+           and r.comment_requested_at > now() - interval '2 hours' and btrim(coalesce(p_body, '')) <> '';
         if found then v_rating := true; v_comment := true; end if;
       end if;
     end if;
