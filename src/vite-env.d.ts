@@ -1,14 +1,10 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_SUPABASE_URL: string
-  readonly VITE_SUPABASE_ANON_KEY: string
-  /** Qual app esta build serve: "groups" (padrão) ou "crm". */
-  readonly VITE_APP?: 'groups' | 'crm'
-  /** URL do domínio do CRM, usada nos links entre os dois apps. */
-  readonly VITE_CRM_URL?: string
-  /** URL do domínio da gestão de grupos, usada nos links entre os dois apps. */
-  readonly VITE_GROUPS_URL?: string
+  /** Endereço da API (https://api.infusesoftware.com). */
+  readonly VITE_API_URL: string
+  /** Chave pública da API (feita para ficar no navegador; o acesso é decidido pelo login). */
+  readonly VITE_API_KEY: string
 }
 
 interface ImportMeta {

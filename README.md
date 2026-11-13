@@ -7,7 +7,7 @@ React + Vite + TypeScript · Supabase (Auth, banco, Realtime, Storage, Edge Func
 ## Rodar
 
 ```bash
-cp .env.example .env   # URL e anon key do projeto Supabase
+cp .env.example .env   # VITE_API_URL e VITE_API_KEY
 npm install
 npm run dev
 ```
@@ -25,7 +25,7 @@ A 115 (cargo atendente) roda numa execução separada da 116.
 
 O navegador não fala direto com o backend: tudo (login, banco, funções, arquivos, mídias e o tempo real) passa pelo Worker `infuse-api` da Cloudflare, publicado em `api.infusesoftware.com` — código em `cloudflare/api-proxy/worker.js`. Ele repassa as chamadas e tira dos retornos os cabeçalhos que identificam o fornecedor.
 
-- `VITE_SUPABASE_URL=https://api.infusesoftware.com` (local e na Vercel).
+- Variáveis do front (local e na Vercel, tipo Config): `VITE_API_URL=https://api.infusesoftware.com` e `VITE_API_KEY` (a chave pública/anon do backend).
 - Secret `PUBLIC_API_URL=https://api.infusesoftware.com` nas funções: os links de mídia que vão para o navegador saem por esse domínio.
 - O webhook da Evolution continua apontando direto para o projeto (servidor com servidor; o navegador não vê).
 - Plano grátis de Workers: 100 mil requisições/dia. Se o login começar a dar "rate limit" com muita gente, os limites ficam em Authentication → Rate Limits no painel do backend (todo mundo chega pelo mesmo proxy).

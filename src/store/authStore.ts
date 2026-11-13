@@ -85,6 +85,20 @@ async function resolvePermissions(profile: UserProfile | null): Promise<string[]
   return (data as string[] | null) ?? []
 }
 
+/**
+ * O serviço de login responde em inglês ("Invalid login credentials"); a
+ * tela mostra em português, sem repassar texto do backend.
+ */
+function mensagemDeLogin(error: { code?: string; status?: number; message?: string }): string {
+  const code = error.code ?? ''
+  const msg = (error.message ?? '').toLowerCase()
+  if (code === 'invalid_credentials' || msg.includes('invalid login')) return 'Usuário ou senha incorretos.'
+  if (code === 'user_banned' || msg.includes('banned')) return 'Este usuário está desativado. Fale com o administrador.'
+  if (code.includes('rate_limit') || error.status === 429) return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.'
+  if (code === 'validation_failed') return 'Preencha usuário e senha.'
+  return 'Não foi possível entrar agora. Tente de novo em instantes.'
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   profile: null,
@@ -111,7 +125,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       email: identifierToEmail(username),
       password,
     })
-    if (error) throw error
+    if (error) throw new Error(mensagemDeLogin(error))
   },
 
   signOut: async () => {
