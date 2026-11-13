@@ -5157,3 +5157,14 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
   position: fixed; inset: 0; z-index: 800; overflow-y: auto; background: var(--bg);
   padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Abas das Configurações: são muitas (até 7) e a coluna tem 780 px. Quebram em
+   mais de uma linha em vez de sair pela direita da coluna. */
+.crm-settings > .crm-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+  row-gap: 4px;
+  max-width: 100%;
+  margin-right: 0;
+}
+.crm-settings > .crm-tabs .crm-tab { flex-shrink: 0; white-space: nowrap; }
