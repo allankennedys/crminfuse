@@ -5183,11 +5183,15 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 .tour-spot {
   position: absolute; border-radius: 10px; pointer-events: none;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62), 0 0 0 2px var(--primary-text);
-  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+  transition: top 0.38s cubic-bezier(0.4, 0, 0.2, 1), left 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.38s cubic-bezier(0.4, 0, 0.2, 1), height 0.38s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.38s ease;
 }
+/* Sem alvo: o destaque vira um ponto no centro e só sobra o fundo escuro. */
+.tour-spot.sem-alvo { border-radius: 50%; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62); }
 .tour-click { position: absolute; inset: 0; }
 .tour-card {
   position: absolute; z-index: 1; width: min(360px, calc(100vw - 24px));
+  transition: top 0.38s cubic-bezier(0.4, 0, 0.2, 1), left 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
   padding: 16px 18px; border-radius: 14px;
   background: var(--bg-elevated); border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop);
   color: var(--text);
@@ -5196,3 +5200,10 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 .tour-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
 .tour-text { font-size: 13.5px; line-height: 1.55; color: var(--text-secondary); margin-bottom: 14px; }
 .tour-actions { display: flex; align-items: center; gap: 8px; }
+
+.tour-body { animation: tour-in 0.28s ease both; }
+@keyframes tour-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot, .tour-card { transition: none; }
+  .tour-body { animation: none; }
+}

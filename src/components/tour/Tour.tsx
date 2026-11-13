@@ -32,17 +32,20 @@ export function Tour({ admin, abasVisiveis, abrirAba, onFechar }: {
   useEffect(() => {
     if (!passo) return
     if (passo.aba) abrirAba(passo.aba)
-    setAlvo(null)
-    if (!passo.alvo) return
+    // Sem alvo, o destaque encolhe para o centro; com alvo, mantém o anterior até
+    // medir o novo, então ele "desliza" de um lugar para o outro em vez de sumir.
+    if (!passo.alvo) { setAlvo(null); return }
     let tentativas = 0
     const medir = () => {
       const el = document.querySelector<HTMLElement>(`[data-tour="${passo.alvo}"]`)
       if (el) {
-        el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
         const r = el.getBoundingClientRect()
         setAlvo({ top: r.top, left: r.left, width: r.width, height: r.height })
       } else if (tentativas++ < 8) {
         timer = setTimeout(medir, 150)
+      } else {
+        setAlvo(null)
       }
     }
     let timer = setTimeout(medir, 80)
@@ -101,23 +104,24 @@ export function Tour({ admin, abasVisiveis, abrirAba, onFechar }: {
   return createPortal(
     <div className="tour-root" role="dialog" aria-modal="true" aria-label="Tour de boas-vindas">
       {/* Fundo escuro; com alvo, o "buraco" é uma caixa com sombra enorme. */}
-      {alvo ? (
-        <div
-          className="tour-spot"
-          style={{ top: alvo.top - pad, left: alvo.left - pad, width: alvo.width + pad * 2, height: alvo.height + pad * 2 }}
-        />
-      ) : (
-        <div className="tour-dim" />
-      )}
+      <div
+        className={`tour-spot${alvo ? '' : ' sem-alvo'}`}
+        style={alvo
+          ? { top: alvo.top - pad, left: alvo.left - pad, width: alvo.width + pad * 2, height: alvo.height + pad * 2 }
+          : { top: window.innerHeight / 2, left: window.innerWidth / 2, width: 0, height: 0 }}
+      />
       <div className="tour-click" onClick={onFechar} aria-hidden="true" />
       <div
         ref={cartaoRef}
         className="tour-card"
-        style={{ top: cartaoPos?.top ?? -9999, left: cartaoPos?.left ?? -9999, visibility: cartaoPos ? 'visible' : 'hidden' }}
+        style={{ top: cartaoPos?.top ?? 0, left: cartaoPos?.left ?? 0, opacity: cartaoPos ? 1 : 0 }}
       >
-        <div className="tour-progress">Passo {Math.min(i + 1, passos.length)} de {passos.length}</div>
-        <h2 className="tour-title">{passo.titulo}</h2>
-        <p className="tour-text">{passo.texto}</p>
+        {/* key: o texto entra com um fade a cada passo, enquanto o cartão desliza. */}
+        <div key={i} className="tour-body">
+          <div className="tour-progress">Passo {Math.min(i + 1, passos.length)} de {passos.length}</div>
+          <h2 className="tour-title">{passo.titulo}</h2>
+          <p className="tour-text">{passo.texto}</p>
+        </div>
         <div className="tour-actions">
           <button className="btn btn-ghost btn-sm" onClick={onFechar}>{ultimo ? 'Fechar' : 'Pular tour'}</button>
           <span style={{ flex: 1 }} />
