@@ -38,10 +38,12 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   // atendente enxerga todas as conversas — e a tela ganha as abas e a Fila.
   const [restricted, setRestricted] = useState(true)
   const [conclusionReasons, setConclusionReasons] = useState<string[]>([])
+  const [permiteEditar, setPermiteEditar] = useState(false)
+  const [permiteApagar, setPermiteApagar] = useState(false)
   useEffect(() => {
     if (!profile) return
     atendimentoService.getSettings(profile.organization_id)
-      .then((s) => { setRestricted(s.restrict_to_assigned); setConclusionReasons(s.conclusion_reasons) })
+      .then((s) => { setRestricted(s.restrict_to_assigned); setConclusionReasons(s.conclusion_reasons); setPermiteEditar(s.allow_edit_messages); setPermiteApagar(s.allow_delete_messages) })
       .catch(() => { /* fica restrito: o banco decide de qualquer jeito */ })
   }, [profile])
   const veTudo = verTodas || !restricted
@@ -533,6 +535,8 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
             canAssign={podeAtribuir}
             canTransfer={podeTransferir}
             canTake={veTudo}
+            canEditMsgs={podeConfigurar || permiteEditar}
+            canDeleteMsgs={podeConfigurar || permiteApagar}
             conclusionReasons={conclusionReasons}
             onBack={() => { setSelectedId(null); setSelectedSnapshot(null) }}
             onChanged={load}

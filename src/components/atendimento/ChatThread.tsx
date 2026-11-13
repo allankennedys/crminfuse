@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRightLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
-  Hand, Headphones, Image as ImageIcon, Mic, Paperclip, Play, RotateCcw, Send, StickyNote, X as XIcon, Zap,
+  Hand, Headphones, Image as ImageIcon, MapPin, Mic, Paperclip, Play, RotateCcw, Send, StickyNote, UserRound, X as XIcon, Zap,
 } from 'lucide-react'
 import { useVoiceRecorder } from './useVoiceRecorder'
 import { VoiceComposer } from './VoiceComposer'
@@ -12,12 +12,15 @@ import { useAuthStore } from '@/store/authStore'
 import { Loader, Modal } from '@/components/ui'
 import { LinkifiedText } from '@/components/LinkifiedText'
 import { toast } from '@/store/toastStore'
+import { confirmDialog } from '@/store/confirmStore'
 import {
   atendimentoService, conversationName, formatPhone, sessionLabel, type MediaLinks,
 } from '@/services/atendimentoService'
 import { formatBytes, formatDayLabel, formatTime, sameDay } from './format'
+import { compressImage } from '@/lib/compressImage'
 import { ClientPanel } from './ClientPanel'
 import { ClientAvatar } from './ClientAvatar'
+import { EnviarContato, EnviarLocalizacao } from './EnviarLocalizacaoContato'
 import type { WaAttendant, WaConversation, WaEvent, WaMessage, WaNote, WaQuickReply, WaSession } from '@/types'
 
 const MAX_FILE = 100 * 1024 * 1024 // o limite do bucket at-media
@@ -32,6 +35,9 @@ interface Props {
   canTransfer: boolean
   /** Enxerga a Fila (restrição desligada ou "ver todas"): pode assumir. */
   canTake: boolean
+  /** Pode editar / apagar para todos as mensagens que enviou (liberado pelo admin, ou é quem configura). */
+  canEditMsgs: boolean
+  canDeleteMsgs: boolean
   /** Motivos oferecidos ao concluir (120). Vazio = conclui sem perguntar. */
   conclusionReasons: string[]
   onBack: () => void
@@ -75,7 +81,7 @@ const byTime = (a: WaMessage, b: WaMessage) =>
   new Date(a.wa_timestamp).getTime() - new Date(b.wa_timestamp).getTime()
 
 export function ChatThread({
-  conversation: conv, session, names, attendants, canAssign, canTransfer, canTake, conclusionReasons,
+  conversation: conv, session, names, attendants, canAssign, canTransfer, canTake, canEditMsgs, canDeleteMsgs, conclusionReasons,
   onBack, onChanged, onOpenContact,
 }: Props) {
   const userId = useAuthStore((s) => s.profile?.id)
@@ -114,6 +120,7 @@ export function ChatThread({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [menuAnexo, setMenuAnexo] = useState(false)
+  const [enviando, setEnviando] = useState<'localizacao' | 'contato' | null>(null)
   const anexoRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!menuAnexo) return
@@ -126,6 +133,7 @@ export function ChatThread({
   // Abre o seletor de arquivos já filtrado pelo tipo escolhido.
   const escolherAnexo = (accept: string) => {
     setMenuAnexo(false)
+    anexoModo.current = accept === '' ? 'documento' : 'midia'
     const el = fileRef.current
     if (!el) return
     if (accept) el.setAttribute('accept', accept)
@@ -313,13 +321,23 @@ export function ChatThread({
 
   useEffect(autosize, [text])
 
-  const pickFile = (f: File | null | undefined) => {
+  // "Foto ou vídeo" (e imagem colada) passa por compressão antes de subir: o
+  // que fica no armazenamento é o que vai ao cliente, e o WhatsApp já reduz
+  // foto para ~1600 px, então não há perda visível. "Documento" sobe e segue
+  // como está, para quem precisa do arquivo original.
+  const anexoModo = useRef<'midia' | 'documento'>('midia')
+  const pickFile = async (f: File | null | undefined) => {
     if (!f) return
     if (f.size > MAX_FILE) {
       toast.error(`Arquivo grande demais (${formatBytes(f.size)}). O limite é 100 MB.`)
       return
     }
-    setFile(f)
+    let final = f
+    if (anexoModo.current === 'midia' && f.type.startsWith('image/')) {
+      final = await compressImage(f)
+    }
+    anexoModo.current = 'midia'
+    setFile(final)
     inputRef.current?.focus()
   }
 
@@ -535,6 +553,22 @@ export function ChatThread({
     : attendants
 
   const semNumero = !conv.session_id
+
+  // O que se pode fazer com cada mensagem (144). Só as já gravadas e não apagadas.
+  const acoesDaMensagem = (m: WaMessage): MsgAcoes | undefined => {
+    if (m.id.startsWith('tmp-') || m.deleted_at || semNumero || m.type === 'reaction') return undefined
+    const minha = m.from_me && (m.sent_by === userId || canEditMsgs || canDeleteMsgs)
+    const dentro15 = Date.now() - new Date(m.wa_timestamp).getTime() < 15 * 60_000
+    return {
+      reagir: (emoji) => atendimentoService.react(m.id, emoji).catch((e) => toast.error(e instanceof Error ? e.message : 'Não foi possível reagir')),
+      editar: minha && canEditMsgs && m.type === 'text' && dentro15
+        ? (texto) => atendimentoService.editMessage(m.id, texto)
+        : undefined,
+      apagar: minha && canDeleteMsgs
+        ? () => atendimentoService.deleteMessage(m.id)
+        : undefined,
+    }
+  }
   const aviso = semNumero
     ? 'O número desta conversa foi removido do painel. O histórico continua aqui, mas não dá para responder.'
     : session && !session.chat_enabled
@@ -644,6 +678,7 @@ export function ChatThread({
                     onOpen={mediaKind(item.m) ? () => setMediaAberta(item.m!.id) : undefined}
                     onRetry={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => despachar(item.m!) : undefined}
                     onDiscard={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => descartarPendente(item.m!.id) : undefined}
+                    acoes={acoesDaMensagem(item.m)}
                   />
                 ) : item.n ? (
                   <div className="at-note">
@@ -753,6 +788,12 @@ export function ChatThread({
                     <button type="button" role="menuitem" onClick={() => escolherAnexo('audio/*')}>
                       <Headphones size={16} /> Áudio
                     </button>
+                    <button type="button" role="menuitem" onClick={() => { setMenuAnexo(false); setEnviando('localizacao') }}>
+                      <MapPin size={16} /> Localização
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => { setMenuAnexo(false); setEnviando('contato') }}>
+                      <UserRound size={16} /> Contato
+                    </button>
                   </div>
                 )}
               </div>
@@ -773,7 +814,7 @@ export function ChatThread({
                 onKeyDown={onKeyDown}
                 onPaste={(e) => {
                   const f = e.clipboardData.files?.[0]
-                  if (f) { e.preventDefault(); pickFile(f) }
+                  if (f) { e.preventDefault(); anexoModo.current = 'midia'; void pickFile(f) }
                 }}
                 placeholder={modo === 'nota' ? 'Nota interna: só a equipe vê' : semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem  ·  / para respostas rápidas'}
                 aria-label="Mensagem"
@@ -802,6 +843,12 @@ export function ChatThread({
             </div>
           )}
         </form>
+      )}
+      {enviando === 'localizacao' && (
+        <EnviarLocalizacao conversationId={conv.id} onSent={merge} onClose={() => setEnviando(null)} />
+      )}
+      {enviando === 'contato' && (
+        <EnviarContato conversationId={conv.id} onSent={merge} onClose={() => setEnviando(null)} />
       )}
       {mediaAberta && <MediaViewer items={galeria} startId={mediaAberta} onClose={fecharMidia} />}
       {showTransfer && (
@@ -939,7 +986,16 @@ function Ticks({ status }: { status: WaMessage['status'] }) {
   return <Check size={14} aria-label="Enviada" />
 }
 
-function Bubble({ m, pos, url, author, onMediaLoad, onOpen, onRetry, onDiscard }: {
+interface MsgAcoes {
+  reagir: (emoji: string) => void
+  /** Só quando dá para editar (texto próprio, até 15 min, admin liberou). */
+  editar?: (texto: string) => Promise<void>
+  apagar?: () => Promise<void>
+}
+
+const REACOES = ['👍', '❤️', '😂', '😮', '🙏', '✅']
+
+function Bubble({ m, pos, url, author, onMediaLoad, onOpen, onRetry, onDiscard, acoes }: {
   m: WaMessage
   /** Posição no bloco de mensagens seguidas: decide cantos, hora e rótulo. */
   pos: PosGrupo
@@ -952,8 +1008,13 @@ function Bubble({ m, pos, url, author, onMediaLoad, onOpen, onRetry, onDiscard }
   /** Só em mensagem que não saiu: tentar de novo / tirar da tela. */
   onRetry?: () => void
   onDiscard?: () => void
+  acoes?: MsgAcoes
 }) {
   const aCaminho = m.id.startsWith('tmp-')
+  const [menu, setMenu] = useState(false)
+  const [editando, setEditando] = useState(false)
+  const [texto, setTexto] = useState('')
+  const [salvando, setSalvando] = useState(false)
   if (m.type === 'reaction') {
     return (
       <div className={`at-row ${m.from_me ? 'out' : 'in'} g-solo`}>
@@ -1027,16 +1088,86 @@ function Bubble({ m, pos, url, author, onMediaLoad, onOpen, onRetry, onDiscard }
     visual && !m.body ? 'at-bubble-media-only' : '',
   ].filter(Boolean).join(' ')
 
+  const apagada = Boolean(m.deleted_at)
+  const reacoes = (m.reactions ?? []).reduce<Map<string, number>>((acc, r) => acc.set(r.emoji, (acc.get(r.emoji) ?? 0) + 1), new Map())
+
+  const salvarEdicao = async () => {
+    const t = texto.trim()
+    if (!t || !acoes?.editar) return
+    setSalvando(true)
+    try {
+      await acoes.editar(t)
+      setEditando(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Não foi possível editar')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const apagar = async () => {
+    if (!acoes?.apagar) return
+    if (!(await confirmDialog({
+      title: 'Apagar mensagem',
+      message: 'A mensagem some para o cliente também. A ação não pode ser desfeita.',
+      confirmLabel: 'Apagar', danger: true,
+    }))) return
+    try { await acoes.apagar() } catch (e) { toast.error(e instanceof Error ? e.message : 'Não foi possível apagar') }
+  }
+
   return (
     <div className={`at-row ${m.from_me ? 'out' : 'in'} g-${pos}`}>
       {author && (pos === 'first' || pos === 'solo') && <div className="at-label">{author}</div>}
       <div className={classes} title={mostraMeta ? undefined : hora}>
-        {media}
-        {m.body && <div className="at-text"><LinkifiedText text={m.body} /></div>}
+        {acoes && !editando && (
+          <div className="at-msg-actions">
+            <button type="button" className="at-msg-more" aria-label="Ações da mensagem" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>⋯</button>
+            {menu && (
+              <div className="at-msg-menu" role="menu" onMouseLeave={() => setMenu(false)}>
+                <div className="at-msg-emojis">
+                  {REACOES.map((e) => (
+                    <button key={e} type="button" onClick={() => { setMenu(false); acoes.reagir(e) }} aria-label={`Reagir com ${e}`}>{e}</button>
+                  ))}
+                </div>
+                {acoes.editar && (
+                  <button type="button" role="menuitem" onClick={() => { setMenu(false); setTexto(m.body ?? ''); setEditando(true) }}>Editar</button>
+                )}
+                {acoes.apagar && (
+                  <button type="button" role="menuitem" className="danger" onClick={() => { setMenu(false); void apagar() }}>Apagar para todos</button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {apagada ? (
+          <div className="at-deleted">
+            🚫 Mensagem apagada
+            {m.body && <span className="at-deleted-orig" title="Texto original, só a equipe vê">{m.body}</span>}
+          </div>
+        ) : editando ? (
+          <div className="at-edit">
+            <textarea className="input" rows={2} value={texto} maxLength={4096} autoFocus onChange={(e) => setTexto(e.target.value)} />
+            <div className="flex" style={{ justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditando(false)} disabled={salvando}>Cancelar</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={salvarEdicao} disabled={salvando || !texto.trim()}>Salvar</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {media}
+            {m.body && <div className="at-text"><LinkifiedText text={m.body} /></div>}
+          </>
+        )}
         {mostraMeta && (
           <div className="at-meta">
+            {m.edited_at && !apagada && <span>editada</span>}
             <span>{hora}</span>
             {m.from_me && <Ticks status={m.status} />}
+          </div>
+        )}
+        {reacoes.size > 0 && (
+          <div className="at-reactions">
+            {[...reacoes.entries()].map(([e, n]) => <span key={e}>{e}{n > 1 ? ` ${n}` : ''}</span>)}
           </div>
         )}
         {(onRetry || onDiscard) && (

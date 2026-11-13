@@ -914,6 +914,10 @@ export interface WaMessage {
   status: WaMessageStatus
   wa_timestamp: string
   created_at: string
+  /** Reações à mensagem (144): by = 'cliente' | 'equipe' | id do atendente. */
+  reactions?: Array<{ by: string; emoji: string }>
+  edited_at?: string | null
+  deleted_at?: string | null
 }
 
 export interface WaSession {
@@ -941,6 +945,9 @@ export interface WaSettings {
   restrict_to_assigned: boolean
   /** Conclui sozinho o atendimento sem mensagens por tantas horas (135). null = desligado. */
   auto_conclude_hours: number | null
+  /** O atendente pode editar / apagar para todos as mensagens que enviou (144). */
+  allow_edit_messages: boolean
+  allow_delete_messages: boolean
   /** Saudação e ausência automáticas (139). */
   auto_greeting_on: boolean
   auto_greeting_text: string | null
