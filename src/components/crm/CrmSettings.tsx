@@ -54,7 +54,7 @@ export function CrmSettingsPanel() {
   const isOwner = useIsOwner()
   const settingsTabs = SETTINGS_TAB_ALL.filter((t) => {
     // Plano e cobrança: administradores da organização. Plataforma: só o dono.
-    if (t.id === 'plano') return isAdmin || can('atendimento.ver')
+    if (t.id === 'plano') return isAdmin
     if (t.id === 'plataforma') return isOwner
     // Notificações: de cada pessoa, qualquer um que atende (ou é admin).
     if (t.id === 'notificacoes' || t.id === 'conta') return isAdmin || can('atendimento.ver')
@@ -161,8 +161,8 @@ export function CrmSettingsPanel() {
       {tab === 'conta' && (<><ContaSettings /><ReverTour /></>)}
       {tab === 'notificacoes' && <NotificacoesSettings />}
 
-      {tab === 'plano' && (assinatura
-        ? <PlanoCobranca sub={assinatura} onChanged={carregarAssinatura} somenteLeitura={!isAdmin} />
+      {tab === 'plano' && isAdmin && (assinatura
+        ? <PlanoCobranca sub={assinatura} onChanged={carregarAssinatura} />
         : <Loader />)}
       {tab === 'plataforma' && isOwner && <PlataformaSettings />}
 
