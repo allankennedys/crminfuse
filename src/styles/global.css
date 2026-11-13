@@ -4532,6 +4532,31 @@ th.at-num, td.at-num { text-align: right; font-variant-numeric: tabular-nums; wh
   border-bottom: 1px solid var(--border);
 }
 .at-client-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Atendimento no topo do painel: situação e conclusão (motivo + observação). */
+.at-client-att { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--border); scroll-margin: 14px; }
+.at-client-att-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.at-client-att-title { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.at-close-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; border: none; min-width: 0; }
+.at-close-reasons legend { padding: 0; margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+.at-close-reason {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.at-close-reason input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.at-close-reason:hover { border-color: var(--primary-text); }
+.at-close-reason.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+.at-close-reason:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+.at-client-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .at-client-id { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .at-client-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 15px; font-weight: 700; }
 .at-client-name span { overflow-wrap: anywhere; }

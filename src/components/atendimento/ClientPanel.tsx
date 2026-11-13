@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { ExternalLink, Megaphone, Pencil, Receipt, X as XIcon } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { CheckCircle2, ExternalLink, Megaphone, Pencil, Receipt, RotateCcw, X as XIcon } from 'lucide-react'
 import { Loader } from '@/components/ui'
 import { toast } from '@/store/toastStore'
 import { useCan } from '@/store/authStore'
@@ -17,13 +17,29 @@ function parseBRL(raw: string): number | null {
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null
 }
 
+/** Conclusão do atendimento, feita no próprio painel (motivo + observação). */
+export type ConclusaoPainel = {
+  /** Quem está olhando pode concluir este atendimento. */
+  pode: boolean
+  /** O formulário de conclusão está aberto (o botão do cabeçalho também abre). */
+  aberta: boolean
+  setAberta: (v: boolean) => void
+  /** Motivos configurados (120). Vazio = conclui só com a observação. */
+  motivos: string[]
+  concluir: (motivo: string | null, nota: string) => Promise<void>
+  reabrir: () => Promise<void>
+}
+
 /**
- * Cartão do cliente dentro da conversa (121): dados do contato do CRM,
- * origem, se veio de anúncio, e lançar venda. Funciona para o atendente sem
- * acesso ao CRM — as RPCs conferem se ele enxerga a conversa.
+ * Cartão do cliente dentro da conversa (121): situação do atendimento (e a
+ * conclusão dele, com motivo), dados do contato do CRM, origem, se veio de
+ * anúncio, e lançar venda. Funciona para o atendente sem acesso ao CRM: as
+ * RPCs conferem se ele enxerga a conversa.
  */
-export function ClientPanel({ conversation: conv, onClose, onOpenContact }: {
+export function ClientPanel({ conversation: conv, situacao, conclusao, onClose, onOpenContact }: {
   conversation: WaConversation
+  situacao: { label: string; cls: string }
+  conclusao: ConclusaoPainel
   onClose: () => void
   onOpenContact?: (contactId: string) => void
 }) {
@@ -53,6 +69,8 @@ export function ClientPanel({ conversation: conv, onClose, onOpenContact }: {
 
       {!card ? <Loader /> : (
         <div className="at-client-body">
+          <AttendanceSection conv={conv} situacao={situacao} conclusao={conclusao} />
+
           {editing ? (
             <EditForm
               card={card}
@@ -140,6 +158,106 @@ export function ClientPanel({ conversation: conv, onClose, onOpenContact }: {
         </div>
       )}
     </aside>
+  )
+}
+
+/**
+ * Situação do atendimento e a conclusão dele: motivo (os configurados em
+ * Configurações → Atendimento) e observação, que vão para o histórico e para
+ * o relatório de atendimento.
+ */
+function AttendanceSection({ conv, situacao, conclusao }: {
+  conv: WaConversation
+  situacao: { label: string; cls: string }
+  conclusao: ConclusaoPainel
+}) {
+  const { pode, aberta, setAberta, motivos } = conclusao
+  const [motivo, setMotivo] = useState(motivos[0] ?? '')
+  const [nota, setNota] = useState('')
+  const [busy, setBusy] = useState(false)
+  const ref = useRef<HTMLElement>(null)
+  const concluida = conv.status === 'resolvida'
+
+  // Aberta pelo botão do cabeçalho: traz para a vista e põe o foco no 1º motivo.
+  useEffect(() => {
+    if (!aberta) return
+    setMotivo((m) => m || motivos[0] || '')
+    ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    ref.current?.querySelector<HTMLInputElement>('input, textarea')?.focus({ preventScroll: true })
+  }, [aberta, motivos])
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (motivos.length > 0 && !motivo) return
+    setBusy(true)
+    try {
+      await conclusao.concluir(motivo || null, nota.trim())
+      setNota('')
+      setAberta(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível concluir')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const reabrir = async () => {
+    setBusy(true)
+    try { await conclusao.reabrir() } finally { setBusy(false) }
+  }
+
+  return (
+    <section className="at-client-att" ref={ref} aria-label="Atendimento">
+      <div className="at-client-att-top">
+        <span className="at-client-att-title">Atendimento</span>
+        <span className={`badge ${situacao.cls}`}>{situacao.label}</span>
+      </div>
+
+      {concluida ? (
+        <button type="button" className="btn btn-ghost btn-sm" onClick={reabrir} disabled={busy}>
+          <RotateCcw size={14} /> Reabrir atendimento
+        </button>
+      ) : !pode ? null : !aberta ? (
+        <button type="button" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setAberta(true)}>
+          <CheckCircle2 size={15} /> Concluir atendimento
+        </button>
+      ) : (
+        <form className="at-client-form" onSubmit={submit}>
+          {motivos.length > 0 && (
+            <fieldset className="at-close-reasons">
+              <legend>Motivo</legend>
+              {motivos.map((r) => (
+                <label key={r} className={`at-close-reason${motivo === r ? ' active' : ''}`}>
+                  <input type="radio" name="motivo-conclusao" checked={motivo === r} onChange={() => setMotivo(r)} />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </fieldset>
+          )}
+          <div className="field">
+            <label htmlFor="conclusao-nota">Observação <span className="text-muted">(opcional)</span></label>
+            <textarea
+              id="conclusao-nota"
+              className="input"
+              rows={3}
+              maxLength={500}
+              value={nota}
+              onChange={(e) => setNota(e.target.value)}
+              placeholder="Ex.: fechou no pix, entrega na sexta"
+            />
+          </div>
+          <p className="text-muted" style={{ fontSize: 11.5 }}>
+            Se o cliente escrever de novo, abre um atendimento novo. Para continuar este, use Reabrir.
+          </p>
+          <div className="at-client-form-actions">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAberta(false)} disabled={busy}>Cancelar</button>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={busy || (motivos.length > 0 && !motivo)}>
+              {busy ? <span className="spinner" /> : <><CheckCircle2 size={14} /> Concluir</>}
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
   )
 }
 

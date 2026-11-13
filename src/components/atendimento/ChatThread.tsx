@@ -83,7 +83,8 @@ export function ChatThread({
   const [messages, setMessages] = useState<WaMessage[] | null>(null)
   const [events, setEvents] = useState<WaEvent[]>([])
   const [showTransfer, setShowTransfer] = useState(false)
-  const [showConclude, setShowConclude] = useState(false)
+  // Conclusão (motivo + observação) acontece no painel do cliente.
+  const [concluindo, setConcluindo] = useState(false)
   // Painel do cliente: aberto por padrão em tela larga, onde cabe ao lado.
   const [showClient, setShowClient] = useState(() => window.innerWidth >= 1280)
   const [hasMore, setHasMore] = useState(false)
@@ -513,7 +514,7 @@ export function ChatThread({
           <span className={`badge ${situacao.cls}`}>{situacao.label}</span>
           {conv.status === 'aberta' ? (
             podeConcluir && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowConclude(true)} disabled={busy}>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setShowClient(true); setConcluindo(true) }} disabled={busy}>
                 <CheckCircle2 size={14} /> Concluir
               </button>
             )
@@ -642,19 +643,6 @@ export function ChatThread({
           </div>
         )}
       </form>
-      {showConclude && (
-        <ConcludeDialog
-          reasons={conclusionReasons}
-          onClose={() => setShowConclude(false)}
-          onConfirm={async (reason, note) => {
-            await atendimentoService.conclude(conv.id, reason, note)
-            toast.success('Atendimento concluído.')
-            setShowConclude(false)
-            onChanged()
-          }}
-        />
-      )}
-
       {mediaAberta && <MediaViewer items={galeria} startId={mediaAberta} onClose={fecharMidia} />}
       {showTransfer && (
         <TransferDialog
@@ -672,7 +660,24 @@ export function ChatThread({
       )}
     </div>
     {showClient && (
-      <ClientPanel conversation={conv} onClose={() => setShowClient(false)} onOpenContact={onOpenContact} />
+      <ClientPanel
+        conversation={conv}
+        situacao={situacao}
+        conclusao={{
+          pode: conv.status === 'aberta' && podeConcluir,
+          aberta: concluindo,
+          setAberta: setConcluindo,
+          motivos: conclusionReasons,
+          concluir: async (motivo, nota) => {
+            await atendimentoService.conclude(conv.id, motivo, nota)
+            toast.success('Atendimento concluído.')
+            onChanged()
+          },
+          reabrir: reopen,
+        }}
+        onClose={() => { setShowClient(false); setConcluindo(false) }}
+        onOpenContact={onOpenContact}
+      />
     )}
     </div>
   )
@@ -704,67 +709,6 @@ function eventText(e: WaEvent, names: Map<string, string>, me: string | undefine
     case 'reaberta':
       return `${Who(e.by_user)} reabriu o atendimento`
   }
-}
-
-function ConcludeDialog({ reasons, onClose, onConfirm }: {
-  reasons: string[]
-  onClose: () => void
-  onConfirm: (reason: string | null, note: string) => Promise<void>
-}) {
-  const [reason, setReason] = useState(reasons[0] ?? '')
-  const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setBusy(true)
-    try {
-      await onConfirm(reason || null, note)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Não foi possível concluir')
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Modal title="Concluir atendimento" onClose={onClose}>
-      <form onSubmit={submit}>
-        {reasons.length > 0 && (
-          <div className="field">
-            <label>Motivo</label>
-            <div className="at-modes">
-              {reasons.map((r) => (
-                <label key={r} className={`at-mode${reason === r ? ' active' : ''}`}>
-                  <input type="radio" name="conclusion" checked={reason === r} onChange={() => setReason(r)} />
-                  <span><strong>{r}</strong></span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-        <div className="field">
-          <label htmlFor="conclude-note">Observação <span className="text-muted">(opcional)</span></label>
-          <textarea
-            id="conclude-note"
-            className="input"
-            rows={3}
-            maxLength={500}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </div>
-        <p className="text-muted" style={{ fontSize: 12 }}>
-          Se o cliente escrever de novo, abre um atendimento novo. Para continuar este, use Reabrir.
-        </p>
-        <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn btn-primary" disabled={busy}>
-            {busy ? <span className="spinner" /> : 'Concluir'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  )
 }
 
 function TransferDialog({ conversationName, currentUser, attendants, onClose, onConfirm }: {
