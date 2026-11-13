@@ -1,36 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Pause, Play, Send, Square, Trash2 } from 'lucide-react'
 import { VOICE_MAX_SECONDS, type VoicePreview, type VoiceRecorder } from './useVoiceRecorder'
+import { altura, fmtDur as fmt, resumir } from './wave'
 
 /** Barras da onda na revisão. */
 const PREVIEW_BARS = 56
-
-const fmt = (s: number) => {
-  const t = Math.max(0, Math.round(s))
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
-}
-
-/** Altura da barra: nunca some de vez (silêncio vira um tracinho). */
-const altura = (l: number) => `${Math.round(12 + Math.min(1, l) * 88)}%`
-
-/**
- * Comprime o volume da gravação inteira em `n` barras (o pico de cada
- * trecho) e normaliza pelo maior — gravação baixa também desenha uma onda
- * legível. O piso de 0,25 evita "inflar" um áudio que é quase só silêncio.
- */
-function resumir(levels: number[], n: number): number[] {
-  if (levels.length === 0) return Array(n).fill(0)
-  const out: number[] = []
-  for (let i = 0; i < n; i++) {
-    const a = Math.floor((i * levels.length) / n)
-    const b = Math.max(a + 1, Math.floor(((i + 1) * levels.length) / n))
-    let pico = 0
-    for (let j = a; j < b && j < levels.length; j++) pico = Math.max(pico, levels[j])
-    out.push(pico)
-  }
-  const max = Math.max(0.25, ...out)
-  return out.map((v) => v / max)
-}
 
 /**
  * Linha do compositor enquanto há mensagem de voz: gravando (onda ao vivo)

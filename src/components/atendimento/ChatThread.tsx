@@ -6,6 +6,7 @@ import {
 import { useVoiceRecorder } from './useVoiceRecorder'
 import { VoiceComposer } from './VoiceComposer'
 import { MediaViewer, mediaKind, type MediaItem } from './MediaViewer'
+import { AudioMessage } from './AudioMessage'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { Loader, Modal } from '@/components/ui'
@@ -36,6 +37,38 @@ interface Props {
   onBack: () => void
   onChanged: () => void
   onOpenContact?: (contactId: string) => void
+}
+
+/** Mensagens seguidas do mesmo lado, até 5 min uma da outra, viram um bloco. */
+const GRUPO_MS = 5 * 60_000
+type PosGrupo = 'solo' | 'first' | 'mid' | 'last'
+
+/**
+ * Posição de cada mensagem no seu bloco. Quebra o bloco: trocar de lado,
+ * outro atendente, mais de 5 min de intervalo, outro dia, um aviso no meio
+ * (evento) ou uma reação.
+ */
+function posicoesNoBloco(items: { m?: WaMessage }[]): Map<string, PosGrupo> {
+  const out = new Map<string, PosGrupo>()
+  let bloco: WaMessage[] = []
+  const fecha = () => {
+    bloco.forEach((m, i) => out.set(m.id, bloco.length === 1 ? 'solo' : i === 0 ? 'first' : i === bloco.length - 1 ? 'last' : 'mid'))
+    bloco = []
+  }
+  for (const it of items) {
+    const m = it.m
+    if (!m || m.type === 'reaction') { fecha(); continue }
+    const ult = bloco[bloco.length - 1]
+    if (ult && (
+      ult.from_me !== m.from_me
+      || (m.from_me && ult.sent_by !== m.sent_by)
+      || !sameDay(ult.wa_timestamp, m.wa_timestamp)
+      || new Date(m.wa_timestamp).getTime() - new Date(ult.wa_timestamp).getTime() > GRUPO_MS
+    )) fecha()
+    bloco.push(m)
+  }
+  fecha()
+  return out
 }
 
 const byTime = (a: WaMessage, b: WaMessage) =>
@@ -402,6 +435,7 @@ export function ChatThread({
   })()
 
   const name = conversationName(conv)
+  const blocos = posicoesNoBloco(timeline)
 
   // Fotos, vídeos e PDFs da conversa, na ordem: o que o visualizador passa.
   const galeria: MediaItem[] = timeline.flatMap((it) => {
@@ -518,8 +552,9 @@ export function ChatThread({
                 {item.m ? (
                   <Bubble
                     m={item.m}
+                    pos={blocos.get(item.m.id) ?? 'solo'}
                     url={item.m.media_path ? urls.get(item.m.id)?.url : undefined}
-                    author={item.m.from_me ? (item.m.sent_by ? names.get(item.m.sent_by) ?? 'Painel' : 'Celular') : null}
+                    author={item.m.from_me ? (item.m.sent_by ? names.get(item.m.sent_by) ?? 'Equipe' : 'Enviada pelo celular') : null}
                     onMediaLoad={followIfStuck}
                     onOpen={mediaKind(item.m) ? () => setMediaAberta(item.m!.id) : undefined}
                     onRetry={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => despachar(item.m!) : undefined}
@@ -800,9 +835,12 @@ function Ticks({ status }: { status: WaMessage['status'] }) {
   return <Check size={14} aria-label="Enviada" />
 }
 
-function Bubble({ m, url, author, onMediaLoad, onOpen, onRetry, onDiscard }: {
+function Bubble({ m, pos, url, author, onMediaLoad, onOpen, onRetry, onDiscard }: {
   m: WaMessage
+  /** Posição no bloco de mensagens seguidas: decide cantos, hora e rótulo. */
+  pos: PosGrupo
   url: string | undefined
+  /** Quem da equipe enviou (só nas mensagens da equipe): vai acima do bloco. */
   author: string | null
   onMediaLoad: () => void
   /** Foto, vídeo ou PDF: abre no visualizador. */
@@ -814,7 +852,7 @@ function Bubble({ m, url, author, onMediaLoad, onOpen, onRetry, onDiscard }: {
   const aCaminho = m.id.startsWith('tmp-')
   if (m.type === 'reaction') {
     return (
-      <div className={`at-row ${m.from_me ? 'out' : 'in'}`}>
+      <div className={`at-row ${m.from_me ? 'out' : 'in'} g-solo`}>
         <div className="at-reaction">{m.body}</div>
       </div>
     )
@@ -853,7 +891,7 @@ function Bubble({ m, url, author, onMediaLoad, onOpen, onRetry, onDiscard }: {
         </button>
       )
     } else if (m.type === 'audio') {
-      media = <audio className="at-audio" src={url} controls preload="metadata" />
+      media = <AudioMessage id={m.id} url={url} />
     } else if (onOpen) {
       // PDF (ou foto/vídeo mandado como documento): abre no visualizador.
       const pdf = mediaKind(m) === 'pdf'
@@ -873,16 +911,30 @@ function Bubble({ m, url, author, onMediaLoad, onOpen, onRetry, onDiscard }: {
     }
   }
 
+  // Hora (e os tiques) só no fim do bloco; nas outras, ao passar o mouse.
+  // Enviando/falhou aparecem sempre.
+  const hora = formatTime(m.wa_timestamp)
+  const mostraMeta = pos === 'last' || pos === 'solo' || m.status === 'pending' || m.status === 'failed'
+  const visual = (m.type === 'image' || m.type === 'video') && Boolean(url) && !aCaminho && m.media_status !== 'falhou'
+  const classes = [
+    'at-bubble',
+    m.type === 'sticker' ? 'at-bubble-bare' : '',
+    visual ? 'at-bubble-media' : '',
+    visual && !m.body ? 'at-bubble-media-only' : '',
+  ].filter(Boolean).join(' ')
+
   return (
-    <div className={`at-row ${m.from_me ? 'out' : 'in'}`}>
-      <div className={`at-bubble${m.type === 'sticker' ? ' at-bubble-bare' : ''}`}>
+    <div className={`at-row ${m.from_me ? 'out' : 'in'} g-${pos}`}>
+      {author && (pos === 'first' || pos === 'solo') && <div className="at-label">{author}</div>}
+      <div className={classes} title={mostraMeta ? undefined : hora}>
         {media}
         {m.body && <div className="at-text"><LinkifiedText text={m.body} /></div>}
-        <div className="at-meta">
-          {author && <span className="at-author">{author}</span>}
-          <span>{formatTime(m.wa_timestamp)}</span>
-          {m.from_me && <Ticks status={m.status} />}
-        </div>
+        {mostraMeta && (
+          <div className="at-meta">
+            <span>{hora}</span>
+            {m.from_me && <Ticks status={m.status} />}
+          </div>
+        )}
         {(onRetry || onDiscard) && (
           <div className="at-failed">
             <span>Não enviada</span>
