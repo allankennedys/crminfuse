@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BellRing, KeyRound, Megaphone, Plus, ShieldCheck, Trash2, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
+import { BellRing, CreditCard, KeyRound, Megaphone, Plus, ShieldCheck, Trash2, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
 import { CustomFieldsSettings } from './CustomFields'
+import { ReportTabsSettings } from './ReportTabsSettings'
 import { AtendimentoSettings } from '@/components/atendimento/AtendimentoSettings'
 import { NotificacoesSettings } from '@/components/atendimento/NotificacoesSettings'
+import { PlanoCobranca } from '@/components/billing/PlanoCobranca'
+import { PlataformaSettings } from '@/components/billing/PlataformaSettings'
+import { useIsOwner } from '@/components/billing/useIsOwner'
+import { billingService, type MySubscription } from '@/services/billingService'
+import { useConfigNav } from '@/store/configNav'
 import { supabase } from '@/lib/supabase'
 import { crmService } from '@/services/crmService'
 import { useAuthStore, useCan } from '@/store/authStore'
@@ -13,6 +19,8 @@ import { confirmDialog } from '@/store/confirmStore'
 import type { CrmAdAccount, CrmSettings as Settings } from '@/types'
 
 const SETTINGS_TAB_ALL = [
+  { id: 'plano', label: 'Plano e cobrança', icon: CreditCard },
+  { id: 'plataforma', label: 'Plataforma', icon: Building2 },
   { id: 'notificacoes', label: 'Notificações', icon: BellRing },
   { id: 'org', label: 'Organização', icon: Building2 },
   { id: 'atendimento', label: 'Atendimento', icon: MessageCircle },
@@ -41,7 +49,11 @@ export function CrmSettingsPanel() {
   // Aba de usuários só existe para admin — mesma regra que já escondia a seção.
   const can = useCan()
   const podeConfigurarAtendimento = can('atendimento.configurar')
+  const isOwner = useIsOwner()
   const settingsTabs = SETTINGS_TAB_ALL.filter((t) => {
+    // Plano e cobrança: administradores da organização. Plataforma: só o dono.
+    if (t.id === 'plano') return isAdmin
+    if (t.id === 'plataforma') return isOwner
     // Notificações: de cada pessoa, qualquer um que atende (ou é admin).
     if (t.id === 'notificacoes') return isAdmin || can('atendimento.ver')
     if (t.id === 'atendimento') return podeConfigurarAtendimento
@@ -50,6 +62,15 @@ export function CrmSettingsPanel() {
     return isAdmin
   })
   const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'org' : podeConfigurarAtendimento ? 'atendimento' : 'notificacoes')
+  // Assinatura (aba Plano e cobrança) e pedido de abrir direto nela (aviso do topo).
+  const [assinatura, setAssinatura] = useState<MySubscription | null>(null)
+  const carregarAssinatura = useCallback(() => { billingService.mySubscription().then(setAssinatura) }, [])
+  useEffect(() => { if (tab === 'plano') carregarAssinatura() }, [tab, carregarAssinatura])
+  const pedida = useConfigNav((n) => n.pedida)
+  const consumirPedida = useConfigNav((n) => n.consumir)
+  useEffect(() => {
+    if (pedida && SETTINGS_TAB_ALL.some((t) => t.id === pedida)) { setTab(pedida as SettingsTab); consumirPedida() }
+  }, [pedida, consumirPedida])
 
   const [settings, setSettings] = useState<Settings | null>(null)
   const [pixel, setPixel] = useState('')
@@ -137,7 +158,13 @@ export function CrmSettingsPanel() {
           então a gestão de acessos não aparece para eles (a aba nem existe). */}
       {tab === 'notificacoes' && <NotificacoesSettings />}
 
+      {tab === 'plano' && isAdmin && (assinatura
+        ? <PlanoCobranca sub={assinatura} onChanged={carregarAssinatura} />
+        : <Loader />)}
+      {tab === 'plataforma' && isOwner && <PlataformaSettings />}
+
       {tab === 'org' && isAdmin && <OrganizationSection />}
+      {tab === 'org' && isAdmin && <ReportTabsSettings />}
       {tab === 'org' && isAdmin && <CustomFieldsSettings />}
 
       {tab === 'atendimento' && podeConfigurarAtendimento && <AtendimentoSettings />}

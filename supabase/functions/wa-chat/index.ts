@@ -31,6 +31,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { keyOf, mediaLinks, mediaUrl, uploadTarget } from '../_shared/media.ts'
+import { acessoDaOrganizacao, MSG_SEM_ACESSO } from '../_shared/assinatura.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -109,6 +110,12 @@ Deno.serve(async (req) => {
 // Conversa
 // ---------------------------------------------------------------------------
 
+/** Assinatura em atraso ou suspensa: ninguém envia nem edita (402). Ver org_acesso. */
+async function exigirAcesso(orgId: string) {
+  const acesso = await acessoDaOrganizacao(admin, orgId)
+  if (acesso !== 'total') throw new HttpError(402, MSG_SEM_ACESSO[acesso] ?? MSG_SEM_ACESSO.bloqueado)
+}
+
 /** A conversa como o USUÁRIO a enxerga. Não achou = não é dele. */
 async function loadConversation(userClient: SupabaseClient, id: unknown): Promise<Conversation> {
   if (typeof id !== 'string' || !id) throw new HttpError(400, 'conversation_id obrigatório')
@@ -164,6 +171,7 @@ function jidsOf(conv: Conversation) {
 
 async function sendText(userClient: SupabaseClient, userId: string, body: Json) {
   const conv = await loadConversation(userClient, body?.conversation_id)
+  await exigirAcesso(conv.organization_id)
   const text = String(body?.text ?? '').trim()
   if (!text) throw new HttpError(400, 'Mensagem vazia')
   if (text.length > 4096) throw new HttpError(400, 'Mensagem longa demais (máx. 4096 caracteres)')
@@ -181,6 +189,7 @@ async function sendText(userClient: SupabaseClient, userId: string, body: Json) 
 /** Localização (ponto no mapa). Chega ao cliente como o pino do WhatsApp. */
 async function sendLocation(userClient: SupabaseClient, userId: string, body: Json) {
   const conv = await loadConversation(userClient, body?.conversation_id)
+  await exigirAcesso(conv.organization_id)
   const lat = Number(body?.latitude)
   const lng = Number(body?.longitude)
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
@@ -207,6 +216,7 @@ async function sendLocation(userClient: SupabaseClient, userId: string, body: Js
 /** Cartão de contato (nome + telefone). */
 async function sendContact(userClient: SupabaseClient, userId: string, body: Json) {
   const conv = await loadConversation(userClient, body?.conversation_id)
+  await exigirAcesso(conv.organization_id)
   const name = String(body?.name ?? '').trim().slice(0, 100)
   const digits = normalizePhone(String(body?.phone ?? ''))
   if (!name) throw new HttpError(400, 'Informe o nome do contato')
@@ -275,6 +285,7 @@ async function assertCanChange(
 
 async function editMessage(userClient: SupabaseClient, userId: string, body: Json) {
   const { msg, conv } = await loadMessage(userClient, body?.message_id)
+  await exigirAcesso(conv.organization_id)
   await assertCanChange(userClient, userId, msg, conv, 'allow_edit_messages')
   const text = String(body?.text ?? '').trim()
   if (!text) throw new HttpError(400, 'Mensagem vazia')
@@ -301,6 +312,7 @@ async function editMessage(userClient: SupabaseClient, userId: string, body: Jso
 
 async function deleteMessage(userClient: SupabaseClient, userId: string, body: Json) {
   const { msg, conv } = await loadMessage(userClient, body?.message_id)
+  await exigirAcesso(conv.organization_id)
   await assertCanChange(userClient, userId, msg, conv, 'allow_delete_messages')
   if (msg.deleted_at) return { ok: true }
 
@@ -319,6 +331,7 @@ async function deleteMessage(userClient: SupabaseClient, userId: string, body: J
 /** Reage a uma mensagem (qualquer lado). emoji vazio = tira a reação. */
 async function react(userClient: SupabaseClient, userId: string, body: Json) {
   const { msg, conv } = await loadMessage(userClient, body?.message_id)
+  await exigirAcesso(conv.organization_id)
   const emoji = String(body?.emoji ?? '').trim()
   if (emoji.length > 16) throw new HttpError(400, 'Reação inválida')
   if (msg.deleted_at) throw new HttpError(400, 'Esta mensagem foi apagada')
@@ -338,6 +351,7 @@ async function react(userClient: SupabaseClient, userId: string, body: Json) {
 
 async function sendMedia(userClient: SupabaseClient, userId: string, body: Json) {
   const conv = await loadConversation(userClient, body?.conversation_id)
+  await exigirAcesso(conv.organization_id)
   const path = String(body?.path ?? '')
   // O arquivo tem que estar na pasta DESTA conversa — senão daria para
   // mandar ao cliente um anexo de outra conversa só trocando o caminho.
@@ -543,6 +557,7 @@ async function start(userClient: SupabaseClient, userId: string, body: Json) {
   const { data: profile } = await userClient.from('users').select('organization_id').eq('id', userId).maybeSingle()
   const org = profile?.organization_id
   if (!org) throw new HttpError(403, 'Usuário sem organização')
+  await exigirAcesso(org)
 
   const sessionId = String(body?.session_id ?? '')
   const { data: s } = await admin

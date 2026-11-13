@@ -5,6 +5,8 @@ import { ToastContainer } from '@/components/Toast'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Loader } from '@/components/ui'
 import { LoginPage } from '@/pages/Login'
+import { SignupPage } from '@/pages/Signup'
+import { ConvitePage } from '@/pages/Convite'
 import { CRMPage } from '@/pages/CRM'
 
 export default function App() {
@@ -21,6 +23,8 @@ export default function App() {
       <>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/cadastro" element={<SignupPage />} />
+          <Route path="/convite/:token" element={<ConvitePage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
         <ToastContainer />
@@ -34,6 +38,7 @@ export default function App() {
     <>
       <Routes>
         <Route path="/crm" element={<CRMPage />} />
+        <Route path="/convite/:token" element={<ConvitePage />} />
         <Route path="*" element={<Navigate to="/crm" replace />} />
       </Routes>
       <ToastContainer />

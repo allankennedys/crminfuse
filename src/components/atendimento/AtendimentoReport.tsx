@@ -47,17 +47,17 @@ const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` :
  * Relatórios → Atendimento (120). Só admin: a aba Relatórios inteira é só
  * dele, e o wa_report recusa qualquer outro usuário.
  */
-export function AtendimentoReport({ label, range }: { label: string; range: { from: string; to: string } }) {
+export function AtendimentoReport({ label, range, userId }: { label: string; range: { from: string; to: string }; userId?: string }) {
   const [data, setData] = useState<WaReport | null>(null)
 
   useEffect(() => {
     let vivo = true
     setData(null)
-    atendimentoService.report(range.from, range.to)
+    atendimentoService.report(range.from, range.to, userId)
       .then((r) => { if (vivo) setData(r) })
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Falha ao carregar o relatório de atendimento'))
     return () => { vivo = false }
-  }, [range.from, range.to])
+  }, [range.from, range.to, userId])
 
   if (!data) return <Loader />
 
@@ -77,8 +77,8 @@ export function AtendimentoReport({ label, range }: { label: string; range: { fr
         <p>
           Um <b>atendimento</b> começa quando o cliente escreve e termina quando alguém o conclui.
           Volume, primeira resposta e espera contam os atendimentos <b>abertos</b> no período ({label});
-          concluídos, tempo médio e motivos contam os <b>concluídos</b> no período. O filtro de vendedor
-          não se aplica a esta aba.
+          concluídos, tempo médio e motivos contam os <b>concluídos</b> no período. O filtro de canal
+          não se aplica a esta aba. Com um atendente escolhido, valem só os atendimentos dele.
         </p>
       </div>
 
@@ -101,15 +101,42 @@ export function AtendimentoReport({ label, range }: { label: string; range: { fr
         />
         <Kpi
           icon={<Users size={16} />}
-          title="Agora"
-          value={`${r.em_atendimento_agora} · ${r.na_fila_agora}`}
-          desc="em atendimento · na fila"
+          title="Em atendimento agora"
+          value={r.em_atendimento_agora.toLocaleString('pt-BR')}
+          desc="com um responsável neste momento"
         />
+        {/* Sem atendente escolhido a fila faz sentido; com um escolhido, não (ela é de ninguém). */}
+        {!userId && (
+          <Kpi
+            icon={<Hourglass size={16} />}
+            title="Na fila agora"
+            value={r.na_fila_agora.toLocaleString('pt-BR')}
+            desc="esperando alguém assumir"
+          />
+        )}
         <Kpi
           icon={<RotateCcw size={16} />}
-          title="Reaberturas · transferências"
-          value={`${r.reaberturas} · ${r.transferencias}`}
-          desc={`${r.msgs_recebidas.toLocaleString('pt-BR')} mensagens recebidas, ${r.msgs_enviadas.toLocaleString('pt-BR')} enviadas`}
+          title="Reaberturas"
+          value={r.reaberturas.toLocaleString('pt-BR')}
+          desc="atendimentos reabertos no período"
+        />
+        <Kpi
+          icon={<ArrowRightLeft size={16} />}
+          title="Transferências"
+          value={r.transferencias.toLocaleString('pt-BR')}
+          desc="trocas de responsável no período"
+        />
+        <Kpi
+          icon={<MessageCircle size={16} />}
+          title="Mensagens recebidas"
+          value={r.msgs_recebidas.toLocaleString('pt-BR')}
+          desc="enviadas pelos clientes"
+        />
+        <Kpi
+          icon={<MessageCircle size={16} />}
+          title="Mensagens enviadas"
+          value={r.msgs_enviadas.toLocaleString('pt-BR')}
+          desc="enviadas pela equipe"
         />
       </div>
 

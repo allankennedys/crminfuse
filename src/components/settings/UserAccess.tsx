@@ -6,6 +6,8 @@ import { Modal, Loader, EmptyState } from '@/components/ui'
 import { PermissionEditor } from './PermissionEditor'
 import { mergePermissions, type PermissionSystem } from '@/lib/permissions'
 import { toast } from '@/store/toastStore'
+import { billingService, type Invite } from '@/services/billingService'
+import { formatSP } from '@/lib/datetime'
 import type { UserProfile, UserRole } from '@/types'
 
 /** Cargos oferecidos na tela. Os outros continuam no banco só por compatibilidade. */
@@ -64,12 +66,13 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
   const owner = false
   const [users, setUsers] = useState<UserProfile[] | null>(null)
   const [showInvite, setShowInvite] = useState(false)
-  const [inviteUsername, setInviteUsername] = useState('')
-  const [inviteName, setInviteName] = useState('')
-  const [invitePassword, setInvitePassword] = useState('')
   const [inviteRole, setInviteRole] = useState<UserRole>('atendente')
-  const [inviteNewOrg, setInviteNewOrg] = useState(false)
-  const [inviteOrgName, setInviteOrgName] = useState('')
+  // Convite (148): e-mail opcional, resultado com o link e a lista de pendentes.
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteResult, setInviteResult] = useState<{ url: string; email_sent: boolean } | null>(null)
+  const [pendentes, setPendentes] = useState<Invite[]>([])
+  const carregarPendentes = useCallback(() => { billingService.listInvites().then(setPendentes).catch(() => setPendentes([])) }, [])
+  useEffect(() => { if (isAdmin) carregarPendentes() }, [isAdmin, carregarPendentes])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -149,7 +152,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
    * admin tenha escolhido conscientemente. O texto ao lado avisa.
    */
   useEffect(() => {
-    if (!showInvite || inviteNewOrg || inviteRole === 'admin') return
+    if (!showInvite || inviteRole === 'admin') return
     let alive = true
     setInvitePermLoading(true)
     setInvitePermError('')
@@ -181,7 +184,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       }
     })()
     return () => { alive = false }
-  }, [showInvite, inviteRole, inviteNewOrg])
+  }, [showInvite, inviteRole])
 
   // Agrupa a visão global por organização, preservando a ordem de criação.
   const orgGroups = useMemo(() => {
@@ -352,76 +355,31 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
    * intacta — usar supabase.auth.signUp() aqui logaria o admin na conta nova.
    */
   async function handleInvite() {
-    const username = inviteUsername.trim().toLowerCase()
-    if (!profile || !username || invitePassword.length < 6) return
-    if (!/^[a-z0-9._-]+$/.test(username)) {
-      setError('Usuário só pode ter letras, números, ponto, hífen ou underline.')
-      return
-    }
-    const newOrg = owner && inviteNewOrg
+    if (!profile) return
     // Admin tem acesso total por definição e a RPC recusa personalizá-lo (055).
-    const personalizar = invitePermCustom && !newOrg && inviteRole !== 'admin'
+    const personalizar = invitePermCustom && inviteRole !== 'admin'
     setBusy(true)
     setError('')
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('admin-users', {
-        body: {
-          username,
-          password: invitePassword,
-          full_name: inviteName.trim() || null,
-          role: newOrg ? 'admin' : inviteRole,
-          new_organization: newOrg,
-          organization_name: newOrg ? inviteOrgName.trim() || null : null,
-        },
+      const r = await billingService.createInvite({
+        role: inviteRole === 'admin' ? 'admin' : 'atendente',
+        email: inviteEmail.trim() || undefined,
+        permissions: personalizar ? mergePermissions(invitePermBase, invitePermSelected, sistema) : null,
       })
-      if (fnError) throw new Error(fnErrorMessage(fnError))
-      if (data?.error) throw new Error(String(data.error))
-
-      /**
-       * Permissões logo após a criação, em duas etapas: a conta é criada com
-       * service_role na Edge Function e a lista é gravada pela RPC, que é
-       * quem valida "admin da mesma organização" (055).
-       *
-       * Se a segunda etapa falhar, o usuário EXISTE — com o preset do cargo.
-       * Por isso o erro aqui não é tratado como falha da criação: some com o
-       * usuário criado da tela seria pior do que dizer o que faltou fazer.
-       */
-      if (personalizar) {
-        // Sem id não há em quem gravar. Cai no mesmo aviso da falha da RPC —
-        // o silêncio aqui deixaria um usuário com mais acesso do que o
-        // escolhido, achando que a tela tinha aplicado.
-        const { error: permErr } = data?.id
-          ? await supabase.rpc('user_permissions_save', {
-            p_user: String(data.id),
-            p_permissions: mergePermissions(invitePermBase, invitePermSelected, sistema),
-          })
-          : { error: new Error('id do usuário não veio na resposta') }
-        if (permErr) {
-          toast.error(
-            'Usuário criado, mas as permissões personalizadas não foram salvas. '
-            + 'Ele está com o preset do cargo. Ajuste pelo ícone de permissões.',
-          )
-        } else {
-          toast.success('Usuário criado com permissões personalizadas')
-        }
-      } else {
-        toast.success('Usuário criado')
-      }
-
-      setShowInvite(false)
-      setInviteUsername('')
-      setInviteName('')
-      setInvitePassword('')
-      setInviteNewOrg(false)
-      setInviteOrgName('')
-      setInvitePermCustom(false)
-      refresh()
-      refreshGlobal()
+      setInviteResult(r)
+      carregarPendentes()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao criar usuário')
+      setError(err instanceof Error ? err.message : 'Falha ao criar o convite')
     } finally {
       setBusy(false)
     }
+  }
+
+  function fecharConvite() {
+    setShowInvite(false)
+    setInviteResult(null)
+    setInviteEmail('')
+    setInvitePermCustom(false)
   }
 
   if (!users) return <Loader />
@@ -438,12 +396,37 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
             <KeyRound /> Trocar minha senha
           </button>
           {isAdmin && (
-            <button className="btn btn-primary" onClick={() => { setError(''); setInviteNewOrg(false); setInviteOrgName(''); setInvitePermCustom(false); setShowInvite(true) }}>
-              <UserPlus /> Novo usuário
+            <button className="btn btn-primary" onClick={() => { setError(''); setInviteResult(null); setInvitePermCustom(false); setShowInvite(true) }}>
+              <UserPlus /> Convidar usuário
             </button>
           )}
         </div>
       </div>
+
+      {isAdmin && pendentes.length > 0 && (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <h3 className="card-title"><UserPlus size={15} /> Convites pendentes</h3>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {pendentes.map((c) => (
+              <div key={c.id} className="flex" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <strong>{c.role === 'admin' ? 'Administrador' : 'Atendente'}</strong>
+                  <span className="text-muted"> · {c.email ?? 'sem e-mail'} · vale até {formatSP(c.expires_at).slice(0, 10)}</span>
+                </span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={async () => {
+                    try { await billingService.revokeInvite(c.id); carregarPendentes() }
+                    catch (err) { toast.error(err instanceof Error ? err.message : 'Falha ao cancelar') }
+                  }}
+                >
+                  Cancelar convite
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {users.length === 0 ? (
         <div className="card">
@@ -599,114 +582,91 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       )}
 
       {showInvite && (
-        <Modal title="Novo usuário" onClose={() => setShowInvite(false)} variant="dialog">
-          <div className="field">
-            <label>Usuário</label>
-            <input className="input" type="text" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={inviteUsername} onChange={(e) => setInviteUsername(e.target.value)} placeholder="ex: joao.silva" autoFocus />
-          </div>
-          <div className="field">
-            <label>Nome (opcional)</label>
-            <input className="input" type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="João Silva" />
-          </div>
-          <div className="field">
-            <label>Senha inicial</label>
-            <input className="input" type="password" value={invitePassword} onChange={(e) => setInvitePassword(e.target.value)} minLength={6} placeholder="Mínimo 6 caracteres" />
-          </div>
-          {owner && (
-            <div className="field">
-              <label
-                className="flex"
-                style={{ gap: 9, alignItems: 'center', cursor: 'pointer', color: 'var(--text)' }}
-              >
-                <input
-                  type="checkbox"
-                  checked={inviteNewOrg}
-                  onChange={(e) => setInviteNewOrg(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: 'var(--primary)' }}
-                />
-                Criar como dono de uma nova organização
-              </label>
+        <Modal title="Convidar usuário" onClose={fecharConvite} variant="dialog">
+          {inviteResult ? (
+            <>
+              <p className="text-secondary" style={{ marginBottom: 10, lineHeight: 1.5 }}>
+                {inviteResult.email_sent
+                  ? `Convite enviado para ${inviteEmail.trim()}. Se preferir, mande o link abaixo por outro meio.`
+                  : 'Convite criado. Copie o link e envie para a pessoa (WhatsApp, e-mail…).'}
+              </p>
+              <div className="field">
+                <label htmlFor="convite-link">Link do convite</label>
+                <input id="convite-link" className="input" readOnly value={inviteResult.url} onFocus={(e) => e.currentTarget.select()} />
+              </div>
               <p className="text-muted" style={{ fontSize: 12 }}>
-                {inviteNewOrg
-                  ? 'Vira admin de uma organização separada (novo cliente/tenant).'
-                  : 'Desligado: entra na sua organização com a role escolhida.'}
+                Vale por 7 dias e só pode ser usado uma vez. Este link não aparece de novo: se perder, cancele e gere outro.
               </p>
-            </div>
-          )}
-
-          {inviteNewOrg ? (
-            <div className="field">
-              <label>Nome da organização</label>
-              <input
-                className="input"
-                type="text"
-                value={inviteOrgName}
-                onChange={(e) => setInviteOrgName(e.target.value)}
-                placeholder="ex: Cliente XPTO"
-              />
-            </div>
+              <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => { void navigator.clipboard?.writeText(inviteResult.url).then(() => toast.success('Link copiado.')).catch(() => toast.error('Não consegui copiar. Selecione e copie o link.')) }}
+                >
+                  Copiar link
+                </button>
+                <button className="btn btn-primary" onClick={fecharConvite}>Fechar</button>
+              </div>
+            </>
           ) : (
-            <div className="field">
-              <label>Cargo</label>
-              <select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as UserRole)}>
-                {(Object.keys(ROLE_LABEL) as UserRole[]).filter((r) => ROLES_DESTE_PROJETO.includes(r)).map((r) => (
-                  <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Permissões já no cadastro: o usuário entra com o acesso certo em
-              vez de nascer no preset e ser ajustado depois. Igual ao editor da
-              lista — só as áreas deste sistema; o outro fica intacto. */}
-          {!inviteNewOrg && (
-            inviteRole === 'admin' ? (
-              <p className="text-muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-                Admin tem acesso total por definição e não aceita permissões personalizadas.
+            <>
+              <p className="text-muted" style={{ fontSize: 12.5, marginBottom: 12, lineHeight: 1.5 }}>
+                A pessoa recebe um link, escolhe o próprio usuário e senha e já entra com o cargo e as permissões abaixo.
               </p>
-            ) : invitePermError ? (
-              <p className="text-muted" style={{ fontSize: 12.5, marginTop: 4 }}>{invitePermError}</p>
-            ) : (
-              <>
-                <div className="perm-head" style={{ marginTop: 4 }}>
-                  <div><strong>Permissões</strong></div>
-                  <span className="text-muted">
-                    {sistema === 'crm'
-                      ? 'O que esta pessoa pode fazer no sistema.'
-                      : 'Permissões do painel. As do CRM são editadas lá.'}
-                  </span>
-                </div>
-                <PermissionEditor
-                  sistema={sistema}
-                  custom={invitePermCustom}
-                  onCustomChange={setInvitePermCustom}
-                  selected={invitePermSelected}
-                  onSelectedChange={setInvitePermSelected}
-                  disabled={busy || invitePermLoading}
-                  presetLabel={ROLE_LABEL[inviteRole]}
-                  // Aqui `invitePermBase` É o preset do cargo escolhido, então
-                  // desfazer é só voltar a ele.
-                  onResetPreset={() => {
-                    setInvitePermSelected(new Set(invitePermBase))
-                    setInvitePermCustom(false)
-                  }}
-                />
-                {invitePermCustom && (
-                  <p className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
-                    Trocar o cargo acima recarrega as marcações a partir do preset dele.
-                  </p>
-                )}
-              </>
-            )
-          )}
+              <div className="field">
+                <label htmlFor="convite-cargo">Cargo</label>
+                <select id="convite-cargo" className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as UserRole)}>
+                  {(Object.keys(ROLE_LABEL) as UserRole[]).filter((r) => ROLES_DESTE_PROJETO.includes(r)).map((r) => (
+                    <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="convite-email">E-mail (opcional)</label>
+                <input id="convite-email" className="input" type="email" autoCapitalize="none" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="para enviar o convite por e-mail" />
+              </div>
 
-          {error && <p className="error-text">{error}</p>}
-          <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 20 }}>
-            <button className="btn btn-ghost" onClick={() => setShowInvite(false)}>Cancelar</button>
-            <button className="btn btn-primary" onClick={handleInvite} disabled={busy || !inviteUsername.trim() || invitePassword.length < 6}>
-              {busy ? <span className="spinner" /> : 'Criar usuário'}
-            </button>
-          </div>
+              {inviteRole === 'admin' ? (
+                <p className="text-muted" style={{ fontSize: 12.5, marginTop: 4 }}>
+                  Admin tem acesso total por definição e não aceita permissões personalizadas.
+                </p>
+              ) : invitePermError ? (
+                <p className="text-muted" style={{ fontSize: 12.5, marginTop: 4 }}>{invitePermError}</p>
+              ) : (
+                <>
+                  <div className="perm-head" style={{ marginTop: 4 }}>
+                    <div><strong>Permissões</strong></div>
+                    <span className="text-muted">O que esta pessoa poderá fazer no sistema.</span>
+                  </div>
+                  <PermissionEditor
+                    sistema={sistema}
+                    custom={invitePermCustom}
+                    onCustomChange={setInvitePermCustom}
+                    selected={invitePermSelected}
+                    onSelectedChange={setInvitePermSelected}
+                    disabled={busy || invitePermLoading}
+                    presetLabel={ROLE_LABEL[inviteRole]}
+                    onResetPreset={() => {
+                      setInvitePermSelected(new Set(invitePermBase))
+                      setInvitePermCustom(false)
+                    }}
+                  />
+                  {invitePermCustom && (
+                    <p className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
+                      Trocar o cargo acima recarrega as marcações a partir do preset dele.
+                    </p>
+                  )}
+                </>
+              )}
+
+              {error && <p className="error-text">{error}</p>}
+              <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 20 }}>
+                <button className="btn btn-ghost" onClick={fecharConvite}>Cancelar</button>
+                <button className="btn btn-primary" onClick={handleInvite} disabled={busy}>
+                  {busy ? <span className="spinner" /> : 'Gerar convite'}
+                </button>
+              </div>
+            </>
+          )}
         </Modal>
       )}
 

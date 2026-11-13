@@ -33,6 +33,25 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
   const [isConversion, setIsConversion] = useState(stage?.is_conversion ?? false)
   const [isLost, setIsLost] = useState(stage?.is_lost ?? false)
   const [reasonsText, setReasonsText] = useState('')
+  // Movimentação automática (050): parado X tempo nesta etapa, vai para outra.
+  const [autoOn, setAutoOn] = useState(false)
+  const [autoTo, setAutoTo] = useState('')
+  const [autoValor, setAutoValor] = useState('3')
+  const [autoUnidade, setAutoUnidade] = useState<'horas' | 'dias'>('dias')
+  const [autoExistia, setAutoExistia] = useState(false)
+  useEffect(() => {
+    if (!stage) return
+    crmService.listStageAutomations().then((all) => {
+      const r = all.find((a) => a.from_stage_id === stage.id)
+      if (!r) return
+      setAutoOn(true)
+      setAutoExistia(true)
+      setAutoTo(r.to_stage_id)
+      if (r.hours % 24 === 0) { setAutoUnidade('dias'); setAutoValor(String(r.hours / 24)) }
+      else { setAutoUnidade('horas'); setAutoValor(String(r.hours)) }
+    }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   useEffect(() => {
     crmService.getLostReasons().then((r) => setReasonsText(r.join('\n'))).catch(() => {})
   }, [])
@@ -57,10 +76,15 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
       toast.error('Informe o nome da etapa')
       return
     }
+    if (autoOn && !autoTo) {
+      toast.error('Escolha a etapa de destino da movimentação automática')
+      return
+    }
     setBusy(true)
     try {
+      let etapaId = stage?.id ?? ''
       if (isNew) {
-        await crmService.createStage({
+        const criada = await crmService.createStage({
           organizationId: profile!.organization_id,
           name: name.trim(),
           color,
@@ -68,6 +92,7 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
           isConversion,
           isLost,
         })
+        etapaId = criada.id
         toast.success('Etapa criada')
       } else {
         await crmService.updateStage(stage.id, {
@@ -80,6 +105,13 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
           // marcada como 'perdido' desapareceria do próprio funil.
         })
         toast.success('Etapa atualizada')
+      }
+      // Regra de movimentação automática: liga, troca ou apaga.
+      const horas = Math.round(Number(autoValor.replace(',', '.')) * (autoUnidade === 'dias' ? 24 : 1))
+      if (autoOn && autoTo && horas >= 1 && etapaId) {
+        await crmService.saveStageAutomation(profile!.organization_id, etapaId, autoTo, horas)
+      } else if (!autoOn && autoExistia && etapaId) {
+        await crmService.deleteStageAutomation(etapaId)
       }
       if (isLost) {
         const lista = [...new Set(reasonsText.split('\n').map((l) => l.trim()).filter(Boolean))].slice(0, 30)
@@ -186,6 +218,38 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
             </p>
           </div>
 
+
+          <div className="field">
+            <label className="checkbox-row">
+              <input type="checkbox" checked={autoOn} onChange={(e) => setAutoOn(e.target.checked)} />
+              <span>Mover sozinho se ficar parado</span>
+            </label>
+            <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
+              Contato que fica este tempo sem mudar de etapa vai para a etapa escolhida (conferido de hora em hora).
+              Útil para mandar quem sumiu para "Perdido" ou "Remarketing".
+            </p>
+            {autoOn && (
+              <div className="flex" style={{ gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+                <input
+                  className="input"
+                  style={{ width: 72 }}
+                  inputMode="numeric"
+                  value={autoValor}
+                  onChange={(e) => setAutoValor(e.target.value.replace(/[^\d]/g, ''))}
+                  aria-label="Tempo parado"
+                />
+                <select className="input" style={{ width: 'auto' }} value={autoUnidade} onChange={(e) => setAutoUnidade(e.target.value as 'horas' | 'dias')} aria-label="Unidade">
+                  <option value="horas">horas</option>
+                  <option value="dias">dias</option>
+                </select>
+                <span>vai para</span>
+                <select className="input" style={{ width: 'auto' }} value={autoTo} onChange={(e) => setAutoTo(e.target.value)} aria-label="Etapa de destino">
+                  <option value="">Escolha a etapa</option>
+                  {otherStages.filter((s) => !s.is_conversion).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="field">
             <label className="checkbox-row">
