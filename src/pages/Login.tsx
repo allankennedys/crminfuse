@@ -61,6 +61,9 @@ export function LoginPage() {
           <div className="field">
             <label>Senha</label>
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+            <div style={{ textAlign: 'right', marginTop: 6, fontSize: 12.5 }}>
+              <Link to="/esqueci-senha">Esqueci minha senha</Link>
+            </div>
           </div>
 
           {error && <p className="error-text">{error}</p>}
@@ -76,12 +79,14 @@ export function LoginPage() {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12.5 }} className="text-secondary">
-          <Link to="/esqueci-senha">Esqueci minha senha</Link>
-          <br />
-          Quer usar com a sua empresa? <Link to="/cadastro">Teste grátis por 7 dias</Link>
-          <br />
-          Vai entrar numa empresa que já usa? Peça o link de convite ao administrador.
+        <div className="auth-divisor"><span>ou</span></div>
+
+        <Link to="/cadastro" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
+          Criar conta da minha empresa
+        </Link>
+        <p className="text-muted" style={{ textAlign: 'center', marginTop: 8, fontSize: 12.5 }}>Teste grátis por 7 dias, sem cartão.</p>
+        <p className="text-muted" style={{ textAlign: 'center', marginTop: 16, fontSize: 12.5, lineHeight: 1.5 }}>
+          Sua empresa já usa o Infuse? Peça o link de convite a um administrador.
         </p>
       </div>
     </div>
