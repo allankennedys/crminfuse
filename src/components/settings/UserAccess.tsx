@@ -96,6 +96,11 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  // Destino das conversas abertas de quem sai (exclusão ou desativação).
+  const [destino, setDestino] = useState<{ mode: 'user' | 'random' | 'queue'; to: string }>({ mode: 'random', to: '' })
+  const [deactTarget, setDeactTarget] = useState<UserProfile | null>(null)
+  const [deactBusy, setDeactBusy] = useState(false)
+  const [deactError, setDeactError] = useState('')
 
   // Trocar a própria senha (qualquer usuário logado).
   const [showOwnPw, setShowOwnPw] = useState(false)
@@ -262,8 +267,62 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
   }
 
   async function handleToggleActive(user: UserProfile) {
-    await supabase.from('users').update({ is_active: !user.is_active }).eq('id', user.id)
+    if (user.is_active) {
+      // Desativar: antes, decide o que fazer com as conversas abertas dele.
+      setDestino({ mode: 'random', to: '' })
+      setDeactError('')
+      setDeactTarget(user)
+      return
+    }
+    await supabase.from('users').update({ is_active: true }).eq('id', user.id)
     refresh()
+  }
+
+  async function confirmarDesativar() {
+    if (!deactTarget) return
+    if (destino.mode === 'user' && !destino.to) { setDeactError('Escolha o atendente que vai receber as conversas.'); return }
+    setDeactBusy(true)
+    setDeactError('')
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'reassign', user_id: deactTarget.id, mode: destino.mode, to: destino.to },
+      })
+      if (fnError) throw new Error(fnErrorMessage(fnError))
+      if (data?.error) throw new Error(String(data.error))
+      const { error: upErr } = await supabase.from('users').update({ is_active: false }).eq('id', deactTarget.id)
+      if (upErr) throw new Error('Não foi possível desativar o usuário.')
+      setDeactTarget(null)
+      refresh()
+    } catch (err) {
+      setDeactError(err instanceof Error ? err.message : 'Falha ao desativar')
+    } finally {
+      setDeactBusy(false)
+    }
+  }
+
+  /** Quem pode receber as conversas de `saindo`: ativos da mesma organização. */
+  function candidatos(saindo: string) {
+    return (users ?? []).filter((u) => u.id !== saindo && u.is_active)
+  }
+
+  function escolhaDeDestino(saindo: string) {
+    const lista = candidatos(saindo)
+    return (
+      <div className="field">
+        <label>O que fazer com os atendimentos abertos dele?</label>
+        <select className="input" value={destino.mode} onChange={(e) => setDestino({ mode: e.target.value as 'user' | 'random' | 'queue', to: '' })}>
+          <option value="random">Distribuir aleatoriamente entre os atendentes</option>
+          <option value="user">Transferir para um atendente</option>
+          <option value="queue">Devolver para a fila</option>
+        </select>
+        {destino.mode === 'user' && (
+          <select className="input" style={{ marginTop: 8 }} value={destino.to} onChange={(e) => setDestino({ ...destino, to: e.target.value })}>
+            <option value="">Escolha o atendente…</option>
+            {lista.map((u) => <option key={u.id} value={u.id}>{u.full_name || u.username || u.email}</option>)}
+          </select>
+        )}
+      </div>
+    )
   }
 
   async function handleChangeRole(user: UserProfile, role: UserRole) {
@@ -273,6 +332,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
 
   function openDelete(user: DeletableUser) {
     setDeleteTarget(user)
+    setDestino({ mode: 'random', to: '' })
     setDeleteConfirm('')
     setDeleteError('')
   }
@@ -283,11 +343,12 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
 
   async function handleDelete() {
     if (!deleteTarget || !deleteReady) return
+    if (destino.mode === 'user' && !destino.to) { setDeleteError('Escolha o atendente que vai receber as conversas.'); return }
     setDeleteBusy(true)
     setDeleteError('')
     try {
       const { data, error: fnError } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'delete', user_id: deleteTarget.id },
+        body: { action: 'delete', user_id: deleteTarget.id, mode: destino.mode, to: destino.to },
       })
       if (fnError) throw new Error(fnErrorMessage(fnError))
       if (data?.error) throw new Error(String(data.error))
@@ -687,6 +748,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
           <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
             Esta ação é <strong style={{ color: 'var(--danger)' }}>permanente</strong>: a conta e o acesso são removidos e não podem ser recuperados.
           </p>
+          {(users ?? []).some((u) => u.id === deleteTarget.id) && escolhaDeDestino(deleteTarget.id)}
           <div className="field">
             <label>
               Digite <span className="mono" style={{ color: 'var(--text)' }}>{deleteWord}</span> para confirmar
@@ -708,6 +770,22 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
             <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Cancelar</button>
             <button className="btn btn-danger" onClick={handleDelete} disabled={deleteBusy || !deleteReady}>
               {deleteBusy ? <span className="spinner" /> : 'Excluir definitivamente'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {deactTarget && (
+        <Modal title="Desativar usuário" onClose={() => setDeactTarget(null)} variant="dialog" small>
+          <p style={{ marginBottom: 12 }}>
+            <strong style={{ color: 'var(--text)' }}>{deactTarget.full_name || deactTarget.username || 'Este usuário'}</strong> perde o acesso ao sistema.
+          </p>
+          {escolhaDeDestino(deactTarget.id)}
+          {deactError && <p className="error-text">{deactError}</p>}
+          <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 20 }}>
+            <button className="btn btn-ghost" onClick={() => setDeactTarget(null)}>Cancelar</button>
+            <button className="btn btn-danger" onClick={confirmarDesativar} disabled={deactBusy}>
+              {deactBusy ? <span className="spinner" /> : 'Desativar'}
             </button>
           </div>
         </Modal>
