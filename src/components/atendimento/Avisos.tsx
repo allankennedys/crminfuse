@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { Bell, BellOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { useAvisosStore } from '@/store/avisosStore'
@@ -120,37 +119,22 @@ export function AvisosAtendimento() {
   return null
 }
 
-/** Sino do cabeçalho do Atendimento: liga/desliga os avisos e pede a permissão do navegador. */
-export function SinoAvisos() {
-  const ligado = useAvisosStore((s) => s.ligado)
-  const setLigado = useAvisosStore((s) => s.setLigado)
-  const perm = typeof Notification !== 'undefined' ? Notification.permission : 'denied'
-
-  const click = async () => {
-    if (!ligado) {
-      setLigado(true)
-      beep() // também libera o áudio do navegador (precisa de um gesto)
-      if (typeof Notification !== 'undefined' && Notification.permission === 'default') await Notification.requestPermission()
-      return
-    }
-    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      await Notification.requestPermission()
-      return
-    }
-    setLigado(false)
+/**
+ * Liga/desliga os avisos e pede a permissão do navegador. Devolve o estado
+ * para a central de avisos mostrar (ligado, permissão do navegador).
+ */
+export async function alternarAvisos() {
+  const { ligado, setLigado } = useAvisosStore.getState()
+  const temNotif = typeof Notification !== 'undefined'
+  if (!ligado) {
+    setLigado(true)
+    beep() // também libera o áudio do navegador (precisa de um gesto)
+    if (temNotif && Notification.permission === 'default') await Notification.requestPermission()
+    return
   }
-
-  const title = !ligado
-    ? 'Avisos desligados. Clique para ligar som e notificação de mensagem nova.'
-    : perm === 'granted'
-      ? 'Avisos ligados (som e notificação). Clique para desligar.'
-      : perm === 'denied'
-        ? 'Som ligado. A notificação está bloqueada nas permissões do navegador.'
-        : 'Som ligado. Clique para permitir a notificação do navegador.'
-
-  return (
-    <button className="btn btn-ghost btn-sm" onClick={click} title={title} aria-label={title} aria-pressed={ligado}>
-      {ligado ? <Bell size={14} /> : <BellOff size={14} />}
-    </button>
-  )
+  if (temNotif && Notification.permission === 'default') {
+    await Notification.requestPermission()
+    return
+  }
+  setLigado(false)
 }

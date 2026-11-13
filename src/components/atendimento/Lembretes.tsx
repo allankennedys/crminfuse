@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Bell, CheckCircle2, Clock, Trash2 } from 'lucide-react'
-import { DateInput, Modal } from '@/components/ui'
+import { CheckCircle2, Clock, Trash2 } from 'lucide-react'
+import { DateInput } from '@/components/ui'
 import { toast } from '@/store/toastStore'
 import { atendimentoService, formatPhone } from '@/services/atendimentoService'
 import { formatSP, nowSPDatetimeLocal, spWallTimeToUtcISO } from '@/lib/datetime'
@@ -106,13 +106,9 @@ export function LembretesSection({ conversationId }: { conversationId: string })
   )
 }
 
-/** Botão do cabeçalho: meus lembretes em aberto; o número é o dos vencidos. */
-export function MeusLembretes({ userId, onOpenConversation }: {
-  userId: string
-  onOpenConversation: (conversationId: string) => void
-}) {
+/** Meus lembretes em aberto, recarregados a cada minuto e quando algum muda. */
+export function useMeusLembretes(userId: string) {
   const [tasks, setTasks] = useState<WaTask[]>([])
-  const [aberto, setAberto] = useState(false)
 
   const load = useCallback(() => {
     if (!userId) return
@@ -126,44 +122,40 @@ export function MeusLembretes({ userId, onOpenConversation }: {
     return () => { clearInterval(i); window.removeEventListener(MUDOU, load) }
   }, [load])
 
-  const atrasados = tasks.filter(vencido).length
+  return { tasks, load, atrasados: tasks.filter(vencido).length }
+}
 
+/** A lista dos meus lembretes (usada na central de avisos do topo). */
+export function ListaMeusLembretes({ tasks, onOpen, onChanged }: {
+  tasks: WaTask[]
+  onOpen: (conversationId: string) => void
+  onChanged: () => void
+}) {
+  if (tasks.length === 0) {
+    return <p className="text-muted" style={{ fontSize: 13 }}>Nenhum lembrete em aberto. Crie pelo painel do cliente, dentro da conversa.</p>
+  }
   return (
-    <>
-      <button className="btn btn-ghost btn-sm" onClick={() => { load(); setAberto(true) }} title="Meus lembretes">
-        <Bell size={14} /> Lembretes
-        {atrasados > 0 && <span className="at-seg-count">{atrasados}</span>}
-      </button>
-      {aberto && (
-        <Modal title="Meus lembretes" onClose={() => setAberto(false)} variant="dialog">
-          {tasks.length === 0 ? (
-            <p className="text-muted">Nenhum lembrete em aberto. Crie pelo painel do cliente, dentro da conversa.</p>
-          ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {tasks.map((t) => {
-                const c = t.wa_conversations
-                const quem = c?.crm_contacts?.name || c?.push_name || formatPhone(c?.phone ?? null) || 'Conversa'
-                return (
-                  <div key={t.id} className={`at-task${vencido(t) ? ' late' : ''}`}>
-                    <span className="at-task-main">
-                      <span className="at-task-title">{t.title}</span>
-                      <span className="text-muted">{quem} · {formatSP(t.due_at)}</span>
-                    </span>
-                    <button className="btn btn-ghost btn-sm" onClick={() => { setAberto(false); onOpenConversation(t.conversation_id) }}>Abrir</button>
-                    <button
-                      className="icon-btn"
-                      aria-label="Concluir lembrete"
-                      onClick={async () => { await atendimentoService.doneTask(t.id).catch(() => {}); load() }}
-                    >
-                      <CheckCircle2 size={16} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Modal>
-      )}
-    </>
+    <div style={{ display: 'grid', gap: 8 }}>
+      {tasks.map((t) => {
+        const c = t.wa_conversations
+        const quem = c?.crm_contacts?.name || c?.push_name || formatPhone(c?.phone ?? null) || 'Conversa'
+        return (
+          <div key={t.id} className={`at-task${vencido(t) ? ' late' : ''}`}>
+            <span className="at-task-main">
+              <span className="at-task-title">{t.title}</span>
+              <span className="text-muted">{quem} · {formatSP(t.due_at)}</span>
+            </span>
+            <button className="btn btn-ghost btn-sm" onClick={() => onOpen(t.conversation_id)}>Abrir</button>
+            <button
+              className="icon-btn"
+              aria-label="Concluir lembrete"
+              onClick={async () => { await atendimentoService.doneTask(t.id).catch(() => {}); onChanged(); avisaMudanca() }}
+            >
+              <CheckCircle2 size={16} />
+            </button>
+          </div>
+        )
+      })}
+    </div>
   )
 }
