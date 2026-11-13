@@ -146,18 +146,6 @@ export function AtendimentoReport({ label, range, userId }: { label: string; ran
             />
           </>
         )}
-        <Kpi
-          icon={<MessageCircle size={16} />}
-          title="Mensagens recebidas"
-          value={r.msgs_recebidas.toLocaleString('pt-BR')}
-          desc="enviadas pelos clientes"
-        />
-        <Kpi
-          icon={<MessageCircle size={16} />}
-          title="Mensagens enviadas"
-          value={r.msgs_enviadas.toLocaleString('pt-BR')}
-          desc="enviadas pela equipe"
-        />
       </div>
 
       <div className="card mb-16">
