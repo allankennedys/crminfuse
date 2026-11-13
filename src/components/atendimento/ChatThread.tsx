@@ -24,7 +24,9 @@ import { EnviarContato, EnviarLocalizacao } from './EnviarLocalizacaoContato'
 import { AnexoPreview } from './AnexoPreview'
 import type { WaAttendant, WaConversation, WaEvent, WaMessage, WaNote, WaQuickReply, WaSession } from '@/types'
 
-const MAX_FILE = 100 * 1024 * 1024 // o limite do bucket at-media
+const MAX_FILE = 100 * 1024 * 1024
+/** Quantos arquivos dá para mandar de uma vez. */
+const MAX_ANEXOS = 10 // o limite do bucket at-media
 
 interface Props {
   conversation: WaConversation
@@ -110,7 +112,8 @@ export function ChatThread({
   const fecharMidia = useCallback(() => setMediaAberta(null), [])
 
   const [text, setText] = useState('')
-  const [file, setFile] = useState<File | null>(null)
+  // Anexos escolhidos, à espera do envio (até MAX_ANEXOS de uma vez).
+  const [files, setFiles] = useState<File[]>([])
   // Mensagens a caminho: aparecem na hora (relógio) e saem quando a
   // confirmada chega — pela resposta do envio ou pelo tempo real.
   const [pendentes, setPendentes] = useState<WaMessage[]>([])
@@ -327,18 +330,24 @@ export function ChatThread({
   // foto para ~1600 px, então não há perda visível. "Documento" sobe e segue
   // como está, para quem precisa do arquivo original.
   const anexoModo = useRef<'midia' | 'documento'>('midia')
-  const pickFile = async (f: File | null | undefined) => {
-    if (!f) return
-    if (f.size > MAX_FILE) {
-      toast.error(`Arquivo grande demais (${formatBytes(f.size)}). O limite é 100 MB.`)
-      return
-    }
-    let final = f
-    if (anexoModo.current === 'midia' && f.type.startsWith('image/')) {
-      final = await compressImage(f)
-    }
+  const pickFiles = async (list: File[] | FileList | null | undefined) => {
+    const novos = Array.from(list ?? [])
+    if (novos.length === 0) return
+    const modo = anexoModo.current
     anexoModo.current = 'midia'
-    setFile(final)
+    const prontos: File[] = []
+    for (const f of novos) {
+      if (f.size > MAX_FILE) {
+        toast.error(`"${f.name}" é grande demais (${formatBytes(f.size)}). O limite é 100 MB.`)
+        continue
+      }
+      prontos.push(modo === 'midia' && f.type.startsWith('image/') ? await compressImage(f) : f)
+    }
+    setFiles((cur) => {
+      const todos = [...cur, ...prontos]
+      if (todos.length > MAX_ANEXOS) toast.error(`Dá para enviar até ${MAX_ANEXOS} arquivos de uma vez. Os demais foram ignorados.`)
+      return todos.slice(0, MAX_ANEXOS)
+    })
     inputRef.current?.focus()
   }
 
@@ -351,14 +360,14 @@ export function ChatThread({
     }
   }
 
-  const despachar = (temp: WaMessage) => {
+  const despachar = (temp: WaMessage, jaMostrada = false): Promise<void> => {
     const arquivo = arquivosPendentes.current.get(temp.id)
-    setPendentes((p) => [...p.filter((x) => x.id !== temp.id), { ...temp, status: 'pending' }])
+    if (!jaMostrada) setPendentes((p) => [...p.filter((x) => x.id !== temp.id), { ...temp, status: 'pending' }])
     stickRef.current = true
     const envio = arquivo
       ? atendimentoService.sendFile(conv, arquivo, temp.body ?? undefined)
       : atendimentoService.sendText(conv.id, temp.body ?? '')
-    envio
+    return envio
       .then((msg) => {
         setPendentes((p) => p.filter((x) => x.id !== temp.id))
         arquivosPendentes.current.delete(temp.id)
@@ -395,18 +404,26 @@ export function ChatThread({
       inputRef.current?.focus()
       return
     }
-    if (!t && !file) return
-    if (file) {
-      const temp = novoPendente({
-        type: tipoDoArquivo(file), body: t || null, media_name: file.name, media_mime: file.type, media_status: 'pendente',
+    if (!t && files.length === 0) return
+    if (files.length > 0) {
+      // Todos aparecem na hora como "enviando", e saem um depois do outro, na
+      // ordem escolhida, para chegarem em sequência. A legenda vai no primeiro.
+      const temps = files.map((f, i) => {
+        const temp = novoPendente({
+          type: tipoDoArquivo(f), body: i === 0 ? t || null : null,
+          media_name: f.name, media_mime: f.type, media_status: 'pendente',
+        })
+        arquivosPendentes.current.set(temp.id, f)
+        return temp
       })
-      arquivosPendentes.current.set(temp.id, file)
-      despachar(temp)
+      setPendentes((p) => [...p, ...temps.map((x) => ({ ...x, status: 'pending' as const }))])
+      let fila: Promise<void> = Promise.resolve()
+      for (const temp of temps) fila = fila.then(() => despachar(temp, true))
     } else {
       despachar(novoPendente({ type: 'text', body: t }))
     }
     setText('')
-    setFile(null)
+    setFiles([])
     inputRef.current?.focus()
   }
 
@@ -426,7 +443,7 @@ export function ChatThread({
         : 'Áudio muito curto. Grave pelo menos 1 segundo.',
     ),
   )
-  const podeGravar = !text.trim() && !file
+  const podeGravar = !text.trim() && files.length === 0
 
   // "/preco" → lista de respostas rápidas que casam com o que foi digitado.
   const qrQuery = modo === 'responder' && /^\/[^\s]*$/.test(text) ? text.slice(1).toLowerCase() : null
@@ -718,7 +735,17 @@ export function ChatThread({
           )}
         </div>
       ) : (
-      <form className="at-composer" onSubmit={onSubmit}>
+      <form
+        className="at-composer"
+        onSubmit={onSubmit}
+        onDragOver={(e) => { if (modo === 'responder' && e.dataTransfer.types.includes('Files')) e.preventDefault() }}
+        onDrop={(e) => {
+          if (modo !== 'responder' || !e.dataTransfer.files.length) return
+          e.preventDefault()
+          anexoModo.current = 'midia'
+          void pickFiles(e.dataTransfer.files)
+        }}
+      >
           {qrList.length > 0 && (
             <div className="at-qr" role="listbox" aria-label="Respostas rápidas">
               {qrList.map((q, i) => (
@@ -750,7 +777,17 @@ export function ChatThread({
               </button>
             )}
           </div>
-          {file && modo === 'responder' && <AnexoPreview file={file} onRemove={() => setFile(null)} />}
+          {files.length > 0 && modo === 'responder' && (
+            <div className="at-attach-list">
+              {files.map((f, i) => (
+                <AnexoPreview
+                  key={`${i}-${f.name}-${f.size}`}
+                  file={f}
+                  onRemove={() => setFiles((cur) => cur.filter((_, j) => j !== i))}
+                />
+              ))}
+            </div>
+          )}
           {voice.phase !== 'idle' ? (
             <VoiceComposer voice={voice} />
           ) : (
@@ -793,8 +830,9 @@ export function ChatThread({
               <input
                 ref={fileRef}
                 type="file"
+                multiple
                 hidden
-                onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = '' }}
+                onChange={(e) => { void pickFiles(e.target.files); e.target.value = '' }}
               />
               <textarea
                 ref={inputRef}
@@ -805,10 +843,10 @@ export function ChatThread({
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={onKeyDown}
                 onPaste={(e) => {
-                  const f = e.clipboardData.files?.[0]
-                  if (f) { e.preventDefault(); anexoModo.current = 'midia'; void pickFile(f) }
+                  const colados = e.clipboardData.files
+                  if (colados?.length) { e.preventDefault(); anexoModo.current = 'midia'; void pickFiles(colados) }
                 }}
-                placeholder={modo === 'nota' ? 'Nota interna: só a equipe vê' : semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem  ·  / para respostas rápidas'}
+                placeholder={modo === 'nota' ? 'Nota interna: só a equipe vê' : semNumero ? 'Conversa só para leitura' : files.length > 1 ? 'Legenda (vai no primeiro arquivo)' : files.length === 1 ? 'Legenda (opcional)' : 'Escreva uma mensagem  ·  / para respostas rápidas'}
                 aria-label="Mensagem"
               />
               {podeGravar && modo === 'responder' ? (
@@ -826,7 +864,7 @@ export function ChatThread({
                 <button
                   type="submit"
                   className="btn btn-primary at-send"
-                  disabled={(semNumero && modo === 'responder') || (!text.trim() && (modo === 'nota' || !file))}
+                  disabled={(semNumero && modo === 'responder') || (!text.trim() && (modo === 'nota' || files.length === 0))}
                   aria-label="Enviar"
                 >
                   <Send size={16} />
