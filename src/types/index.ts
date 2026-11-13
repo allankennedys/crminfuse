@@ -176,6 +176,8 @@ export interface CrmStage {
   position: number
   /** Entrar nesta etapa dispara o evento de conversão na Meta CAPI. */
   is_conversion: boolean
+  /** Etapa de perdidos (139): mover para ela pede o motivo. */
+  is_lost: boolean
   created_at: string
 }
 
@@ -250,6 +252,9 @@ export interface CrmContact {
   description: string | null
   position: number
   stage_changed_at: string
+  /** Motivo e data da perda, enquanto o contato está numa etapa de perdidos (139). */
+  lost_reason: string | null
+  lost_at: string | null
   /** Quem está cuidando do lead. null = ninguém atribuído. */
   assigned_to: string | null
   created_by: string | null
@@ -934,6 +939,12 @@ export interface WaSettings {
   restrict_to_assigned: boolean
   /** Conclui sozinho o atendimento sem mensagens por tantas horas (135). null = desligado. */
   auto_conclude_hours: number | null
+  /** Saudação e ausência automáticas (139). */
+  auto_greeting_on: boolean
+  auto_greeting_text: string | null
+  auto_away_on: boolean
+  auto_away_text: string | null
+  business_hours: WaBusinessHours
   assign_mode: WaAssignMode
   fixed_user: string | null
   /** Quem participa do sorteio/rodízio. Vazio = todos com atendimento. */
@@ -1009,6 +1020,43 @@ export interface WaEvent {
   by_user: string | null
   note: string | null
   created_at: string
+}
+
+/** Nota interna da conversa (138): a equipe vê, o cliente não. */
+export interface WaNote {
+  id: string
+  conversation_id: string
+  author: string | null
+  body: string
+  created_at: string
+}
+
+/** Resposta rápida (138): texto pronto chamado por "/atalho". */
+export interface WaQuickReply {
+  id: string
+  organization_id: string
+  shortcut: string
+  body: string
+}
+
+/** Lembrete de retorno (138). */
+export interface WaTask {
+  id: string
+  conversation_id: string
+  assigned_to: string
+  title: string
+  due_at: string
+  done_at: string | null
+  created_by: string | null
+  /** Só em "meus lembretes": para mostrar de quem é a conversa. */
+  wa_conversations?: { push_name: string | null; phone: string | null; crm_contacts: { name: string } | null } | null
+}
+
+/** Horário de atendimento (139): dias 0=domingo..6=sábado e janela "HH:mm". */
+export interface WaBusinessHours {
+  days: number[]
+  start: string
+  end: string
 }
 
 /** Cartão do cliente na conversa (121). contact null = ainda sem cadastro no CRM. */

@@ -90,6 +90,10 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
   // Etapa que está gravada no banco. Não dá para ler de `contact`: o prop não
   // é recarregado, e registrar a 1ª venda muda a etapa por trigger.
   const [savedStageId, setSavedStageId] = useState(contact?.stage_id ?? '')
+  // Motivo da perda (139): pedido ao mover para uma etapa de perdidos.
+  const [lostReason, setLostReason] = useState('')
+  const [lostOptions, setLostOptions] = useState<string[]>([])
+  useEffect(() => { crmService.getLostReasons().then(setLostOptions).catch(() => {}) }, [])
 
   // Ocultos no drawer, mas preservados: mantidos como valor do contato para
   // que salvar não os apague. São preenchidos pelas automações/API, não pela
@@ -506,6 +510,10 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
       toast.error('Informe o nome do contato')
       return
     }
+    if (!isNew && stageById(stageId)?.is_lost && stageId !== savedStageId && !lostReason.trim()) {
+      toast.error('Informe o motivo da perda')
+      return
+    }
     setBusy(true)
     try {
       // VENDA PREENCHIDA E NÃO REGISTRADA. Quem muda a etapa para a conversão
@@ -588,6 +596,10 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
           description: description.trim(),
           stageId: stageFinal || null,
         })
+        // Motivo da perda: o gatilho já marcou a data ao entrar na etapa.
+        if (stageById(stageFinal)?.is_lost && stageFinal !== savedStageId && lostReason.trim()) {
+          await crmService.setLostReason(contact.id, lostReason.trim())
+        }
         toast.success('Contato atualizado')
       }
       onSaved()
@@ -808,6 +820,18 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                 <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
                   Aparece em Contatos, mas não no kanban.
                 </p>
+              )}
+              {currentStage?.is_lost && !isNew && savedStageId !== stageId && (
+                <div style={{ marginTop: 8 }}>
+                  <label htmlFor="drawer-lost">Motivo da perda</label>
+                  <select id="drawer-lost" className="input" value={lostReason} onChange={(e) => setLostReason(e.target.value)}>
+                    <option value="">Escolha um motivo</option>
+                    {lostOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+              )}
+              {currentStage?.is_lost && !isNew && savedStageId === stageId && contact?.lost_reason && (
+                <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Motivo da perda: {contact.lost_reason}</p>
               )}
               {currentStage?.is_conversion && !isNew && savedStageId !== stageId && (
                 <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>

@@ -19,6 +19,7 @@ import { crmService, formatBRL } from '@/services/crmService'
 import { metaAdsService } from '@/services/metaAdsService'
 import type { DateRange } from '@/services/crmService'
 import { DateInput, Loader, EmptyState } from '@/components/ui'
+import { LostReasonsCard } from './LostReasonsCard'
 import { ContactDrawer } from './ContactDrawer'
 import { SaleDrawer } from './SaleDrawer'
 import { RefundDetailDialog, refundTargetFromDetail } from './RefundDetailDialog'
@@ -956,6 +957,8 @@ export function CrmReports({ stages }: { stages: CrmStage[] }) {
               rows={byChannel}
             />
           </div>
+
+          <LostReasonsCard from={range.from} to={range.to} hasLostStage={stages.some((st) => st.is_lost)} />
 
         </>
       )}

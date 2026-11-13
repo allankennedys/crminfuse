@@ -492,6 +492,7 @@ export const crmService = {
     color: string
     position: number
     isConversion?: boolean
+    isLost?: boolean
   }): Promise<CrmStage> {
     // Etapa de conversão é única por org (índice parcial no banco): se esta
     // vai ser a nova, limpa a anterior antes para não violar a restrição.
@@ -505,6 +506,7 @@ export const crmService = {
         color: opts.color,
         position: opts.position,
         is_conversion: opts.isConversion ?? false,
+        is_lost: opts.isLost ?? false,
       })
       .select()
       .single<CrmStage>()
@@ -514,7 +516,7 @@ export const crmService = {
 
   async updateStage(
     id: string,
-    patch: Partial<Pick<CrmStage, 'name' | 'color' | 'is_conversion'>>,
+    patch: Partial<Pick<CrmStage, 'name' | 'color' | 'is_conversion' | 'is_lost'>>,
   ) {
     if (patch.is_conversion) await clearConversionFlag(id)
     // Papel de jornada também é único por organização (060): sem liberar o
@@ -1577,16 +1579,43 @@ export const crmService = {
    * Move um contato de etapa. O histórico e o evento de conversão são
    * gerados por trigger no banco — aqui só o update é necessário.
    */
-  async moveContact(id: string, stageId: string, position = 0) {
+  async moveContact(id: string, stageId: string, position = 0, lostReason?: string) {
     const { data, error } = await supabase
       .from('crm_contacts')
-      .update({ stage_id: stageId, position })
+      // O motivo de perda vai junto: o gatilho do banco o apaga quando a
+      // etapa de destino não é de perdidos (139).
+      .update({ stage_id: stageId, position, ...(lostReason ? { lost_reason: lostReason } : {}) })
       .eq('id', id)
       .select('id')
     if (error) throw error
     if (!data?.length) {
       throw new Error('Nada foi gravado. Seu usuário não tem permissão para mover este contato.')
     }
+  },
+
+  async setLostReason(id: string, reason: string): Promise<void> {
+    const { error } = await supabase.from('crm_contacts').update({ lost_reason: reason }).eq('id', id)
+    if (error) throw error
+  },
+
+  /** Motivos de perda oferecidos ao mover para uma etapa de perdidos (139). */
+  async getLostReasons(): Promise<string[]> {
+    const { data } = await supabase.from('crm_funil_settings').select('lost_reasons').maybeSingle<{ lost_reasons: string[] }>()
+    return data?.lost_reasons ?? ['Preço', 'Sem resposta', 'Comprou com concorrente', 'Sem interesse', 'Outro']
+  },
+
+  async saveLostReasons(organizationId: string, reasons: string[]): Promise<void> {
+    const { error } = await supabase.from('crm_funil_settings').upsert({ organization_id: organizationId, lost_reasons: reasons })
+    if (error) throw error
+  },
+
+  /** Perdidos por motivo no período (dias "AAAA-MM-DD" inclusivos, em São Paulo). */
+  async lostReasonsReport(from: string, to: string): Promise<Array<{ reason: string; total: number }>> {
+    const { data, error } = await supabase.rpc('crm_lost_reasons', {
+      p_from: spDayStartISO(from), p_to: spDayStartISO(addDaysISO(to, 1)),
+    })
+    if (error) throw error
+    return ((data ?? []) as Array<{ reason: string; total: string | number }>).map((r) => ({ reason: r.reason, total: Number(r.total) }))
   },
 
   async deleteContact(id: string) {

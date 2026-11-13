@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRightLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
-  Hand, Headphones, Image as ImageIcon, Mic, Paperclip, Play, RotateCcw, Send, X as XIcon,
+  Hand, Headphones, Image as ImageIcon, Mic, Paperclip, Play, RotateCcw, Send, StickyNote, X as XIcon, Zap,
 } from 'lucide-react'
 import { useVoiceRecorder } from './useVoiceRecorder'
 import { VoiceComposer } from './VoiceComposer'
@@ -18,7 +18,7 @@ import {
 import { formatBytes, formatDayLabel, formatTime, sameDay } from './format'
 import { ClientPanel } from './ClientPanel'
 import { ClientAvatar } from './ClientAvatar'
-import type { WaAttendant, WaConversation, WaEvent, WaMessage, WaSession } from '@/types'
+import type { WaAttendant, WaConversation, WaEvent, WaMessage, WaNote, WaQuickReply, WaSession } from '@/types'
 
 const MAX_FILE = 100 * 1024 * 1024 // o limite do bucket at-media
 
@@ -82,6 +82,12 @@ export function ChatThread({
 
   const [messages, setMessages] = useState<WaMessage[] | null>(null)
   const [events, setEvents] = useState<WaEvent[]>([])
+  // Notas internas (138): só a equipe vê. `modo` decide para onde vai o texto.
+  const [notes, setNotes] = useState<WaNote[]>([])
+  const [modo, setModo] = useState<'responder' | 'nota'>('responder')
+  // Respostas rápidas (138): "/" no campo abre a lista.
+  const [quick, setQuick] = useState<WaQuickReply[]>([])
+  const [qrActive, setQrActive] = useState(0)
   const [showTransfer, setShowTransfer] = useState(false)
   // Conclusão (motivo + observação) acontece no painel do cliente.
   const [concluindo, setConcluindo] = useState(false)
@@ -176,6 +182,13 @@ export function ChatThread({
     atendimentoService.listEvents(conv.id).then(setEvents).catch(() => setEvents([]))
   }, [conv.id])
 
+  useEffect(() => {
+    atendimentoService.listNotes(conv.id).then(setNotes).catch(() => setNotes([]))
+  }, [conv.id])
+  useEffect(() => {
+    atendimentoService.listQuickReplies().then(setQuick)
+  }, [])
+
   // Ao vivo, só desta conversa. A RLS também vale aqui.
   useEffect(() => {
     const channel = supabase
@@ -202,6 +215,14 @@ export function ChatThread({
         (payload) => {
           const row = payload.new as WaEvent
           if (row?.id) setEvents((cur) => (cur.some((e) => e.id === row.id) ? cur : [...cur, row]))
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'wa_notes', filter: `conversation_id=eq.${conv.id}` },
+        (payload) => {
+          const row = payload.new as WaNote
+          if (row?.id) setNotes((cur) => (cur.some((n) => n.id === row.id) ? cur : [...cur, row]))
         },
       )
       .subscribe()
@@ -286,6 +307,8 @@ export function ChatThread({
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+    // Rolagem (e barra) só quando o texto realmente passa do teto.
+    el.style.overflowY = el.scrollHeight > 160 ? 'auto' : 'hidden'
   }
 
   useEffect(autosize, [text])
@@ -344,6 +367,15 @@ export function ChatThread({
   // para mandar a próxima enquanto a anterior ainda está saindo.
   const send = () => {
     const t = text.trim()
+    if (modo === 'nota') {
+      if (!t) return
+      atendimentoService.addNote(conv.id, t)
+        .then((n) => setNotes((cur) => (cur.some((x) => x.id === n.id) ? cur : [...cur, n])))
+        .catch((err) => toast.error(err instanceof Error ? err.message : 'Não foi possível salvar a nota'))
+      setText('')
+      inputRef.current?.focus()
+      return
+    }
     if (!t && !file) return
     if (file) {
       const temp = novoPendente({
@@ -377,7 +409,32 @@ export function ChatThread({
   )
   const podeGravar = !text.trim() && !file
 
+  // "/preco" → lista de respostas rápidas que casam com o que foi digitado.
+  const qrQuery = modo === 'responder' && /^\/[^\s]*$/.test(text) ? text.slice(1).toLowerCase() : null
+  const qrList = qrQuery === null ? [] : quick.filter((q) => q.shortcut.includes(qrQuery)).slice(0, 6)
+  const escolherResposta = (q: WaQuickReply) => {
+    const primeiro = conversationName(conv).split(' ')[0] ?? ''
+    const t = primeiro && !/^[+\d(]/.test(primeiro)
+      ? q.body.replace(/\{nome\}/g, primeiro)
+      : q.body.replace(/ ?\{nome\}/g, '')
+    setText(t)
+    setQrActive(0)
+    inputRef.current?.focus()
+  }
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (qrList.length) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setQrActive((i) => (i + (e.key === 'ArrowDown' ? 1 : -1) + qrList.length) % qrList.length)
+        return
+      }
+      if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && !e.nativeEvent.isComposing) {
+        e.preventDefault()
+        escolherResposta(qrList[Math.min(qrActive, qrList.length - 1)])
+        return
+      }
+    }
     // Enter envia, Shift+Enter quebra a linha — e nada durante a composição
     // de acentos/IME, senão o "Enter" do teclado do celular manda pela metade.
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -446,10 +503,11 @@ export function ChatThread({
   const timeline = (() => {
     if (!messages) return []
     const desde = hasMore && messages.length ? new Date(messages[0].wa_timestamp).getTime() : -Infinity
-    const items: { key: string; at: string; m?: WaMessage; e?: WaEvent }[] = [
+    const items: { key: string; at: string; m?: WaMessage; e?: WaEvent; n?: WaNote }[] = [
       ...messages.map((m) => ({ key: m.id, at: m.wa_timestamp, m })),
       ...pendentes.map((m) => ({ key: m.id, at: m.wa_timestamp, m })),
       ...events.filter((e) => new Date(e.created_at).getTime() >= desde).map((e) => ({ key: e.id, at: e.created_at, e })),
+      ...notes.filter((n) => new Date(n.created_at).getTime() >= desde).map((n) => ({ key: `nota-${n.id}`, at: n.created_at, n })),
     ]
     return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
   })()
@@ -587,6 +645,15 @@ export function ChatThread({
                     onRetry={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => despachar(item.m!) : undefined}
                     onDiscard={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => descartarPendente(item.m!.id) : undefined}
                   />
+                ) : item.n ? (
+                  <div className="at-note">
+                    <div className="at-note-head">
+                      <StickyNote size={12} />
+                      <strong>{item.n.author ? (item.n.author === userId ? 'Você' : names.get(item.n.author) ?? 'Equipe') : 'Equipe'}</strong>
+                      <span>nota interna · {formatTime(item.n.created_at)}</span>
+                    </div>
+                    <div className="at-note-body"><LinkifiedText text={item.n.body} /></div>
+                  </div>
                 ) : item.e ? (
                   <div className="at-event">
                     <span>{eventText(item.e, names, userId)} · {formatTime(item.e.created_at)}</span>
@@ -616,7 +683,38 @@ export function ChatThread({
         </div>
       ) : (
       <form className="at-composer" onSubmit={onSubmit}>
-          {file && (
+          {qrList.length > 0 && (
+            <div className="at-qr" role="listbox" aria-label="Respostas rápidas">
+              {qrList.map((q, i) => (
+                <button
+                  key={q.id}
+                  type="button"
+                  role="option"
+                  aria-selected={i === qrActive}
+                  className={i === qrActive ? 'active' : ''}
+                  onMouseEnter={() => setQrActive(i)}
+                  onMouseDown={(e) => { e.preventDefault(); escolherResposta(q) }}
+                >
+                  <strong>/{q.shortcut}</strong>
+                  <span>{q.body}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="at-mode" role="tablist" aria-label="O que enviar">
+            <button type="button" role="tab" aria-selected={modo === 'responder'} className={modo === 'responder' ? 'active' : ''} onClick={() => setModo('responder')}>
+              Responder
+            </button>
+            <button type="button" role="tab" aria-selected={modo === 'nota'} className={`nota${modo === 'nota' ? ' active' : ''}`} onClick={() => setModo('nota')}>
+              <StickyNote size={12} /> Nota interna
+            </button>
+            {modo === 'responder' && quick.length > 0 && !semNumero && (
+              <button type="button" className="qr-open" onClick={() => { setText('/'); inputRef.current?.focus() }} title="Respostas rápidas">
+                <Zap size={12} /> Respostas rápidas
+              </button>
+            )}
+          </div>
+          {file && modo === 'responder' && (
             <div className="at-attach-chip">
               <Paperclip size={13} />
               <span className="at-attach-name">{file.name}</span>
@@ -630,6 +728,7 @@ export function ChatThread({
             <VoiceComposer voice={voice} />
           ) : (
             <div className="at-composer-row">
+              {modo === 'responder' && (
               <div className="at-attach-wrap" ref={anexoRef}>
                 <button
                   type="button"
@@ -657,6 +756,7 @@ export function ChatThread({
                   </div>
                 )}
               </div>
+              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -668,17 +768,17 @@ export function ChatThread({
                 className="at-input"
                 rows={1}
                 value={text}
-                disabled={semNumero}
+                disabled={semNumero && modo === 'responder'}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={onKeyDown}
                 onPaste={(e) => {
                   const f = e.clipboardData.files?.[0]
                   if (f) { e.preventDefault(); pickFile(f) }
                 }}
-                placeholder={semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem'}
+                placeholder={modo === 'nota' ? 'Nota interna: só a equipe vê' : semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem  ·  / para respostas rápidas'}
                 aria-label="Mensagem"
               />
-              {podeGravar ? (
+              {podeGravar && modo === 'responder' ? (
                 <button
                   type="button"
                   className="btn btn-primary at-send"
@@ -693,7 +793,7 @@ export function ChatThread({
                 <button
                   type="submit"
                   className="btn btn-primary at-send"
-                  disabled={semNumero || (!text.trim() && !file)}
+                  disabled={(semNumero && modo === 'responder') || (!text.trim() && (modo === 'nota' || !file))}
                   aria-label="Enviar"
                 >
                   <Send size={16} />

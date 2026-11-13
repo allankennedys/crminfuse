@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { CheckCircle2, ExternalLink, Megaphone, Pencil, Receipt, RotateCcw, X as XIcon } from 'lucide-react'
 import { DateInput, Loader } from '@/components/ui'
+import { LembretesSection } from './Lembretes'
 import { TagInput } from '@/components/crm/TagInput'
 import { toast } from '@/store/toastStore'
 import { useCan } from '@/store/authStore'
@@ -136,6 +137,8 @@ export function ClientPanel({ conversation: conv, situacao, conclusao, onClose, 
               )}
             </section>
           )}
+
+          <LembretesSection conversationId={conv.id} />
 
           <section className="at-client-sales">
             {selling ? (
