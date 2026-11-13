@@ -1002,14 +1002,11 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                     </button>
                   </div>
 
+                  {/* Primeira venda com etapa de conversão: sem texto de ajuda. */}
+                  {!(sales.length === 0 && conversionStage) && (
                   <p className="text-muted" style={{ fontSize: 11 }}>
                     {sales.length === 0
-                      ? conversionStage
-                        ? `A 1ª venda move o contato para "${conversionStage.name}"`
-                          + (fromAd
-                            ? ' e avisa a Meta da venda.'
-                            : '. Como não veio de anúncio, a Meta não é avisada.')
-                        : 'Nenhuma etapa está marcada como conversão: a venda fica registrada, mas o contato não entra no funil.'
+                      ? 'Nenhuma etapa está marcada como conversão: a venda fica registrada, mas o contato não entra no funil.'
                       : (fromAd
                           ? 'Recompras não movem o contato de etapa, mas cada uma avisa a Meta com o seu próprio valor: '
                             + 'cliente de anúncio manda toda compra, não só a primeira. '
@@ -1017,6 +1014,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
                         + 'Corrigir o valor de uma venda não reenvia nada: só se o aviso dela ainda não '
                         + 'tiver saído (até 30 min), aí o valor novo vai junto. Excluir a venda antes disso cancela o aviso.'}
                   </p>
+                  )}
                 </>
               )}
             </section>
