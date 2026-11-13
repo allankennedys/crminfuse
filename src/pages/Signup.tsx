@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/lib/theme'
 import { billingService, formatPrice, type Plan } from '@/services/billingService'
@@ -18,11 +17,10 @@ function mascaraDoc(v: string): string {
 /** Cadastro de uma empresa nova: 7 dias grátis, sem cartão. */
 export function SignupPage() {
   const theme = useTheme((s) => s.theme)
-  const signIn = useAuthStore((s) => s.signIn)
-  const navigate = useNavigate()
   const [plans, setPlans] = useState<Plan[]>([])
   const [planId, setPlanId] = useState('profissional')
-  const [f, setF] = useState({ organization_name: '', full_name: '', username: '', email: '', doc: '', password: '', website: '' })
+  const [f, setF] = useState({ organization_name: '', full_name: '', email: '', doc: '', password: '', website: '' })
+  const [enviado, setEnviado] = useState<{ email: string; email_sent: boolean } | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -34,9 +32,7 @@ export function SignupPage() {
     setError('')
     setLoading(true)
     try {
-      await billingService.signup({ ...f, doc: f.doc.replace(/\D/g, ''), plan_id: planId })
-      await signIn(f.username, f.password)
-      navigate('/crm')
+      setEnviado(await billingService.signup({ ...f, doc: f.doc.replace(/\D/g, ''), plan_id: planId }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível criar a conta')
     } finally {
@@ -51,6 +47,17 @@ export function SignupPage() {
         <div className="sidebar-logo" style={{ justifyContent: 'center', paddingBottom: 16 }}>
           <img src={theme === 'light' ? '/logo-navy.png' : '/logo.png'} alt="Infuse" className="brand-logo" style={{ height: 38 }} />
         </div>
+        {enviado ? (
+          <>
+            <h1 style={{ fontSize: 18, textAlign: 'center', marginBottom: 8 }}>Confirme seu e-mail</h1>
+            <p className="text-secondary" style={{ textAlign: 'center', lineHeight: 1.55, marginBottom: 14 }}>
+              {enviado.email_sent
+                ? <>Enviamos um link para <strong>{enviado.email}</strong>. Abra-o para ativar a conta e começar o teste grátis. Não chegou? Veja o spam.</>
+                : <>A conta foi criada, mas não conseguimos enviar o e-mail agora. Na tela de entrada, use <strong>Reenviar o e-mail</strong>.</>}
+            </p>
+            <Link className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} to="/login">Ir para a entrada</Link>
+          </>
+        ) : (<>
         <h1 style={{ fontSize: 18, textAlign: 'center', marginBottom: 4 }}>Teste grátis por 7 dias</h1>
         <p className="text-secondary" style={{ textAlign: 'center', fontSize: 13, marginBottom: 16 }}>
           Sem cartão. Você escolhe o plano depois, se gostar.
@@ -90,12 +97,8 @@ export function SignupPage() {
             <input id="su-nome" className="input" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} maxLength={80} required />
           </div>
           <div className="field">
-            <label htmlFor="su-email">E-mail</label>
+            <label htmlFor="su-email">E-mail (é com ele que você entra)</label>
             <input id="su-email" className="input" type="email" autoCapitalize="none" value={f.email} onChange={(e) => set('email', e.target.value)} required />
-          </div>
-          <div className="field">
-            <label htmlFor="su-user">Usuário para entrar</label>
-            <input id="su-user" className="input" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.username} onChange={(e) => set('username', e.target.value.toLowerCase())} placeholder="seu.usuario" required />
           </div>
           <div className="field">
             <label htmlFor="su-senha">Senha (mínimo 8 caracteres)</label>
@@ -121,6 +124,7 @@ export function SignupPage() {
         <p style={{ textAlign: 'center', marginTop: 16, fontSize: 12.5 }} className="text-secondary">
           Já tem conta? <Link to="/login">Entrar</Link>
         </p>
+        </>)}
       </div>
     </div>
   )

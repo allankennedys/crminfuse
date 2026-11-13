@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BellRing, CreditCard, KeyRound, Megaphone, Plus, ShieldCheck, Trash2, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
+import { BellRing, CreditCard, KeyRound, MailCheck, Megaphone, Plus, ShieldCheck, Trash2, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
 import { CustomFieldsSettings } from './CustomFields'
 import { ReportTabsSettings } from './ReportTabsSettings'
 import { AtendimentoSettings } from '@/components/atendimento/AtendimentoSettings'
 import { NotificacoesSettings } from '@/components/atendimento/NotificacoesSettings'
+import { ContaSettings } from '@/components/settings/ContaSettings'
 import { PlanoCobranca } from '@/components/billing/PlanoCobranca'
 import { PlataformaSettings } from '@/components/billing/PlataformaSettings'
 import { useIsOwner } from '@/components/billing/useIsOwner'
@@ -24,6 +25,7 @@ const SETTINGS_TAB_ALL = [
   { id: 'org', label: 'Organização', icon: Building2 },
   { id: 'atendimento', label: 'Atendimento', icon: MessageCircle },
   { id: 'users', label: 'Usuários', icon: UsersIcon },
+  { id: 'conta', label: 'Minha conta', icon: MailCheck },
   { id: 'notificacoes', label: 'Notificações', icon: BellRing },
   { id: 'integrations', label: 'Integrações', icon: ShieldCheck },
 ] as const
@@ -55,7 +57,7 @@ export function CrmSettingsPanel() {
     if (t.id === 'plano') return isAdmin
     if (t.id === 'plataforma') return isOwner
     // Notificações: de cada pessoa, qualquer um que atende (ou é admin).
-    if (t.id === 'notificacoes') return isAdmin || can('atendimento.ver')
+    if (t.id === 'notificacoes' || t.id === 'conta') return isAdmin || can('atendimento.ver')
     if (t.id === 'atendimento') return podeConfigurarAtendimento
     if (t.id === 'users' || t.id === 'org') return isAdmin
     // Integrações (Meta): só admin.
@@ -156,6 +158,7 @@ export function CrmSettingsPanel() {
       {/* ---------- Usuários e acessos ----------
           Só para admin da organização. Usuários "crm_only" nunca são admin,
           então a gestão de acessos não aparece para eles (a aba nem existe). */}
+      {tab === 'conta' && <ContaSettings />}
       {tab === 'notificacoes' && <NotificacoesSettings />}
 
       {tab === 'plano' && isAdmin && (assinatura

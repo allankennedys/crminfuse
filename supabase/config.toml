@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.invite]
 verify_jwt = false
+
+[functions.auth-email]
+verify_jwt = false

@@ -43,7 +43,6 @@ export interface MySubscription {
 export interface SignupInput {
   organization_name: string
   full_name: string
-  username: string
   password: string
   email: string
   doc: string
@@ -89,7 +88,7 @@ export interface Invite {
 
 export const billingService = {
   // ---- convites (148) ----
-  async createInvite(p: { role: 'admin' | 'atendente'; email?: string; permissions?: string[] | null }): Promise<{ url: string; email_sent: boolean }> {
+  async createInvite(p: { role: 'admin' | 'atendente'; email: string; permissions?: string[] | null }): Promise<{ url: string; email_sent: boolean }> {
     return await call('invite', { action: 'create', ...p })
   },
   async listInvites(): Promise<Invite[]> {
@@ -98,10 +97,10 @@ export const billingService = {
   async revokeInvite(id: string): Promise<void> {
     await call('invite', { action: 'revoke', id })
   },
-  async inviteInfo(token: string): Promise<{ organization: string; role: 'admin' | 'atendente' }> {
+  async inviteInfo(token: string): Promise<{ organization: string; role: 'admin' | 'atendente'; email: string | null }> {
     return await call('invite', { action: 'info', token })
   },
-  async acceptInvite(p: { token: string; full_name: string; username: string; password: string }): Promise<{ username: string }> {
+  async acceptInvite(p: { token: string; full_name: string; password: string }): Promise<{ email: string }> {
     return await call('invite', { action: 'accept', ...p })
   },
 
@@ -117,9 +116,17 @@ export const billingService = {
     return (data as MySubscription | null) ?? null
   },
 
-  async signup(input: SignupInput): Promise<void> {
-    await call('signup', input as unknown as Record<string, unknown>)
+  async signup(input: SignupInput): Promise<{ email: string; email_sent: boolean }> {
+    return await call('signup', input as unknown as Record<string, unknown>)
   },
+
+  // ---- e-mail: verificação, recuperação e troca (150) ----
+  async sendVerification(email: string): Promise<void> { await call('auth-email', { action: 'send_verification', email }) },
+  async verifyEmail(token: string): Promise<{ email: string }> { return await call('auth-email', { action: 'verify', token }) },
+  async requestReset(email: string): Promise<void> { await call('auth-email', { action: 'request_reset', email }) },
+  async resetPassword(token: string, password: string): Promise<void> { await call('auth-email', { action: 'reset', token, password }) },
+  async changeEmail(newEmail: string): Promise<void> { await call('auth-email', { action: 'change_email', new_email: newEmail }) },
+  async confirmEmailChange(token: string): Promise<{ email: string }> { return await call('auth-email', { action: 'confirm_email_change', token }) },
 
   async billingConfigured(): Promise<boolean> {
     try { return (await call<{ configured: boolean }>('billing', { action: 'configured' })).configured } catch { return false }

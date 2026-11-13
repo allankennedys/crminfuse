@@ -92,10 +92,11 @@ async function resolvePermissions(profile: UserProfile | null): Promise<string[]
 function mensagemDeLogin(error: { code?: string; status?: number; message?: string }): string {
   const code = error.code ?? ''
   const msg = (error.message ?? '').toLowerCase()
-  if (code === 'invalid_credentials' || msg.includes('invalid login')) return 'Usuário ou senha incorretos.'
+  if (code === 'email_not_confirmed' || msg.includes('not confirmed')) return 'EMAIL_NAO_CONFIRMADO'
+  if (code === 'invalid_credentials' || msg.includes('invalid login')) return 'E-mail ou senha incorretos.'
   if (code === 'user_banned' || msg.includes('banned')) return 'Este usuário está desativado. Fale com o administrador.'
   if (code.includes('rate_limit') || error.status === 429) return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.'
-  if (code === 'validation_failed') return 'Preencha usuário e senha.'
+  if (code === 'validation_failed') return 'Preencha e-mail e senha.'
   return 'Não foi possível entrar agora. Tente de novo em instantes.'
 }
 

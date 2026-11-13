@@ -5174,3 +5174,5 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
   margin-right: 0;
 }
 .crm-settings > .crm-tabs .crm-tab { flex-shrink: 0; white-space: nowrap; }
+
+.link-btn { background: none; border: none; padding: 0; color: var(--primary-text); font: inherit; text-decoration: underline; cursor: pointer; }

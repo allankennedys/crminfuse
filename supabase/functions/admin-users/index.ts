@@ -34,7 +34,9 @@ const VALID_ROLES = ['admin', 'atendente'] as const
  * organizações (provisionar novos tenants). Vem do secret OWNER_EMAIL.
  * Sem o secret, ninguém é dono (fail-closed) — nenhum email fica no código.
  */
-const OWNER_EMAIL = (Deno.env.get('OWNER_EMAIL') ?? '').toLowerCase()
+// Aceita mais de um e-mail separado por vírgula: ao trocar o e-mail de acesso do dono, o antigo e o novo valem.
+const OWNER_EMAILS = (Deno.env.get('OWNER_EMAIL') ?? '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean)
+const isOwnerEmail = (e: string | null | undefined) => OWNER_EMAILS.includes((e ?? '').toLowerCase())
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -62,7 +64,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}))
-    const isOwner = OWNER_EMAIL !== '' && (user.email ?? '').toLowerCase() === OWNER_EMAIL
+    const isOwner = isOwnerEmail(user.email)
 
     // Ação: informar se quem chamou é o dono da plataforma. Assim a UI decide
     // o que mostrar sem precisar conhecer o email do dono (não vai no bundle).
@@ -107,7 +109,7 @@ Deno.serve(async (req) => {
         .maybeSingle()
 
       if (!target) return json({ error: 'Usuário não encontrado.' }, 404)
-      if ((target.email ?? '').toLowerCase() === OWNER_EMAIL) {
+      if (isOwnerEmail(target.email)) {
         return json({ error: 'A conta do dono da plataforma não pode ser excluída.' }, 403)
       }
 
@@ -161,7 +163,7 @@ Deno.serve(async (req) => {
 
       // A senha do dono da plataforma só o próprio dono redefine — impede que
       // um admin da mesma org assuma a conta dona por reset.
-      if ((target.email ?? '').toLowerCase() === OWNER_EMAIL && !isOwner) {
+      if (isOwnerEmail(target.email) && !isOwner) {
         return json({ error: 'A senha do dono da plataforma não pode ser alterada por outro admin.' }, 403)
       }
 

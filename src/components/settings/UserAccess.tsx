@@ -356,6 +356,10 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
    */
   async function handleInvite() {
     if (!profile) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(inviteEmail.trim())) {
+      setError('Informe o e-mail da pessoa que vai entrar.')
+      return
+    }
     // Admin tem acesso total por definição e a RPC recusa personalizá-lo (055).
     const personalizar = invitePermCustom && inviteRole !== 'admin'
     setBusy(true)
@@ -363,7 +367,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
     try {
       const r = await billingService.createInvite({
         role: inviteRole === 'admin' ? 'admin' : 'atendente',
-        email: inviteEmail.trim() || undefined,
+        email: inviteEmail.trim(),
         permissions: personalizar ? mergePermissions(invitePermBase, invitePermSelected, sistema) : null,
       })
       setInviteResult(r)
@@ -610,7 +614,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
           ) : (
             <>
               <p className="text-muted" style={{ fontSize: 12.5, marginBottom: 12, lineHeight: 1.5 }}>
-                A pessoa recebe um link, escolhe o próprio usuário e senha e já entra com o cargo e as permissões abaixo.
+                A pessoa recebe um e-mail com o link, escolhe a senha e já entra com o cargo e as permissões abaixo.
               </p>
               <div className="field">
                 <label htmlFor="convite-cargo">Cargo</label>
@@ -621,8 +625,9 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="convite-email">E-mail (opcional)</label>
-                <input id="convite-email" className="input" type="email" autoCapitalize="none" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="para enviar o convite por e-mail" />
+                <label htmlFor="convite-email">E-mail da pessoa</label>
+                <input id="convite-email" className="input" type="email" autoCapitalize="none" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="nome@empresa.com.br" />
+                <span className="text-muted" style={{ fontSize: 11.5 }}>O convite é enviado para este endereço, e é com ele que a pessoa vai entrar.</span>
               </div>
 
               {inviteRole === 'admin' ? (
@@ -661,7 +666,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
               {error && <p className="error-text">{error}</p>}
               <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 20 }}>
                 <button className="btn btn-ghost" onClick={fecharConvite}>Cancelar</button>
-                <button className="btn btn-primary" onClick={handleInvite} disabled={busy}>
+                <button className="btn btn-primary" onClick={handleInvite} disabled={busy || !inviteEmail.trim()}>
                   {busy ? <span className="spinner" /> : 'Gerar convite'}
                 </button>
               </div>

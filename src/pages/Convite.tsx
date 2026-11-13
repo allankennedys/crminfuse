@@ -13,9 +13,9 @@ export function ConvitePage() {
   const signIn = useAuthStore((s) => s.signIn)
   const signOut = useAuthStore((s) => s.signOut)
   const navigate = useNavigate()
-  const [info, setInfo] = useState<{ organization: string; role: 'admin' | 'atendente' } | null>(null)
+  const [info, setInfo] = useState<{ organization: string; role: 'admin' | 'atendente'; email: string | null } | null>(null)
   const [invalido, setInvalido] = useState('')
-  const [f, setF] = useState({ full_name: '', username: '', password: '' })
+  const [f, setF] = useState({ full_name: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -28,8 +28,8 @@ export function ConvitePage() {
     setError('')
     setLoading(true)
     try {
-      await billingService.acceptInvite({ token, ...f })
-      await signIn(f.username, f.password)
+      const r = await billingService.acceptInvite({ token, ...f })
+      await signIn(r.email, f.password)
       navigate('/crm')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível aceitar o convite')
@@ -68,8 +68,8 @@ export function ConvitePage() {
               <input id="cv-nome" className="input" value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} maxLength={80} required />
             </div>
             <div className="field">
-              <label htmlFor="cv-user">Usuário para entrar</label>
-              <input id="cv-user" className="input" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value.toLowerCase() })} placeholder="seu.usuario" required />
+              <label htmlFor="cv-email">E-mail (você entra com ele)</label>
+              <input id="cv-email" className="input" value={info.email ?? ''} readOnly />
             </div>
             <div className="field">
               <label htmlFor="cv-senha">Senha (mínimo 8 caracteres)</label>
