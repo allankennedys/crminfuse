@@ -13,7 +13,8 @@ import { crmService, formatBRL, isAdContact, type StageStats } from '@/services/
 import { toast } from '@/store/toastStore'
 import { ContactCard } from './ContactCard'
 import { LostReasonDialog } from './LostReasonDialog'
-import type { CrmContact, CrmStage, CrmStageAutomation } from '@/types'
+import { CardFieldsContext } from './CustomFields'
+import type { CrmContact, CrmCustomField, CrmStage, CrmStageAutomation } from '@/types'
 
 /**
  * Ordem dos cards dentro de uma coluna: quem entrou na etapa por último no
@@ -57,6 +58,10 @@ export function Pipeline({
   // depois que onChanged recarrega.
   const [localStages, setLocalStages] = useState(stages)
   const [localContacts, setLocalContacts] = useState(contacts)
+  const [cardFields, setCardFields] = useState<CrmCustomField[]>([])
+  useEffect(() => {
+    crmService.listCustomFields().then((all) => setCardFields(all.filter((f) => f.show_on_card)))
+  }, [])
   const [perda, setPerda] = useState<{ contact: CrmContact; stageId: string } | null>(null)
   const [dragging, setDragging] = useState<{ type: 'contact' | 'stage'; id: string } | null>(null)
 
@@ -256,6 +261,7 @@ export function Pipeline({
   }
 
   return (
+    <CardFieldsContext.Provider value={cardFields}>
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
@@ -315,6 +321,7 @@ export function Pipeline({
         )}
       </DragOverlay>
     </DndContext>
+    </CardFieldsContext.Provider>
   )
 }
 

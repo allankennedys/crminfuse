@@ -4927,3 +4927,7 @@ td.col-acao { width: 44px; text-align: right; }
 .at-task-when .date-input { flex: 1; min-width: 0; }
 .at-task-presets { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .at-task-presets .btn-primary { margin-left: auto; }
+
+/* Campo personalizado no cartão do funil (141) */
+.kanban-custom { font-size: 11.5px; color: var(--text-secondary); margin: 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kanban-custom span { color: var(--text-muted); }

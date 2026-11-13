@@ -14,7 +14,7 @@ import { gunzipBlob, type CompressedFile } from '@/lib/compressFile'
 import type {
   CrmPaymentMethod,
   CrmAdAccount,
-  CrmAdsDayRow, CrmAdsOrigemRow, CrmAdsOverview, CrmApiKey, CrmContact,
+  CrmAdsDayRow, CrmAdsOrigemRow, CrmAdsOverview, CrmApiKey, CrmContact, CrmCustomField,
   CrmRepeatBucket, CrmRepeatDayRow, CrmRepeatOverview, CrmRepeatPendingRow, CrmRepeatTopRow,
   CrmConversionsInPeriod, CrmConvertedContactRow, CrmExcludedCampaign,
   CrmMergeResult,
@@ -67,6 +67,8 @@ export interface ContactFilters {
   origem?: string
   /** 'with' = já compraram (sales_count > 0) — o "Convertido" da lista de contatos. */
   sales?: 'with'
+  /** Campo personalizado com este valor exato (141). */
+  custom?: { fieldId: string; value: string }
   sort?: ContactSort
   page?: number
   pageSize?: number
@@ -322,7 +324,7 @@ interface ContactQuery {
   like: (c: string, v: string) => ContactQuery
   not: (c: string, op: string, v: string) => ContactQuery
   is: (c: string, v: null) => ContactQuery
-  contains: (c: string, v: string[]) => ContactQuery
+  contains: (c: string, v: string[] | Record<string, string>) => ContactQuery
 }
 
 /**
@@ -366,16 +368,20 @@ function applyContactFilters<T>(query: T, filters: ContactFilters): T {
         `phone_key.ilike.%${digits}%`,
         `conversation_id.ilike.%${digits}%`,
       ]
+      // Campos personalizados (141): coluna calculada custom_search.
+      ors.push(`custom_search.ilike.%${safe}%`)
       for (const k of keys) ors.push(`phone_key.eq.${k}`)
       q = q.or(ors.join(','))
     } else {
       q = q.or(
-        `name.ilike.%${safe}%,email.ilike.%${safe}%,phone.ilike.%${safe}%,conversation_id.ilike.%${safe}%`,
+        `name.ilike.%${safe}%,email.ilike.%${safe}%,phone.ilike.%${safe}%,conversation_id.ilike.%${safe}%,custom_search.ilike.%${safe}%`,
       )
     }
   }
   // contains: o contato precisa ter TODAS as etiquetas selecionadas.
   if (filters.tags?.length) q = q.contains('tags', filters.tags)
+  // Campo personalizado: igualdade exata, por contenção no jsonb (a chave é um uuid).
+  if (filters.custom?.value) q = q.contains('custom', { [filters.custom.fieldId]: filters.custom.value })
   if (filters.stageId) q = q.eq('stage_id', filters.stageId)
   if (filters.outOfFunnel) q = q.is('stage_id', null)
   if (filters.channel) q = q.eq('channel', filters.channel)
@@ -633,6 +639,7 @@ export const crmService = {
       p_no_origem: !!filters.noOrigem,
       p_origem: filters.origem ? filters.origem.replace(/[\\%_]/g, (m) => `\\${m}`) : null,
       p_with_sales: filters.sales === 'with',
+      p_custom: filters.custom?.value ? { [filters.custom.fieldId]: filters.custom.value } : null,
     })
     if (error) throw error
     return Number(data ?? 0)
@@ -1298,6 +1305,7 @@ export const crmService = {
     sourceId?: string
     origem?: string
     tags?: string[]
+    custom?: Record<string, string>
     valueCents?: number
     description?: string
     assignedTo?: string
@@ -1316,6 +1324,7 @@ export const crmService = {
         source_id: opts.sourceId || null,
         origem: opts.origem || null,
         tags: opts.tags ?? [],
+        custom: opts.custom ?? {},
         value_cents: opts.valueCents ?? 0,
         description: opts.description || null,
         assigned_to: opts.assignedTo || null,
@@ -1539,6 +1548,7 @@ export const crmService = {
     sourceId?: string | null
     origem?: string | null
     tags?: string[]
+    custom?: Record<string, string>
     valueCents?: number
     description?: string | null
     /** null = tirar do funil; undefined = não mexer na etapa. */
@@ -1556,6 +1566,7 @@ export const crmService = {
     if (patch.sourceId !== undefined) row.source_id = patch.sourceId || null
     if (patch.origem !== undefined) row.origem = patch.origem || null
     if (patch.tags !== undefined) row.tags = patch.tags
+    if (patch.custom !== undefined) row.custom = patch.custom
     if (patch.valueCents !== undefined) row.value_cents = patch.valueCents
     if (patch.description !== undefined) row.description = patch.description || null
     if (patch.stageId !== undefined) row.stage_id = patch.stageId || null
@@ -1595,6 +1606,33 @@ export const crmService = {
 
   async setLostReason(id: string, reason: string): Promise<void> {
     const { error } = await supabase.from('crm_contacts').update({ lost_reason: reason }).eq('id', id)
+    if (error) throw error
+  },
+
+  // ---------- Campos personalizados (140) ----------
+
+  async listCustomFields(): Promise<CrmCustomField[]> {
+    const { data, error } = await supabase
+      .from('crm_custom_fields')
+      .select('id, name, kind, options, show_on_card')
+      .order('position')
+      .order('created_at')
+      .returns<CrmCustomField[]>()
+    if (error) return []
+    return data ?? []
+  },
+
+  async saveCustomField(organizationId: string, f: Omit<CrmCustomField, 'id'> & { id?: string }, position = 0): Promise<void> {
+    const row = { name: f.name.trim(), kind: f.kind, options: f.kind === 'lista' ? f.options : [], show_on_card: Boolean(f.show_on_card) }
+    const q = f.id
+      ? supabase.from('crm_custom_fields').update(row).eq('id', f.id)
+      : supabase.from('crm_custom_fields').insert({ ...row, organization_id: organizationId, position })
+    const { error } = await q
+    if (error) throw new Error(error.code === '23505' ? 'Já existe um campo com este nome.' : error.message)
+  },
+
+  async deleteCustomField(id: string): Promise<void> {
+    const { error } = await supabase.from('crm_custom_fields').delete().eq('id', id)
     if (error) throw error
   },
 

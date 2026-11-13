@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { CheckCircle2, ExternalLink, Megaphone, Pencil, Receipt, RotateCcw, X as XIcon } from 'lucide-react'
 import { DateInput, Loader } from '@/components/ui'
 import { LembretesSection } from './Lembretes'
+import { CustomFieldsEditor, formatCustomValue } from '@/components/crm/CustomFields'
 import { TagInput } from '@/components/crm/TagInput'
 import { toast } from '@/store/toastStore'
 import { useCan } from '@/store/authStore'
@@ -79,7 +80,9 @@ export function ClientPanel({ conversation: conv, situacao, conclusao, onClose, 
               fallbackName={nome}
               onCancel={() => setEditing(false)}
               onSave={async (f) => {
-                setCard(await atendimentoService.clientUpdate(conv.id, f))
+                let novo = await atendimentoService.clientUpdate(conv.id, f)
+                if (card.custom_fields?.length) novo = await atendimentoService.clientSetCustom(conv.id, f.custom)
+                setCard(novo)
                 setEditing(false)
                 toast.success('Cliente atualizado.')
               }}
@@ -99,6 +102,10 @@ export function ClientPanel({ conversation: conv, situacao, conclusao, onClose, 
                 <dt>Origem</dt>
                 <dd>{ct?.origem || <span className="text-muted">não identificada</span>}</dd>
                 {ct?.stage && (<><dt>Etapa</dt><dd>{ct.stage}</dd></>)}
+                {(card.custom_fields ?? []).map((f) => {
+                  const v = formatCustomValue(f, ct?.custom?.[f.id])
+                  return v ? (<span key={f.id} style={{ display: 'contents' }}><dt>{f.name}</dt><dd>{v}</dd></span>) : null
+                })}
                 <dt>Compras</dt>
                 <dd>{ct ? `${ct.sales_count} · ${formatBRL(ct.sales_total_cents)}` : '—'}</dd>
               </dl>
@@ -281,11 +288,12 @@ function EditForm({ card, fallbackName, onCancel, onSave }: {
   card: WaClientCard
   fallbackName: string
   onCancel: () => void
-  onSave: (f: { name: string; email: string; origem: string }) => Promise<void>
+  onSave: (f: { name: string; email: string; origem: string; custom: Record<string, string> }) => Promise<void>
 }) {
   const [name, setName] = useState(card.contact?.name ?? fallbackName)
   const [email, setEmail] = useState(card.contact?.email ?? '')
   const [origem, setOrigem] = useState(card.contact?.origem ?? '')
+  const [custom, setCustom] = useState<Record<string, string>>(card.contact?.custom ?? {})
   const [busy, setBusy] = useState(false)
 
   const submit = async (e: FormEvent) => {
@@ -293,7 +301,7 @@ function EditForm({ card, fallbackName, onCancel, onSave }: {
     if (!name.trim()) return
     setBusy(true)
     try {
-      await onSave({ name: name.trim(), email: email.trim(), origem: origem.trim() })
+      await onSave({ name: name.trim(), email: email.trim(), origem: origem.trim(), custom })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Falha ao salvar')
       setBusy(false)
@@ -317,6 +325,9 @@ function EditForm({ card, fallbackName, onCancel, onSave }: {
           {card.origens.map((o) => <option key={o} value={o} />)}
         </datalist>
       </div>
+      {(card.custom_fields ?? []).length > 0 && (
+        <CustomFieldsEditor fields={card.custom_fields} values={custom} onChange={setCustom} idPrefix="cli-cf" />
+      )}
       <div className="flex" style={{ justifyContent: 'flex-end' }}>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>Cancelar</button>
         <button type="submit" className="btn btn-primary btn-sm" disabled={busy || !name.trim()}>

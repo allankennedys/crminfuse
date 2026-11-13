@@ -212,6 +212,12 @@ export const atendimentoService = {
     return data ?? []
   },
 
+  async clientSetCustom(conversationId: string, custom: Record<string, string>): Promise<WaClientCard> {
+    const { data, error } = await supabase.rpc('wa_client_set_custom', { p_conversation: conversationId, p_custom: custom })
+    if (error) throw error
+    return data as WaClientCard
+  },
+
   // ---------- Notas internas (138) ----------
 
   async listNotes(conversationId: string): Promise<WaNote[]> {
