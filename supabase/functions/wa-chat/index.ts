@@ -12,8 +12,12 @@
  *
  * Ações (POST, corpo JSON):
  *   { action: 'send_text',  conversation_id, text }
+ *   { action: 'upload_url', conversation_id, name }
+ *       para onde o navegador sobe um anexo: link do R2 ou caminho no Storage
  *   { action: 'send_media', conversation_id, path, mime, name, caption? }
- *       path = arquivo já enviado ao bucket wa-media, dentro da pasta da conversa
+ *       path = o devolvido por upload_url, já com o arquivo enviado
+ *   { action: 'media_urls', message_ids }
+ *       links temporários (abrir/baixar) das mídias que o usuário pode ver
  *   { action: 'mark_read',  conversation_id }
  *   { action: 'avatar',     conversation_id, force? }  foto de perfil do cliente
  *   { action: 'session_info' | 'enable' | 'disable', session_id }
@@ -21,9 +25,12 @@
  *       inicia conversa: confere o número na Evolution e devolve a conversa
  *
  * Secrets: EVOLUTION_API_URL, EVOLUTION_API_KEY (+ os automáticos do Supabase)
+ *          R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+ *          (opcionais: com eles as mídias novas vão para o R2 — _shared/media.ts)
  */
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { keyOf, mediaLinks, mediaUrl, uploadTarget } from '../_shared/media.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -33,7 +40,6 @@ const CORS = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const WEBHOOK_BASE = `${SUPABASE_URL.replace(/\/+$/, '')}/functions/v1/wa-webhook`
 const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'SEND_MESSAGE']
-const BUCKET = 'wa-media'
 
 const admin = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
   auth: { persistSession: false },
@@ -74,7 +80,9 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case 'send_text': return json(await sendText(userClient, user.id, body))
+      case 'upload_url': return json(await uploadUrl(userClient, body))
       case 'send_media': return json(await sendMedia(userClient, user.id, body))
+      case 'media_urls': return json(await mediaUrls(userClient, body))
       case 'mark_read': return json(await markRead(userClient, body))
       case 'avatar': return json(await avatar(userClient, body))
       case 'session_info': return json(await sessionInfo(userClient, user.id, body))
@@ -168,15 +176,17 @@ async function sendMedia(userClient: SupabaseClient, userId: string, body: Json)
   const path = String(body?.path ?? '')
   // O arquivo tem que estar na pasta DESTA conversa — senão daria para
   // mandar ao cliente um anexo de outra conversa só trocando o caminho.
-  if (!path.startsWith(`${conv.organization_id}/${conv.id}/`) || path.includes('..')) {
+  const key = keyOf(path)
+  if (!key.startsWith(`${conv.organization_id}/${conv.id}/`) || key.includes('..')) {
     throw new HttpError(400, 'Arquivo fora da conversa')
   }
   const mime = String(body?.mime ?? 'application/octet-stream')
   const name = String(body?.name ?? 'arquivo')
   const caption = String(body?.caption ?? '').trim() || undefined
 
-  const { data: signed, error: signErr } = await admin.storage.from(BUCKET).createSignedUrl(path, 900)
-  if (signErr || !signed?.signedUrl) throw new HttpError(400, 'Arquivo não encontrado no armazenamento')
+  // Link de 15 min para a Evolution buscar o arquivo (R2 ou Storage).
+  const fileUrl = await mediaUrl(admin, path, 900)
+  if (!fileUrl) throw new HttpError(400, 'Arquivo não encontrado no armazenamento')
 
   const instance = encodeURIComponent(await instanceOf(conv))
   const kind = mime.startsWith('image/') ? 'image'
@@ -188,12 +198,12 @@ async function sendMedia(userClient: SupabaseClient, userId: string, body: Json)
   const res = kind === 'audio'
     // encoding: a Evolution converte o áudio do navegador (webm/ogg/mp4)
     // para o formato de mensagem de voz do WhatsApp.
-    ? await evolution('POST', `/message/sendWhatsAppAudio/${instance}`, { number: target(conv), audio: signed.signedUrl, encoding: true })
+    ? await evolution('POST', `/message/sendWhatsAppAudio/${instance}`, { number: target(conv), audio: fileUrl, encoding: true })
     : await evolution('POST', `/message/sendMedia/${instance}`, {
       number: target(conv),
       mediatype: kind,
       mimetype: mime,
-      media: signed.signedUrl,
+      media: fileUrl,
       caption,
       fileName: name,
     })
@@ -204,6 +214,56 @@ async function sendMedia(userClient: SupabaseClient, userId: string, body: Json)
       type: kind, body: caption ?? null, media_path: path, media_mime: mime, media_name: name,
     }),
   }
+}
+
+// ---------------------------------------------------------------------------
+// Arquivos (R2 ou Storage do Supabase — _shared/media.ts)
+// ---------------------------------------------------------------------------
+
+/** Nome de arquivo seguro (sem acento, espaço nem barra). */
+function safeName(name: string): string {
+  const clean = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_')
+  return clean.slice(-80) || 'arquivo'
+}
+
+/** Para onde o navegador sobe o anexo, sempre dentro da pasta da conversa. */
+async function uploadUrl(userClient: SupabaseClient, body: Json) {
+  const conv = await loadConversation(userClient, body?.conversation_id)
+  const name = safeName(String(body?.name ?? 'arquivo'))
+  return uploadTarget(`${conv.organization_id}/${conv.id}/out-${crypto.randomUUID()}-${name}`)
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const TIPO_NOME: Record<string, string> = {
+  image: 'imagem', video: 'video', audio: 'audio', document: 'documento', sticker: 'figurinha',
+}
+
+/**
+ * Links (abrir/baixar, 1 h) das mídias pedidas. As mensagens são lidas com o
+ * token do usuário: a RLS de wa_messages (wa_can_see) só devolve as das
+ * conversas que ele enxerga — pedir o id de outra conversa não traz nada.
+ */
+async function mediaUrls(userClient: SupabaseClient, body: Json) {
+  const ids = (Array.isArray(body?.message_ids) ? body.message_ids : [])
+    .filter((x: unknown) => typeof x === 'string' && UUID_RE.test(x))
+    .slice(0, 200)
+  if (!ids.length) return { urls: {} }
+
+  const { data, error } = await userClient
+    .from('wa_messages')
+    .select('id, type, media_path, media_name')
+    .in('id', ids)
+    .not('media_path', 'is', null)
+  if (error) throw error
+
+  const urls: Record<string, { url: string; download: string }> = {}
+  await Promise.all((data ?? []).map(async (m: Json) => {
+    const ext = String(keyOf(m.media_path).split('/').pop() ?? '').split('.').pop() || 'bin'
+    const nome = m.media_name || `${TIPO_NOME[m.type] ?? 'arquivo'}-${String(m.id).slice(0, 8)}.${ext}`
+    const links = await mediaLinks(admin, m.media_path, 3600, nome)
+    if (links) urls[m.id] = links
+  }))
+  return { urls }
 }
 
 /** Grava o que acabou de sair, já com quem enviou. */

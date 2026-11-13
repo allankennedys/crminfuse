@@ -44,11 +44,8 @@ async function invokeChat<T = unknown>(body: Record<string, unknown>): Promise<T
   return data as T
 }
 
-/** Nome de arquivo seguro para o storage (sem acento, espaço nem barra). */
-function safeName(name: string): string {
-  const clean = name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_')
-  return clean.slice(-80) || 'arquivo'
-}
+/** Links de uma mídia: abrir e baixar. */
+export type MediaLinks = { url: string; download: string }
 
 export const atendimentoService = {
   async listConversations(f: WaListFilters): Promise<WaConversation[]> {
@@ -117,18 +114,30 @@ export const atendimentoService = {
     return r.message
   },
 
+  /**
+   * Anexo da equipe: o servidor diz para onde subir (R2 ou Storage do
+   * Supabase), o navegador sobe direto para lá e então pede o envio.
+   */
   async sendFile(conv: WaConversation, file: File, caption?: string): Promise<WaMessage> {
-    const path = `${conv.organization_id}/${conv.id}/out-${crypto.randomUUID()}-${safeName(file.name)}`
-    const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-      contentType: file.type || 'application/octet-stream',
+    const contentType = file.type || 'application/octet-stream'
+    const alvo = await invokeChat<{ store: 'r2' | 'supabase'; path: string; url?: string }>({
+      action: 'upload_url', conversation_id: conv.id, name: file.name,
     })
-    if (error) throw new Error(`Falha ao subir o arquivo: ${error.message}`)
+    if (alvo.store === 'r2' && alvo.url) {
+      const res = await fetch(alvo.url, { method: 'PUT', body: file, headers: { 'Content-Type': contentType } })
+        .catch(() => null)
+      if (!res?.ok) throw new Error('Falha ao subir o arquivo. Tente de novo.')
+    } else {
+      const { error } = await supabase.storage.from(BUCKET).upload(alvo.path, file, { contentType })
+      if (error) throw new Error(`Falha ao subir o arquivo: ${error.message}`)
+    }
+    const path = alvo.path
 
     const r = await invokeChat<{ message: WaMessage }>({
       action: 'send_media',
       conversation_id: conv.id,
       path,
-      mime: file.type || 'application/octet-stream',
+      mime: contentType,
       name: file.name,
       caption: caption || undefined,
     })
@@ -369,11 +378,16 @@ export const atendimentoService = {
     return new Map((data ?? []).map((u) => [u.id as string, (u.full_name || u.username || u.email) as string]))
   },
 
-  async signedUrls(paths: string[]): Promise<Map<string, string>> {
-    const out = new Map<string, string>()
-    if (!paths.length) return out
-    const { data } = await supabase.storage.from(BUCKET).createSignedUrls(paths, 3600)
-    for (const r of data ?? []) if (r.path && r.signedUrl) out.set(r.path, r.signedUrl)
+  /**
+   * Links temporários (1 h) das mídias, por id da mensagem: um para abrir e
+   * um para baixar. Quem gera é o servidor, depois de conferir que o usuário
+   * pode ver a conversa — vale para o R2 e para o Storage do Supabase.
+   */
+  async mediaUrls(messageIds: string[]): Promise<Map<string, MediaLinks>> {
+    const out = new Map<string, MediaLinks>()
+    if (!messageIds.length) return out
+    const r = await invokeChat<{ urls: Record<string, MediaLinks> }>({ action: 'media_urls', message_ids: messageIds })
+    for (const [id, links] of Object.entries(r.urls ?? {})) out.set(id, links)
     return out
   },
 
