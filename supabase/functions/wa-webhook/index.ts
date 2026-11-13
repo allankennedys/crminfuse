@@ -29,6 +29,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { putMedia } from '../_shared/media.ts'
+import { avisarMensagemNova } from '../_shared/push.ts'
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -172,6 +173,15 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
     // já chega com o arquivo no lugar.
     if (parsed.media && row?.inserted) {
       medias.push(() => saveMedia(session, row, item, parsed))
+    }
+
+    // Aviso push (app fechado). Só mensagem recente: histórico que chega de
+    // uma vez, ao conectar, não deve disparar dezenas de avisos.
+    if (!fromMe && row?.inserted) {
+      const ts = toDate(item.messageTimestamp)
+      if (!ts || Date.now() - new Date(ts).getTime() < 2 * 60_000) {
+        medias.push(() => avisarMensagemNova(admin, row.conversation_id))
+      }
     }
 
     // Saudação / ausência automáticas (configuradas no atendimento).

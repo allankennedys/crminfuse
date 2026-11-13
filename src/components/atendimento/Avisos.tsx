@@ -50,6 +50,23 @@ export function AvisosAtendimento() {
   const avisados = useRef<Set<string>>(new Set())
   const abrirConversa = useConversaStore((s) => s.abrirConversa)
 
+  // Toque numa notificação push: o service worker abre /?conversa=ID (app
+  // fechado) ou manda um recado (app aberto).
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const id = url.searchParams.get('conversa')
+    if (id) {
+      url.searchParams.delete('conversa')
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+      abrirConversa(id)
+    }
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'abrir-conversa' && typeof e.data.id === 'string') abrirConversa(e.data.id)
+    }
+    navigator.serviceWorker?.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
+  }, [abrirConversa])
+
   // Título da aba: "(2) ..." enquanto há mensagem que ninguém viu.
   useEffect(() => {
     const zera = () => {

@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Bell, BellOff } from 'lucide-react'
 import { Modal } from '@/components/ui'
+import { toast } from '@/store/toastStore'
+import { ativarPush, desativarPush, pushAtivo, pushSuportado } from '@/lib/push'
 import { useAuthStore } from '@/store/authStore'
 import { useAvisosStore } from '@/store/avisosStore'
 import { useConversaStore } from '@/store/conversaStore'
@@ -14,10 +16,33 @@ import { ListaMeusLembretes, useMeusLembretes } from './Lembretes'
  */
 export function CentralAvisos() {
   const userId = useAuthStore((s) => s.profile?.id ?? '')
+  const organizationId = useAuthStore((s) => s.profile?.organization_id ?? '')
   const ligado = useAvisosStore((s) => s.ligado)
   const abrirConversa = useConversaStore((s) => s.abrirConversa)
   const { tasks, load, atrasados } = useMeusLembretes(userId)
   const [aberto, setAberto] = useState(false)
+  // Push (app fechado): neste aparelho.
+  const [pushOn, setPushOn] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  useEffect(() => {
+    if (aberto) pushAtivo().then(setPushOn)
+  }, [aberto])
+
+  const alternarPush = async () => {
+    setPushBusy(true)
+    try {
+      if (pushOn) {
+        await desativarPush()
+        setPushOn(false)
+      } else {
+        const r = await ativarPush(userId, organizationId)
+        if (r.ok) { setPushOn(true); toast.success('Notificações ligadas neste aparelho.') }
+        else toast.error(r.motivo)
+      }
+    } finally {
+      setPushBusy(false)
+    }
+  }
   // Lido a cada abertura: a permissão muda fora da tela, nas opções do navegador.
   const perm = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
 
@@ -55,6 +80,20 @@ export function CentralAvisos() {
                 Permitir notificações do navegador
               </button>
             )}
+          </div>
+
+          <div className="field">
+            <label className="at-toggle">
+              <input type="checkbox" checked={pushOn} disabled={pushBusy} onChange={() => { void alternarPush() }} />
+              <span>
+                <strong>Notificar com o app fechado (neste aparelho)</strong>
+                <span className="text-muted">
+                  {pushSuportado()
+                    ? 'Mensagem nova de cliente e lembrete vencido chegam como notificação, mesmo com o navegador fechado ou o celular bloqueado.'
+                    : 'Este navegador não suporta. No iPhone, instale o app na tela inicial (Compartilhar → Adicionar à Tela de Início) e abra por lá.'}
+                </span>
+              </span>
+            </label>
           </div>
 
           <h3 className="card-title" style={{ margin: '14px 0 8px' }}>Meus lembretes</h3>
