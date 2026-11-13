@@ -5176,3 +5176,23 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 .crm-settings > .crm-tabs .crm-tab { flex-shrink: 0; white-space: nowrap; }
 
 .link-btn { background: none; border: none; padding: 0; color: var(--primary-text); font: inherit; text-decoration: underline; cursor: pointer; }
+
+/* Tour de boas-vindas (151) */
+.tour-root { position: fixed; inset: 0; z-index: 950; }
+.tour-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.62); }
+.tour-spot {
+  position: absolute; border-radius: 10px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62), 0 0 0 2px var(--primary-text);
+  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+.tour-click { position: absolute; inset: 0; }
+.tour-card {
+  position: absolute; z-index: 1; width: min(360px, calc(100vw - 24px));
+  padding: 16px 18px; border-radius: 14px;
+  background: var(--bg-elevated); border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop);
+  color: var(--text);
+}
+.tour-progress { font-size: 11px; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+.tour-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.tour-text { font-size: 13.5px; line-height: 1.55; color: var(--text-secondary); margin-bottom: 14px; }
+.tour-actions { display: flex; align-items: center; gap: 8px; }

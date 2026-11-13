@@ -26,6 +26,8 @@ import { billingService, type MySubscription } from '@/services/billingService'
 import { AssinaturaBanner } from '@/components/billing/AssinaturaBanner'
 import { BloqueioAssinatura } from '@/components/billing/BloqueioAssinatura'
 import { useConfigNav } from '@/store/configNav'
+import { Tour } from '@/components/tour/Tour'
+import { useTour } from '@/store/tourStore'
 import { CentralAvisos } from '@/components/atendimento/CentralAvisos'
 import { LancarVendaDoContato } from '@/components/atendimento/LancarVendaDoContato'
 import { StartConversation } from '@/components/atendimento/StartConversation'
@@ -138,6 +140,17 @@ export function CRMPage() {
     [permissions, isAdmin],
   )
   const [tab, setTab] = useState<TabId>('atendimento')
+  // Tour de boas-vindas: no primeiro acesso do USUÁRIO (vale em qualquer aparelho,
+  // guardado no banco) e quando ele pede para rever em Minha conta.
+  const reverTour = useTour((s) => s.rever)
+  const fecharRever = useTour((s) => s.fechar)
+  const concluirTour = useAuthStore((s) => s.concluirTour)
+  const primeiroAcesso = Boolean(profile) && !profile?.tour_done_at
+  const mostrarTour = (primeiroAcesso || reverTour) && visibleTabs.length > 0 && assinatura?.acesso !== 'bloqueado'
+  const fecharTour = () => {
+    if (primeiroAcesso) void concluirTour()
+    fecharRever()
+  }
   // "Iniciar conversa" pedido de qualquer tela (126): a janela mora aqui e,
   // iniciada a conversa, o Atendimento abre com ela.
   const pedidoConversa = useConversaStore((s) => s.pedido)
@@ -377,6 +390,7 @@ export function CRMPage() {
             <button
               key={id}
               className={`crm-tab${tab === id ? ' active' : ''}`}
+              data-tour={`tab-${id}`}
               onClick={() => setTab(id)}
             >
               <TabIcon size={15} /> {label}
@@ -396,6 +410,15 @@ export function CRMPage() {
           </button>
         </div>
       </header>
+
+      {mostrarTour && (
+        <Tour
+          admin={profile?.role === 'admin'}
+          abasVisiveis={visibleTabs.map((t) => t.id)}
+          abrirAba={(id) => setTab(id as TabId)}
+          onFechar={fecharTour}
+        />
+      )}
 
       {assinatura && (
         <AssinaturaBanner sub={assinatura} onOpenPlano={() => { pedirConfig('plano'); setTab('config') }} />

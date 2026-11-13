@@ -654,6 +654,7 @@ export function ChatThread({
             )
           )}
           <button
+            data-tour="at-cliente"
             className={`btn btn-ghost btn-sm${showClient ? ' btn-active' : ''}`}
             onClick={() => setShowClient((v) => !v)}
             aria-pressed={showClient}
@@ -750,6 +751,7 @@ export function ChatThread({
       ) : (
       <form
         className="at-composer"
+        data-tour="at-composer"
         onSubmit={onSubmit}
         onDragOver={(e) => { if (modo === 'responder' && e.dataTransfer.types.includes('Files')) e.preventDefault() }}
         onDrop={(e) => {

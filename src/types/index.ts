@@ -34,6 +34,8 @@ export interface UserProfile {
   permissions: string[] | null
   is_active: boolean
   created_at: string
+  /** Quando concluiu ou pulou a tour de boas-vindas (151). null = ainda não viu. */
+  tour_done_at?: string | null
 }
 
 export interface WhatsAppSession {

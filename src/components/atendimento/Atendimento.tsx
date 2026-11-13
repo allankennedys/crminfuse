@@ -298,17 +298,17 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
 
   return (
     <div className={`at-shell${selected ? ' at-has-selection' : ''}`}>
-      <aside className="at-list">
+      <aside className="at-list" data-tour="at-lista">
         <div className="at-list-head">
           <div className="at-list-title">
             <span>Conversas</span>
             <div className="flex" style={{ gap: 6 }}>
               {podeConfigurar && (
-                <button className="btn btn-ghost btn-sm" onClick={() => setShowNumeros(true)} title="Números do atendimento">
+                <button className="btn btn-ghost btn-sm" data-tour="at-numeros" onClick={() => setShowNumeros(true)} title="Números do atendimento">
                   <Smartphone size={14} /> Números
                 </button>
               )}
-              <button className="btn btn-primary btn-sm" onClick={() => pedirConversa()} title="Iniciar conversa com um cliente">
+              <button className="btn btn-primary btn-sm" data-tour="at-nova" onClick={() => pedirConversa()} title="Iniciar conversa com um cliente">
                 <MessageCirclePlus size={14} /> Nova
               </button>
             </div>

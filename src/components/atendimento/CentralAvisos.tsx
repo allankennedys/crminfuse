@@ -59,6 +59,7 @@ export function CentralAvisos() {
     <>
       <button
         className="icon-btn at-bell"
+        data-tour="sino"
         onClick={() => { load(); setAberto(true) }}
         title="Avisos e lembretes"
         aria-label={`Avisos e lembretes${atrasados ? `, ${atrasados} vencido(s)` : ''}`}
