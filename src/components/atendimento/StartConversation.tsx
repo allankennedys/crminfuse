@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { MessageCirclePlus, Phone, Search, UserRound } from 'lucide-react'
+import { MessageCirclePlus, Search, UserPlus, UserRound } from 'lucide-react'
 import { Loader, Modal } from '@/components/ui'
 import { toast } from '@/store/toastStore'
 import { atendimentoService, formatPhone } from '@/services/atendimentoService'
@@ -26,6 +26,9 @@ export function StartConversation({ initialContact, onClose, onStarted }: {
   const [termo, setTermo] = useState('')
   const [resultados, setResultados] = useState<ContatoParaConversa[] | null>(null)
   const [busy, setBusy] = useState(false)
+  // Número que não é de nenhum contato: pede o nome e cria o contato ao iniciar.
+  const [criando, setCriando] = useState(false)
+  const [nome, setNome] = useState('')
 
   useEffect(() => {
     atendimentoService.startSessions()
@@ -51,16 +54,28 @@ export function StartConversation({ initialContact, onClose, onStarted }: {
   }, [termo, contato])
 
   const numeroDigitado = !contato && pareceTelefone(termo) ? termo.replace(/\D/g, '') : null
+  // O número já é de um contato da lista? (compara pelos 8 últimos dígitos, que
+  // ignoram o 55 e o 9 a mais.) Enquanto a busca não voltou, não sugere nada.
+  const jaExiste = numeroDigitado !== null && (resultados ?? []).some(
+    (r) => (r.phone ?? '').replace(/\D/g, '').endsWith(numeroDigitado.slice(-8)),
+  )
+  const sugerirCriar = numeroDigitado !== null && resultados !== null && !jaExiste
 
   const iniciar = async (e?: FormEvent) => {
     e?.preventDefault()
     if (!sessionId || (!contato && !numeroDigitado)) return
+    // Enter na busca com um número novo: leva ao passo de criar o contato.
+    if (!contato && !criando) {
+      if (sugerirCriar) { setCriando(true); setNome('') }
+      return
+    }
     setBusy(true)
     try {
       const id = await atendimentoService.startConversation({
         sessionId,
         contactId: contato?.id,
         phone: contato ? undefined : numeroDigitado ?? undefined,
+        name: !contato && nome.trim() ? nome.trim() : undefined,
       })
       onStarted(id)
     } catch (err) {
@@ -91,6 +106,31 @@ export function StartConversation({ initialContact, onClose, onStarted }: {
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setContato(null)}>Trocar</button>
               )}
             </div>
+          ) : criando && numeroDigitado ? (
+            <div className="field">
+              <label htmlFor="sc-novo-nome">Novo contato</label>
+              <div className="sc-escolhido">
+                <UserPlus size={18} />
+                <div>
+                  <strong>{formatPhone(numeroDigitado.length <= 11 ? `55${numeroDigitado}` : numeroDigitado)}</strong>
+                  <span className="text-secondary">ainda não está nos seus contatos</span>
+                </div>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCriando(false)}>Trocar</button>
+              </div>
+              <input
+                id="sc-novo-nome"
+                className="input"
+                style={{ marginTop: 8 }}
+                value={nome}
+                maxLength={100}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Nome do contato (opcional)"
+                autoFocus
+              />
+              <span className="text-muted" style={{ fontSize: 12 }}>
+                O contato é criado ao iniciar a conversa. Sem nome, ele fica com o número até o cliente responder.
+              </span>
+            </div>
           ) : (
             <div className="field">
               <label htmlFor="sc-busca">Cliente</label>
@@ -105,10 +145,12 @@ export function StartConversation({ initialContact, onClose, onStarted }: {
                 <Search size={14} />
               </label>
               <div className="sc-resultados">
-                {numeroDigitado && (
-                  <button type="button" className="sc-item" onClick={() => iniciar()}>
-                    <Phone size={15} />
-                    <span>Conversar com <strong>{formatPhone(numeroDigitado.length <= 11 ? `55${numeroDigitado}` : numeroDigitado)}</strong></span>
+                {sugerirCriar && (
+                  <button type="button" className="sc-item" onClick={() => { setCriando(true); setNome('') }}>
+                    <UserPlus size={15} />
+                    <span>
+                      Criar contato com <strong>{formatPhone(numeroDigitado.length <= 11 ? `55${numeroDigitado}` : numeroDigitado)}</strong> e iniciar conversa
+                    </span>
                   </button>
                 )}
                 {resultados?.map((r) => (
@@ -150,7 +192,7 @@ export function StartConversation({ initialContact, onClose, onStarted }: {
 
           <div className="flex" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={busy || !sessionId || (!contato && !numeroDigitado)}>
+            <button type="submit" className="btn btn-primary" disabled={busy || !sessionId || (!contato && !(criando && numeroDigitado))}>
               {busy ? <span className="spinner" /> : <><MessageCirclePlus size={15} /> Iniciar conversa</>}
             </button>
           </div>

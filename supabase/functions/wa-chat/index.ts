@@ -572,6 +572,8 @@ async function start(userClient: SupabaseClient, userId: string, body: Json) {
     phone = normalizePhone(c.phone)
   } else {
     phone = normalizePhone(String(body?.phone ?? ''))
+    // Número novo digitado: o nome (opcional) vira o nome do contato criado.
+    name = String(body?.name ?? '').trim().slice(0, 100) || null
   }
   if (phone.length < 10 || phone.length > 15) throw new HttpError(400, 'Número de telefone inválido')
 

@@ -481,9 +481,9 @@ export const atendimentoService = {
   },
 
   /** Confere o número no WhatsApp e devolve a conversa (nova ou a que já existe). */
-  async startConversation(p: { sessionId: string; contactId?: string; phone?: string }): Promise<string> {
+  async startConversation(p: { sessionId: string; contactId?: string; phone?: string; name?: string }): Promise<string> {
     const r = await invokeChat<{ conversation_id: string }>({
-      action: 'start', session_id: p.sessionId, contact_id: p.contactId, phone: p.phone,
+      action: 'start', session_id: p.sessionId, contact_id: p.contactId, phone: p.phone, name: p.name,
     })
     return r.conversation_id
   },
