@@ -27,11 +27,11 @@ A 115 (cargo atendente) roda numa execução separada da 116.
 |---|---|---|
 | `evolution` | Números de WhatsApp: criar (nome gerado pelo sistema), QR, status, remover — sempre só os do próprio usuário | sim |
 | `wa-chat` | Atendimento: enviar texto/arquivo, marcar como lida, ligar/desligar número | sim |
-| `wa-webhook` | Recebe as mensagens da Evolution (só conversas individuais) | não |
+| `wa-webhook` | Recebe da Evolution as mensagens (só conversas individuais), os status (entregue/lida) e a conexão do número | não |
 | `admin-users` | Criar e administrar usuários (cargos Admin e Atendente) | sim |
 | `meta-ads` | Relatório de anúncios da Meta | sim |
 | `crm-worker` | Envia as conversões de venda para a Meta (a cada 30 min) | não |
-| `worker` | Atualiza o status dos números conectados (a cada minuto) | não |
+| `worker` | Confere o status dos números a cada 30 min, de reserva — o normal é o status chegar na hora pelo webhook (evento de conexão) | não |
 
 ```bash
 npx supabase functions deploy --project-ref SEU-REF --use-api

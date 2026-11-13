@@ -101,6 +101,8 @@ Deno.serve(async (req) => {
       }
     } else if (event === 'messages.update') {
       await onStatus(session, payload.data)
+    } else if (event === 'connection.update') {
+      await onConnection(session, payload.data)
     }
   } catch (err) {
     logErr(err)
@@ -303,6 +305,25 @@ function parseContent(message: Json, messageType?: string): Parsed | null {
 function vcardPhones(vcard?: string): string {
   if (!vcard) return ''
   return [...vcard.matchAll(/TEL[^:]*:([+\d\s()-]+)/g)].map((x) => x[1].trim()).join(', ')
+}
+
+// ---------------------------------------------------------------------------
+// Conexão do número
+// ---------------------------------------------------------------------------
+
+/**
+ * O número conectou, caiu ou está reconectando: a Evolution avisa na hora.
+ * Mesmos valores do worker (que agora só confere a cada 30 min, de reserva).
+ */
+async function onConnection(session: Session, data: Json) {
+  const state = String(data?.state ?? '')
+  if (!state) return
+  const status = state === 'open' ? 'connected' : state === 'connecting' ? 'connecting' : 'disconnected'
+  const { error } = await admin
+    .from('whatsapp_sessions')
+    .update({ status, last_seen_at: new Date().toISOString() })
+    .eq('id', session.id)
+  if (error) throw error
 }
 
 async function saveMedia(
