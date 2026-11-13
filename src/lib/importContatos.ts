@@ -99,13 +99,15 @@ export function analisar(
   const porCabecalho = sugerirMapa(p.cabecalhos, campos)
   const res: Sugestao[] = p.cabecalhos.map((_, i) => ({ destino: porCabecalho[i], confianca: porCabecalho[i] ? 'alta' : '', motivo: '' }))
 
-  // O cabeçalho diz uma coisa; o conteúdo concorda?
+  // O cabeçalho diz uma coisa; o conteúdo CONTRADIZ? Só pergunta quando contradiz de verdade:
+  // coluna vazia não conta, e nome pelo cabeçalho nunca é questionado (contato sem nome
+  // costuma ter o próprio telefone como nome).
   res.forEach((s, i) => {
     const v = valores(i)
-    if (s.destino === 'telefone' && taxa(v, pareceTelefone) < 0.7) { s.confianca = 'confirmar'; s.motivo = 'Os valores não parecem telefones.' }
-    if (s.destino === 'email' && taxa(v, pareceEmail) < 0.7) { s.confianca = 'confirmar'; s.motivo = 'Os valores não parecem e-mails.' }
-    if (s.destino === 'nome' && taxa(v, pareceNome) < 0.7) { s.confianca = 'confirmar'; s.motivo = 'Os valores não parecem nomes.' }
-    if (s.destino === 'valor' && taxa(v, pareceDinheiro) < 0.7) { s.confianca = 'confirmar'; s.motivo = 'Os valores não parecem dinheiro.' }
+    if (v.every((x) => x.trim() === '')) return
+    if (s.destino === 'telefone' && taxa(v, pareceTelefone) < 0.3) { s.confianca = 'confirmar'; s.motivo = 'Os valores não parecem telefones.' }
+    if (s.destino === 'email' && taxa(v, pareceEmail) < 0.3) { s.confianca = 'confirmar'; s.motivo = 'Os valores não parecem e-mails.' }
+    if (s.destino === 'valor' && taxa(v, pareceDinheiro) < 0.3) { s.confianca = 'confirmar'; s.motivo = 'Os valores não parecem dinheiro.' }
   })
 
   const usado = (d: Destino) => res.some((s) => s.destino === d)
@@ -135,6 +137,9 @@ export function analisar(
 
 export interface Planilha { cabecalhos: string[]; linhas: string[][] }
 
+/** Tira o apóstrofo que a exportação põe antes de + - = @ (proteção contra fórmula). */
+const semApostrofo = (s: string) => s.replace(/^'(?=[=+\-@])/, '')
+
 /** CSV com ';', ',' ou tab; aspas, aspas duplas escapadas e BOM. */
 export function lerCSV(texto: string): Planilha {
   const t = texto.replace(/^﻿/, '')
@@ -161,7 +166,7 @@ export function lerCSV(texto: string): Planilha {
   linha.push(campo)
   if (linha.some((c) => c.trim() !== '')) linhas.push(linha)
   const [cab = [], ...resto] = linhas
-  return { cabecalhos: cab.map((c) => c.trim()), linhas: resto.map((l) => cab.map((_, i) => (l[i] ?? '').trim())) }
+  return { cabecalhos: cab.map((c) => c.trim()), linhas: resto.map((l) => cab.map((_, i) => semApostrofo((l[i] ?? '').trim()))) }
 }
 
 export async function lerArquivo(arquivo: File): Promise<Planilha> {
@@ -171,7 +176,7 @@ export async function lerArquivo(arquivo: File): Promise<Planilha> {
     const linhas = (await readXlsx(arquivo)).map((l) => l.map((c) => (c == null ? '' : c instanceof Date ? c.toISOString().slice(0, 10) : String(c).trim())))
     const cheias = linhas.filter((l) => l.some((c) => c !== ''))
     const [cab = [], ...resto] = cheias
-    return { cabecalhos: cab, linhas: resto.map((l) => cab.map((_, i) => l[i] ?? '')) }
+    return { cabecalhos: cab, linhas: resto.map((l) => cab.map((_, i) => semApostrofo(l[i] ?? ''))) }
   }
   if (nome.endsWith('.xls')) throw new Error('Arquivos .xls antigos não são aceitos. Salve como .xlsx ou CSV.')
   return lerCSV(await arquivo.text())
