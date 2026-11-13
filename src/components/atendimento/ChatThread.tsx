@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRightLeft, Check, CheckCheck, CheckCircle2, Clock, Contact, FileText,
-  Hand, Mic, Paperclip, RotateCcw, Send, X as XIcon,
+  Hand, Mic, Paperclip, Play, RotateCcw, Send, X as XIcon,
 } from 'lucide-react'
 import { useVoiceRecorder } from './useVoiceRecorder'
 import { VoiceComposer } from './VoiceComposer'
+import { MediaViewer, mediaKind, type MediaItem } from './MediaViewer'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { Loader, Modal } from '@/components/ui'
@@ -55,6 +56,9 @@ export function ChatThread({
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [urls, setUrls] = useState<Map<string, string>>(new Map())
+  // Mídia aberta no visualizador (id da mensagem).
+  const [mediaAberta, setMediaAberta] = useState<string | null>(null)
+  const fecharMidia = useCallback(() => setMediaAberta(null), [])
 
   const [text, setText] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -394,6 +398,19 @@ export function ChatThread({
   })()
 
   const name = conversationName(conv)
+
+  // Fotos, vídeos e PDFs da conversa, na ordem: o que o visualizador passa.
+  const galeria: MediaItem[] = timeline.flatMap((it) => {
+    const m = it.m
+    if (!m || m.id.startsWith('tmp-') || m.media_status === 'falhou' || !m.media_path) return []
+    const kind = mediaKind(m)
+    const url = urls.get(m.media_path)
+    if (!kind || !url) return []
+    const author = m.from_me
+      ? (m.sent_by ? names.get(m.sent_by) ?? 'Equipe' : 'Enviada pelo celular')
+      : name
+    return [{ id: m.id, kind, url, name: m.media_name, caption: m.body, at: m.wa_timestamp, author }]
+  })
   const assignedName = conv.assigned_to ? names.get(conv.assigned_to) ?? 'Atendente' : null
   // O responsável atual pode ter perdido a permissão; continua na lista para
   // o seletor não mostrar uma opção errada.
@@ -500,6 +517,7 @@ export function ChatThread({
                     url={item.m.media_path ? urls.get(item.m.media_path) : undefined}
                     author={item.m.from_me ? (item.m.sent_by ? names.get(item.m.sent_by) ?? 'Painel' : 'Celular') : null}
                     onMediaLoad={followIfStuck}
+                    onOpen={mediaKind(item.m) ? () => setMediaAberta(item.m!.id) : undefined}
                     onRetry={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => despachar(item.m!) : undefined}
                     onDiscard={item.m.status === 'failed' && item.m.id.startsWith('tmp-') ? () => descartarPendente(item.m!.id) : undefined}
                   />
@@ -598,6 +616,7 @@ export function ChatThread({
         />
       )}
 
+      {mediaAberta && <MediaViewer items={galeria} startId={mediaAberta} onClose={fecharMidia} />}
       {showTransfer && (
         <TransferDialog
           conversationName={name}
@@ -777,11 +796,13 @@ function Ticks({ status }: { status: WaMessage['status'] }) {
   return <Check size={14} aria-label="Enviada" />
 }
 
-function Bubble({ m, url, author, onMediaLoad, onRetry, onDiscard }: {
+function Bubble({ m, url, author, onMediaLoad, onOpen, onRetry, onDiscard }: {
   m: WaMessage
   url: string | undefined
   author: string | null
   onMediaLoad: () => void
+  /** Foto, vídeo ou PDF: abre no visualizador. */
+  onOpen?: () => void
   /** Só em mensagem que não saiu: tentar de novo / tirar da tela. */
   onRetry?: () => void
   onDiscard?: () => void
@@ -810,22 +831,35 @@ function Bubble({ m, url, author, onMediaLoad, onRetry, onDiscard }: {
       )
     } else if (!url) {
       media = <div className="at-media-missing">Carregando arquivo…</div>
-    } else if (m.type === 'image' || m.type === 'sticker') {
+    } else if (m.type === 'sticker') {
+      media = <img src={url} alt="Figurinha" className="at-sticker" loading="lazy" onLoad={onMediaLoad} />
+    } else if (m.type === 'image') {
       media = (
-        <a href={url} target="_blank" rel="noreferrer">
-          <img
-            src={url}
-            alt={m.type === 'sticker' ? 'Figurinha' : 'Imagem'}
-            className={m.type === 'sticker' ? 'at-sticker' : 'at-img'}
-            loading="lazy"
-            onLoad={onMediaLoad}
-          />
-        </a>
+        <button type="button" className="at-media-btn" onClick={onOpen} aria-label="Abrir imagem">
+          <img src={url} alt="Imagem" className="at-img" loading="lazy" onLoad={onMediaLoad} />
+        </button>
       )
     } else if (m.type === 'video') {
-      media = <video className="at-video" src={url} controls preload="metadata" onLoadedMetadata={onMediaLoad} />
+      // Prévia parada (o 1º quadro, via #t=) com botão de play: o vídeo
+      // toca no visualizador, grande.
+      media = (
+        <button type="button" className="at-media-btn at-video-thumb" onClick={onOpen} aria-label="Abrir vídeo">
+          <video className="at-video" src={`${url}#t=0.1`} preload="metadata" muted playsInline onLoadedMetadata={onMediaLoad} />
+          <span className="at-play-badge" aria-hidden="true"><Play size={22} fill="currentColor" /></span>
+        </button>
+      )
     } else if (m.type === 'audio') {
       media = <audio className="at-audio" src={url} controls preload="metadata" />
+    } else if (onOpen) {
+      // PDF (ou foto/vídeo mandado como documento): abre no visualizador.
+      const pdf = mediaKind(m) === 'pdf'
+      media = (
+        <button type="button" className="at-doc" onClick={onOpen}>
+          <FileText size={18} />
+          <span>{m.media_name ?? 'Documento'}</span>
+          {pdf && <span className="at-doc-tag">PDF</span>}
+        </button>
+      )
     } else {
       media = (
         <a className="at-doc" href={url} target="_blank" rel="noreferrer" download={m.media_name ?? undefined}>
