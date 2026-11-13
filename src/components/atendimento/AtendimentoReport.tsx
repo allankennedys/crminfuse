@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  ArrowRightLeft, CalendarRange, CheckCircle2, Clock, Hourglass, Inbox, MessageCircle, RotateCcw, Timer, Users,
+  ArrowRightLeft, CalendarRange, CheckCircle2, Clock, Hourglass, Inbox, MessageCircle, RotateCcw, Star, Timer, Users,
 } from 'lucide-react'
 import {
   Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -68,6 +68,9 @@ export function AtendimentoReport({ label, range, userId }: { label: string; ran
   const temMovimento = r.abertos > 0 || r.concluidos > 0
   const totalMotivos = data.por_motivo.reduce((s, m) => s + m.total, 0)
   const maxMotivo = Math.max(1, ...data.por_motivo.map((m) => m.total))
+  const av = data.avaliacoes
+  const notaDe = new Map((av?.por_atendente ?? []).map((x) => [x.id, x]))
+  const maxNota = Math.max(1, ...(av?.distribuicao ?? []).map((d) => d.total))
   const agentes = [...data.por_atendente].sort((a, b) => b.atendimentos - a.atendimentos || a.nome.localeCompare(b.nome))
 
   return (
@@ -126,6 +129,22 @@ export function AtendimentoReport({ label, range, userId }: { label: string; ran
           value={r.transferencias.toLocaleString('pt-BR')}
           desc="trocas de responsável no período"
         />
+        {av && (
+          <>
+            <Kpi
+              icon={<Star size={16} />}
+              title="Avaliação média"
+              value={av.media == null ? '—' : av.media.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
+              desc={av.respondidas > 0 ? `de 5, em ${av.respondidas} avaliaç${av.respondidas === 1 ? 'ão' : 'ões'}` : 'nenhuma avaliação no período'}
+            />
+            <Kpi
+              icon={<MessageCircle size={16} />}
+              title="Responderam à avaliação"
+              value={pct(av.respondidas, av.enviadas)}
+              desc={`${av.respondidas} de ${av.enviadas} pedido${av.enviadas === 1 ? '' : 's'} enviado${av.enviadas === 1 ? '' : 's'}`}
+            />
+          </>
+        )}
         <Kpi
           icon={<MessageCircle size={16} />}
           title="Mensagens recebidas"
@@ -213,6 +232,28 @@ export function AtendimentoReport({ label, range, userId }: { label: string; ran
         </div>
       </div>
 
+      {av && av.enviadas > 0 && (
+        <div className="card mb-16">
+          <div className="card-title" style={{ marginBottom: 4 }}><Star size={15} /> Avaliações dos clientes</div>
+          <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 14 }}>
+            Notas de 1 a 5 dos atendimentos concluídos no período. A média da equipe é {av.media == null ? 'indefinida (ninguém avaliou)' : av.media.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}.
+          </p>
+          <div className="at-reason-bars">
+            {[...av.distribuicao].reverse().map((d) => (
+              <div key={d.nota} className="at-reason-bar" title={`${d.nota} estrela${d.nota > 1 ? 's' : ''}: ${d.total}`}>
+                <div className="at-reason-bar-top">
+                  <span>{d.nota} {d.nota === 1 ? 'estrela' : 'estrelas'}</span>
+                  <span className="text-secondary">{d.total} · {pct(d.total, av.respondidas)}</span>
+                </div>
+                <div className="at-reason-bar-track">
+                  <div style={{ width: `${(d.total / maxNota) * 100}%`, background: COR_ABERTOS }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="card mb-16">
         <div className="card-title" style={{ marginBottom: 4 }}><Users size={15} /> Por atendente</div>
         <p className="text-muted" style={{ fontSize: 11.5, marginBottom: 14 }}>
@@ -236,6 +277,7 @@ export function AtendimentoReport({ label, range, userId }: { label: string; ran
                     <ArrowRightLeft size={12} style={{ verticalAlign: '-2px' }} /> Transf. receb. · feitas
                   </th>
                   <th className="at-num">Reaberturas</th>
+                  {av && <th className="at-num" title="Média das notas e quantas avaliações">Avaliação</th>}
                 </tr>
               </thead>
               <tbody>
@@ -255,6 +297,13 @@ export function AtendimentoReport({ label, range, userId }: { label: string; ran
                     <td className="at-num">{a.msgs_enviadas.toLocaleString('pt-BR')}</td>
                     <td className="at-num">{a.transf_recebidas} · {a.transf_feitas}</td>
                     <td className="at-num">{a.reaberturas}</td>
+                    {av && (
+                      <td className="at-num">
+                        {notaDe.get(a.id)?.media != null
+                          ? <>{notaDe.get(a.id)!.media!.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span className="text-muted">({notaDe.get(a.id)!.total})</span></>
+                          : '—'}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

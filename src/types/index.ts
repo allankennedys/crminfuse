@@ -964,6 +964,11 @@ export interface WaSettings {
   max_open_per_agent: number | null
   /** Opções de motivo ao concluir um atendimento (120). */
   conclusion_reasons: string[]
+  /** Pedido de avaliação ao concluir o atendimento (155). */
+  rating_on: boolean
+  rating_text: string | null
+  rating_thanks_text: string | null
+  rating_delay_minutes: number
 }
 
 /** Exceção ao limite padrão (120). max_open null = livre para esta pessoa. */
@@ -1008,6 +1013,28 @@ export interface WaReport {
   por_motivo: { motivo: string; total: number }[]
   por_dia: { dia: string; abertos: number; concluidos: number }[]
   por_hora: { hora: number; abertos: number }[]
+  /** Avaliações dos clientes (155). Ausente se a consulta falhar. */
+  avaliacoes?: WaRatingReport
+}
+
+/** wa_rating_report (155): atendimentos concluídos no período com pedido enviado. */
+export interface WaRatingReport {
+  enviadas: number
+  respondidas: number
+  media: number | null
+  distribuicao: { nota: number; total: number }[]
+  por_atendente: { id: string; media: number | null; total: number; enviadas: number }[]
+}
+
+/** Avaliação de um atendimento (155). score null = ainda sem resposta. */
+export interface WaRating {
+  id: string
+  ticket_id: string
+  agent_id: string | null
+  score: number | null
+  sent_at: string | null
+  answered_at: string | null
+  expires_at: string
 }
 
 export interface WaRoutingRule {
@@ -1025,7 +1052,7 @@ export interface WaRoutingRule {
 export interface WaEvent {
   id: string
   conversation_id: string
-  kind: 'atribuida' | 'transferida' | 'fila' | 'auto' | 'resolvida' | 'reaberta'
+  kind: 'atribuida' | 'transferida' | 'fila' | 'auto' | 'resolvida' | 'reaberta' | 'avaliada'
   from_user: string | null
   to_user: string | null
   by_user: string | null

@@ -960,6 +960,8 @@ function eventText(e: WaEvent, names: Map<string, string>, me: string | undefine
       return `${Who(e.by_user)} concluiu o atendimento`
     case 'reaberta':
       return `${Who(e.by_user)} reabriu o atendimento`
+    case 'avaliada':
+      return `O cliente avaliou o atendimento: ${e.note ?? '?'} de 5`
   }
 }
 

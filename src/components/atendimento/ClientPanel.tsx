@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { CheckCircle2, ExternalLink, Megaphone, Pencil, Receipt, RotateCcw, X as XIcon } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Megaphone, Pencil, Receipt, RotateCcw, Star, X as XIcon } from 'lucide-react'
 import { DateInput, Loader } from '@/components/ui'
 import { LembretesSection } from './Lembretes'
 import { CustomFieldsEditor, formatCustomValue } from '@/components/crm/CustomFields'
@@ -9,7 +9,7 @@ import { useCan } from '@/store/authStore'
 import { atendimentoService, formatPhone } from '@/services/atendimentoService'
 import { PAYMENT_METHODS, formatBRL, paymentLabel } from '@/services/crmService'
 import { nowSPDatetimeLocal, spWallTimeToUtcISO, formatSP } from '@/lib/datetime'
-import type { WaClientCard, WaConversation } from '@/types'
+import type { WaClientCard, WaConversation, WaRating } from '@/types'
 
 /** "1.234,56", "1234,56", "1234.56" ou "R$ 1.234" → centavos. */
 function parseBRL(raw: string): number | null {
@@ -236,6 +236,8 @@ function AttendanceSection({ conv, situacao, conclusao }: {
         <span className={`badge ${situacao.cls}`}>{situacao.label}</span>
       </div>
 
+      {concluida && <AvaliacaoDoAtendimento conversationId={conv.id} />}
+
       {concluida ? (
         <button type="button" className="btn btn-ghost btn-sm" onClick={reabrir} disabled={busy}>
           <RotateCcw size={14} /> Reabrir atendimento
@@ -281,6 +283,42 @@ function AttendanceSection({ conv, situacao, conclusao }: {
         </form>
       )}
     </section>
+  )
+}
+
+/** Nota que o cliente deu ao atendimento concluído (155), ou a situação do pedido. */
+function AvaliacaoDoAtendimento({ conversationId }: { conversationId: string }) {
+  const [r, setR] = useState<WaRating | null | undefined>(undefined)
+
+  useEffect(() => {
+    let vivo = true
+    const carregar = () => { atendimentoService.lastRating(conversationId).then((x) => { if (vivo) setR(x) }).catch(() => { /* segue sem a nota */ }) }
+    carregar()
+    // A nota chega depois da conclusão: enquanto espera, confere de tempos em tempos.
+    const t = setInterval(carregar, 20_000)
+    return () => { vivo = false; clearInterval(t) }
+  }, [conversationId])
+
+  if (!r) return null
+  const expirou = new Date(r.expires_at).getTime() < Date.now()
+  return (
+    <div className="at-rating" aria-label="Avaliação do cliente">
+      <span className="at-rating-label">Avaliação do cliente</span>
+      {r.score != null ? (
+        <span className="at-rating-score" title={`${r.score} de 5`}>
+          <span aria-hidden="true">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Star key={n} size={15} className={n <= r.score! ? 'on' : 'off'} fill={n <= r.score! ? 'currentColor' : 'none'} />
+            ))}
+          </span>
+          <strong>{r.score}</strong><span className="text-muted">de 5</span>
+        </span>
+      ) : r.sent_at ? (
+        <span className="text-muted" style={{ fontSize: 12.5 }}>{expirou ? 'O cliente não respondeu.' : 'Pedido enviado, aguardando a nota.'}</span>
+      ) : (
+        <span className="text-muted" style={{ fontSize: 12.5 }}>Pedido agendado para envio.</span>
+      )}
+    </div>
   )
 }
 
