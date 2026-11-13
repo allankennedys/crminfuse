@@ -104,6 +104,15 @@ export const billingService = {
     return await call('invite', { action: 'accept', ...p })
   },
 
+  /** Cadastro da empresa por quem entrou com o Google (a conta já existe, sem empresa). */
+  async completeGoogleSignup(p: { organization_name: string; full_name: string; doc: string; plan_id: string }): Promise<void> {
+    await call('signup', { action: 'google', ...p })
+  },
+  /** Convite aceito por quem entrou com o Google. */
+  async acceptInviteGoogle(token: string): Promise<void> {
+    await call('invite', { action: 'accept_google', token })
+  },
+
   /** Planos à venda (leitura pública: a tela de cadastro também usa). */
   async listPlans(): Promise<Plan[]> {
     const { data } = await supabase.from('plans').select('*').order('position')

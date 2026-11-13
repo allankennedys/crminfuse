@@ -34,6 +34,8 @@ interface AuthState {
   signIn: (username: string, password: string) => Promise<void>
   /** Login com a conta Google (só entra quem já tem conta com esse e-mail). */
   signInWithGoogle: () => Promise<void>
+  /** Relê o perfil (depois de concluir o cadastro ou aceitar um convite com o Google). */
+  recarregarPerfil: () => Promise<void>
   signOut: () => Promise<void>
   /** Marca a tour de boas-vindas como vista (151). */
   concluirTour: () => Promise<void>
@@ -139,6 +141,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       options: { redirectTo: `${window.location.origin}/login`, queryParams: { prompt: 'select_account' } },
     })
     if (error) throw new Error('Não foi possível entrar com o Google agora.')
+  },
+
+  recarregarPerfil: async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const profile = session ? await fetchProfile(session.user.id) : null
+    const [permissions, organizationName] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile)])
+    set({ session, profile, permissions, organizationName })
   },
 
   concluirTour: async () => {

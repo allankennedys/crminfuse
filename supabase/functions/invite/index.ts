@@ -17,6 +17,7 @@
  * mostrado ao administrador para ele mandar como quiser.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { usuarioGoogle } from '../_shared/google.ts'
 import { acessoDaOrganizacao, MSG_SEM_ACESSO } from '../_shared/assinatura.ts'
 import { enviarEmailMarca, novoCodigo, sha256 } from '../_shared/email.ts'
 
@@ -95,6 +96,7 @@ Deno.serve(async (req) => {
         email,
         password,
         email_confirm: true,
+        app_metadata: { servidor: true },
         user_metadata: { username: email, full_name: fullName },
       })
       if (createErr || !created?.user) {
@@ -128,6 +130,35 @@ Deno.serve(async (req) => {
       }
       await admin.from('invitations').update({ used_by: newId }).eq('id', inv.id)
       return json({ ok: true, email })
+    }
+
+    // Convite aceito por quem entrou com o Google (conta já existe, sem empresa).
+    if (action === 'accept_google') {
+      let gu: Awaited<ReturnType<typeof usuarioGoogle>>
+      try { gu = await usuarioGoogle(req, admin) } catch (e) { throw new HttpError(400, e instanceof Error ? e.message : 'Não autenticado.') }
+      const inv = await convitePorCodigo(String(body?.token ?? ''))
+      if (String(inv.email ?? '').toLowerCase() !== gu.email) {
+        throw new HttpError(400, 'Este convite é para outro e-mail. Entre com a conta Google do e-mail que foi convidado.')
+      }
+      const acesso = await acessoDaOrganizacao(admin, inv.organization_id)
+      if (acesso !== 'total') throw new HttpError(402, 'A assinatura desta empresa não está em dia. Avise o administrador.')
+      const { data: reservado } = await admin
+        .from('invitations').update({ used_at: new Date().toISOString() })
+        .eq('id', inv.id).is('used_at', null).is('revoked_at', null).select('id')
+      if (!reservado?.length) throw new HttpError(410, 'Este convite já foi usado.')
+      const { error: insErr } = await admin.from('users').insert({
+        id: gu.id, organization_id: inv.organization_id, email: gu.email, username: gu.email,
+        full_name: gu.nome || gu.email.split('@')[0], role: inv.role,
+        ...(inv.permissions && inv.role !== 'admin' ? { permissions: inv.permissions } : {}),
+      })
+      if (insErr) {
+        await admin.from('invitations').update({ used_at: null }).eq('id', inv.id)
+        if (/Limite de usuários/.test(insErr.message ?? '')) throw new HttpError(402, 'A empresa atingiu o limite de usuários do plano. Avise o administrador.')
+        console.error('[invite accept_google]', insErr.message)
+        throw new HttpError(500, 'Não foi possível entrar na empresa.')
+      }
+      await admin.from('invitations').update({ used_by: gu.id }).eq('id', inv.id)
+      return json({ ok: true })
     }
 
     // ---------- Administrador ----------
