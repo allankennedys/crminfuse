@@ -117,6 +117,7 @@ export function PlataformaSettings() {
         )}
       </section>
 
+      <TrialSettingsCard />
       <PixSettingsCard />
 
       <section className="card">
@@ -189,5 +190,37 @@ function PlanoEditor({ plan, onSave }: { plan: Plan; onSave: (p: Plan) => void }
       <span className="text-muted" style={{ fontSize: 12 }}>{formatPrice(p.price_cents)}</span>
       <button className="btn btn-primary btn-sm" disabled={!sujo} onClick={() => onSave(p)}>Salvar</button>
     </div>
+  )
+}
+
+/** Dias de teste grátis para contas novas (156). 0 = sem teste: a conta nova aguarda a primeira assinatura. */
+function TrialSettingsCard() {
+  const [dias, setDias] = useState<number | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { billingService.trialDaysOwner().then(setDias).catch(() => setDias(null)) }, [])
+  async function salvar() {
+    if (dias === null) return
+    setBusy(true)
+    try {
+      const d = await billingService.saveTrialDays(dias)
+      setDias(d)
+      toast.success(d === 0 ? 'Teste grátis desativado para contas novas.' : `Contas novas ganham ${d} dias de teste.`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar')
+    } finally { setBusy(false) }
+  }
+  return (
+    <section className="card" style={{ marginTop: 16 }}>
+      <h3 className="card-title">Teste grátis para contas novas</h3>
+      <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 12 }}>
+        Quantos dias de teste uma empresa nova ganha ao se cadastrar. Com <strong>0</strong>, o teste fica desativado: a conta nova só
+        começa a usar depois de escolher e pagar um plano. Quem já está em teste não é afetado.
+      </p>
+      <div className="flex" style={{ alignItems: 'center', gap: 8 }}>
+        <input className="input" style={{ width: 90 }} type="number" min={0} max={90} value={dias ?? ''} onChange={(e) => setDias(Math.min(90, Math.max(0, Number(e.target.value) || 0)))} aria-label="Dias de teste" />
+        <span className="text-muted">dias</span>
+        <button className="btn btn-primary" onClick={salvar} disabled={busy || dias === null}>{busy ? <span className="spinner" /> : 'Salvar'}</button>
+      </div>
+    </section>
   )
 }

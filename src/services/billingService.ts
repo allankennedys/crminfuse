@@ -15,6 +15,12 @@ export interface Plan {
   active?: boolean
 }
 
+/** Dias de teste grátis para contas novas (0 = sem teste). Público: a tela de cadastro usa. */
+export async function trialDays(): Promise<number> {
+  const { data, error } = await supabase.rpc('trial_days')
+  return error ? 7 : Number(data ?? 7)
+}
+
 export type SubscriptionStatus = 'trial' | 'ativa' | 'atrasada' | 'cancelada'
 export type Acesso = 'total' | 'leitura' | 'bloqueado'
 
@@ -23,6 +29,8 @@ export interface MySubscription {
   acesso: Acesso
   courtesy: boolean
   trial_ends_at: string | null
+  /** Conta nova criada com o teste desativado: aguarda a primeira assinatura (156). */
+  no_trial?: boolean
   overdue_since: string | null
   current_period_end: string | null
   plan: Plan
@@ -176,6 +184,12 @@ export const billingService = {
   /** Pix recebido: ativa e estende o período em `months` meses. */
   async registerPayment(organizationId: string, months = 1): Promise<void> {
     await call('platform', { action: 'register_payment', organization_id: organizationId, months })
+  },
+  async trialDaysOwner(): Promise<number> {
+    return (await call<{ days: number }>('platform', { action: 'trial_days' })).days
+  },
+  async saveTrialDays(days: number): Promise<number> {
+    return (await call<{ days: number }>('platform', { action: 'save_trial_days', days })).days
   },
   async pixSettings(): Promise<{ pix_key?: string; pix_holder?: string; pix_contact?: string }> {
     return (await call<{ settings: { pix_key?: string; pix_holder?: string; pix_contact?: string } }>('platform', { action: 'pix_settings' })).settings

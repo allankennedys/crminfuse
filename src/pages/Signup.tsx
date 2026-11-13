@@ -5,7 +5,7 @@ import { GoogleButton } from '@/components/GoogleButton'
 import { useAuthStore } from '@/store/authStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/lib/theme'
-import { billingService, formatPrice, type Plan } from '@/services/billingService'
+import { billingService, formatPrice, trialDays, type Plan } from '@/services/billingService'
 
 /** "12345678000199" → "12.345.678/0001-99"; CPF com 11 dígitos. Só enfeita: o servidor valida. */
 function mascaraDoc(v: string): string {
@@ -27,7 +27,8 @@ export function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => { billingService.listPlans().then(setPlans) }, [])
+  const [dias, setDias] = useState<number | null>(null)
+  useEffect(() => { billingService.listPlans().then(setPlans); void trialDays().then(setDias) }, [])
   const set = (k: keyof typeof f, v: string) => setF((cur) => ({ ...cur, [k]: v }))
 
   async function submit(e: FormEvent) {
@@ -55,15 +56,15 @@ export function SignupPage() {
             <h1 style={{ fontSize: 18, textAlign: 'center', marginBottom: 8 }}>Confirme seu e-mail</h1>
             <p className="text-secondary" style={{ textAlign: 'center', lineHeight: 1.55, marginBottom: 14 }}>
               {enviado.email_sent
-                ? <>Enviamos um link para <strong>{enviado.email}</strong>. Abra-o para ativar a conta e começar o teste grátis. Não chegou? Veja o spam.</>
+                ? <>Enviamos um link para <strong>{enviado.email}</strong>. Abra-o para ativar a conta{dias ? ' e começar o teste grátis' : ' e escolher o seu plano'}. Não chegou? Veja o spam.</>
                 : <>A conta foi criada, mas não conseguimos enviar o e-mail agora. Na tela de entrada, use <strong>Reenviar o e-mail</strong>.</>}
             </p>
             <Link className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} to="/login">Ir para a entrada</Link>
           </>
         ) : (<>
-        <h1 style={{ fontSize: 18, textAlign: 'center', marginBottom: 4 }}>Teste grátis por 7 dias</h1>
+        <h1 style={{ fontSize: 18, textAlign: 'center', marginBottom: 4 }}>{dias ? `Teste grátis por ${dias} dias` : 'Criar conta da empresa'}</h1>
         <p className="text-secondary" style={{ textAlign: 'center', fontSize: 13, marginBottom: 16 }}>
-          Sem cartão. Você escolhe o plano depois, se gostar.
+          {dias ? 'Sem cartão. Você escolhe o plano depois, se gostar.' : 'Depois de confirmar o e-mail, você escolhe o plano e começa a usar.'}
         </p>
 
         {plans.length > 0 && (
@@ -123,7 +124,7 @@ export function SignupPage() {
           {error && <p className="error-text">{error}</p>}
 
           <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} disabled={loading}>
-            {loading ? <span className="spinner" /> : 'Criar conta e começar o teste'}
+            {loading ? <span className="spinner" /> : dias ? 'Criar conta e começar o teste' : 'Criar conta'}
           </button>
         </form>
 

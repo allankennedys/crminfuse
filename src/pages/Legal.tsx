@@ -126,7 +126,7 @@ export function TermosPage() {
 
       <h2>3. Teste, planos e pagamento</h2>
       <ul>
-        <li>O teste grátis dura 7 dias. Depois dele, o uso continua mediante assinatura de um dos planos, com limites de números de WhatsApp e de usuários.</li>
+        <li>Quando houver período de teste grátis, a duração é informada no cadastro. Depois dele, ou se não houver teste, o uso depende da assinatura de um dos planos, com limites de números de WhatsApp e de usuários.</li>
         <li>A cobrança no cartão é recorrente e mensal, por um processador de pagamentos. Outras formas de pagamento são combinadas com o nosso time.</li>
         <li>Em caso de atraso, o acesso passa por avisos, depois modo somente leitura e, por fim, suspensão. Os dados são mantidos para quando o pagamento for regularizado.</li>
         <li>Você pode cancelar a qualquer momento; o cancelamento vale ao fim do período já pago.</li>
