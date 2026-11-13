@@ -5322,3 +5322,14 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 .crm-brand:hover:not(:disabled) { background: var(--surface-hover); }
 .crm-brand:disabled { cursor: default; }
 .crm-brand:focus-visible { outline: 2px solid var(--primary-text); outline-offset: 2px; }
+
+/* Contatos no celular: só nome e telefone na lista; o resto abre no contato. */
+@media (max-width: 720px) {
+  .crm-contacts .table-wrap table { min-width: 0; width: 100%; }
+  .crm-contacts table th:nth-child(3), .crm-contacts table td:nth-child(3),
+  .crm-contacts table th:nth-child(5), .crm-contacts table td:nth-child(5),
+  .crm-contacts table th:nth-child(6), .crm-contacts table td:nth-child(6),
+  .crm-contacts table th:nth-child(7), .crm-contacts table td:nth-child(7) { display: none; }
+  .crm-contacts table td { overflow-wrap: anywhere; }
+  .crm-toolbar select.crm-sort { min-width: 0; width: 100%; }
+}
