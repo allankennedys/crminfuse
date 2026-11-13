@@ -55,6 +55,8 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   const [dataTipo, setDataTipo] = useState<'abertura' | 'conclusao' | 'interacao'>('interacao')
   const [dataDe, setDataDe] = useState('')
   const [dataAte, setDataAte] = useState('')
+  // Números (canais) escolhidos no filtro. Vazio = todos os que a pessoa pode ver.
+  const [numerosFiltro, setNumerosFiltro] = useState<string[]>([])
   const [filtrosAbertos, setFiltrosAbertos] = useState(false)
   const filtrosRef = useRef<HTMLDivElement>(null)
   const [tagOptions, setTagOptions] = useState<string[]>([])
@@ -104,7 +106,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   // atualiza por baixo, em vez de esperar a rede com a lista antiga na tela.
   const cacheRef = useRef<Map<string, { items: WaConversation[]; more: boolean }>>(new Map())
   const keyRef = useRef('')
-  const filtroKey = `${scope}|${status}|${scope === 'todas' ? assignee : ''}|${debouncedSearch}|${tagFiltro}|${compra}|${anuncio}|${dataDe || dataAte ? `${dataTipo}:${dataDe}:${dataAte}` : ''}`
+  const filtroKey = `${scope}|${status}|${scope === 'todas' ? assignee : ''}|${debouncedSearch}|${tagFiltro}|${compra}|${anuncio}|${dataDe || dataAte ? `${dataTipo}:${dataDe}:${dataAte}` : ''}|${numerosFiltro.join(',')}`
   keyRef.current = filtroKey
   useLayoutEffect(() => {
     const cached = cacheRef.current.get(filtroKey)
@@ -125,7 +127,8 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     scope, status, userId, assignee: scope === 'todas' ? assignee || undefined : undefined, search: debouncedSearch,
     tags: tagFiltro ? [tagFiltro] : undefined, compra: compra || undefined, anuncio: anuncio || undefined,
     data: dataDe || dataAte ? { tipo: dataTipo, de: dataDe || undefined, ate: dataAte || undefined } : undefined,
-  }), [scope, status, userId, assignee, debouncedSearch, tagFiltro, compra, anuncio, dataDe, dataAte, dataTipo])
+    sessions: numerosFiltro.length ? numerosFiltro : undefined,
+  }), [scope, status, userId, assignee, debouncedSearch, tagFiltro, compra, anuncio, dataDe, dataAte, dataTipo, numerosFiltro])
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -202,15 +205,15 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
 
   // Aquece as outras abas: a primeira troca também já é instantânea.
   useEffect(() => {
-    if (!userId || debouncedSearch || tagFiltro || compra || anuncio || dataDe || dataAte) return
+    if (!userId || debouncedSearch || tagFiltro || compra || anuncio || dataDe || dataAte || numerosFiltro.length) return
     const outras = (['minhas', 'fila', 'todas'] as WaScope[]).filter((sc) => sc !== scope && (veTudo || sc === 'minhas'))
     outras.forEach((sc) => {
-      const k = `${sc}|${status}||||||`
+      const k = `${sc}|${status}|||||||`
       atendimentoService.listConversations({ scope: sc, status, userId, search: '' }, 0, LIST_PAGE)
         .then((l) => { cacheRef.current.set(k, { items: l, more: l.length === LIST_PAGE }) })
         .catch(() => {})
     })
-  }, [userId, status, veTudo, debouncedSearch, scope, tagFiltro, compra, anuncio, dataDe, dataAte])
+  }, [userId, status, veTudo, debouncedSearch, scope, tagFiltro, compra, anuncio, dataDe, dataAte, numerosFiltro])
 
   // Ao vivo: qualquer mudança visível (mensagem nova, atribuição) recarrega a
   // lista — 300 linhas leves, e assim filtro e ordem nunca saem do lugar.
@@ -282,7 +285,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     setSelectedSnapshot(c)
   }
 
-  const filtrosAtivos = [tagFiltro, compra, anuncio, dataDe || dataAte, scope === 'todas' ? assignee : ''].filter(Boolean).length
+  const filtrosAtivos = [tagFiltro, compra, anuncio, dataDe || dataAte, numerosFiltro.length ? 'n' : '', scope === 'todas' ? assignee : ''].filter(Boolean).length
 
   // Fecha o painel de filtros ao clicar fora ou com Esc.
   useEffect(() => {
@@ -373,6 +376,26 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
             </button>
             {filtrosAbertos && (
               <div className="at-filter-pop" role="group" aria-label="Filtros">
+                {sessions.size > 1 && (
+                  <div className="field">
+                    <label>Números</label>
+                    <div className="at-filter-numeros">
+                      {[...sessions.values()].map((s) => (
+                        <label key={s.id} className="checkbox-row">
+                          <input
+                            type="checkbox"
+                            checked={numerosFiltro.includes(s.id)}
+                            onChange={(e) => setNumerosFiltro((cur) => (e.target.checked ? [...cur, s.id] : cur.filter((x) => x !== s.id)))}
+                          />
+                          <span>{sessionLabel(s)}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <span className="text-muted" style={{ fontSize: 11 }}>
+                      {numerosFiltro.length === 0 ? 'Sem marcar, aparecem os de todos os seus números.' : `${numerosFiltro.length} número(s) escolhido(s).`}
+                    </span>
+                  </div>
+                )}
                 {tagOptions.length > 0 && (
                   <div className="field">
                     <label htmlFor="f-etiqueta">Etiqueta</label>
@@ -429,7 +452,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
-                    onClick={() => { setTagFiltro(''); setCompra(''); setAnuncio(''); setAssignee(''); setDataDe(''); setDataAte('') }}
+                    onClick={() => { setTagFiltro(''); setCompra(''); setAnuncio(''); setAssignee(''); setDataDe(''); setDataAte(''); setNumerosFiltro([]) }}
                   >
                     Limpar filtros
                   </button>
@@ -446,7 +469,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
             <EmptyState
               icon={<MessageCircle />}
               text={
-                (debouncedSearch || tagFiltro || compra || anuncio || dataDe || dataAte) ? 'Nenhuma conversa encontrada.'
+                (debouncedSearch || tagFiltro || compra || anuncio || dataDe || dataAte || numerosFiltro.length) ? 'Nenhuma conversa encontrada.'
                   : scope === 'minhas' ? (status === 'aberta' ? 'Nenhuma conversa atribuída a você.' : 'Nenhum atendimento concluído.')
                   : scope === 'fila' ? 'Fila vazia. Toda conversa tem atendente.'
                   : 'Nenhuma conversa ainda.'

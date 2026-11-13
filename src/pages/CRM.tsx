@@ -18,6 +18,7 @@ import { CrmSettingsPanel } from '@/components/crm/CrmSettings'
 import { CrmReports } from '@/components/crm/CrmReports'
 import { Atendimento } from '@/components/atendimento/Atendimento'
 import { AvisosAtendimento } from '@/components/atendimento/Avisos'
+import { LancarVendaDoContato } from '@/components/atendimento/LancarVendaDoContato'
 import { StartConversation } from '@/components/atendimento/StartConversation'
 import { useConversaStore } from '@/store/conversaStore'
 import logoBranco from '@/assets/favicon.png'
@@ -104,6 +105,7 @@ export function CRMPage() {
       return can(t.perm)
         || (t.id === 'config' && (isAdmin || can('atendimento.configurar')))
         || (t.id === 'atendimento' && can('atendimento.ver_todas'))
+        || (t.id === 'funil' && can('crm.funil.mover'))
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [permissions, isAdmin],
@@ -507,14 +509,21 @@ export function CRMPage() {
         />
       )}
 
-      {launchingSale && stages && (
+      {launchingSale && stages && (can('crm.vendas.editar') ? (
         <SaleDrawer
           stages={stages}
           initialContact={launchingSale === true ? undefined : launchingSale}
           onClose={() => setLaunchingSale(false)}
           onSaved={refresh}
         />
-      )}
+      ) : launchingSale !== true ? (
+        // Sem acesso às vendas do CRM (ex.: Atendente): lança pela conversa dele.
+        <LancarVendaDoContato
+          contact={launchingSale}
+          onClose={() => setLaunchingSale(false)}
+          onSaved={refresh}
+        />
+      ) : null)}
 
       {editingStage !== null && stages && (
         <StageDialog
