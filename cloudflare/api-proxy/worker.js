@@ -44,10 +44,25 @@ export default {
 // Proxy do backend
 // ---------------------------------------------------------------------------
 
+/**
+ * O painel manda o cabeçalho de versão do login como X-Api-Version (sem o
+ * nome do fornecedor — src/lib/supabase.ts); aqui ele volta ao nome que o
+ * backend espera, e na resposta faz o caminho inverso.
+ */
+const VERSAO = 'x-api-version'
+const VERSAO_ORIGINAL = 'x-supabase-api-version'
+
 async function proxy(request, url) {
   const headers = new Headers(request.headers)
   const ip = request.headers.get('cf-connecting-ip')
   if (ip) headers.set('x-forwarded-for', ip)
+  const versao = headers.get(VERSAO)
+  if (versao !== null) {
+    headers.delete(VERSAO)
+    headers.set(VERSAO_ORIGINAL, versao)
+  }
+  const pedidos = headers.get('access-control-request-headers')
+  if (pedidos) headers.set('access-control-request-headers', pedidos.replace(/\bx-api-version\b/gi, VERSAO_ORIGINAL))
 
   const res = await fetch(UPSTREAM + url.pathname + url.search, {
     method: request.method,
@@ -60,6 +75,16 @@ async function proxy(request, url) {
   if (res.status === 101) return res
 
   const out = new Headers(res.headers)
+  const devolvida = out.get(VERSAO_ORIGINAL)
+  if (devolvida !== null) {
+    out.delete(VERSAO_ORIGINAL)
+    out.set(VERSAO, devolvida)
+  }
+  // Listas de CORS citam os cabeçalhos pelo nome: x-supabase-* vira x-*.
+  for (const k of ['access-control-allow-headers', 'access-control-expose-headers']) {
+    const v = out.get(k)
+    if (v) out.set(k, v.replace(/x-supabase-/gi, 'x-'))
+  }
   for (const k of [...out.keys()]) if (OCULTAR.some((r) => r.test(k))) out.delete(k)
   const loc = out.get('location')
   if (loc && loc.startsWith(UPSTREAM)) out.set('location', url.origin + loc.slice(UPSTREAM.length))
