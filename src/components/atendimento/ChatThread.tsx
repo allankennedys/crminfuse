@@ -14,7 +14,7 @@ import { LinkifiedText } from '@/components/LinkifiedText'
 import { toast } from '@/store/toastStore'
 import { confirmDialog } from '@/store/confirmStore'
 import {
-  atendimentoService, conversationName, formatPhone, sessionLabel, type MediaLinks,
+  atendimentoService, conversationName, formatPhone, sessionLabel, type MediaLinks, type UploadedFile,
 } from '@/services/atendimentoService'
 import { formatBytes, formatDayLabel, formatTime, sameDay } from './format'
 import { compressImage } from '@/lib/compressImage'
@@ -118,6 +118,8 @@ export function ChatThread({
   // confirmada chega — pela resposta do envio ou pelo tempo real.
   const [pendentes, setPendentes] = useState<WaMessage[]>([])
   const arquivosPendentes = useRef(new Map<string, File>())
+  // Arquivos que já subiram para o armazenamento mas ainda não foram ao cliente.
+  const jaSubiu = useRef(new Map<string, UploadedFile>())
   const [busy, setBusy] = useState(false)
 
   const listRef = useRef<HTMLDivElement>(null)
@@ -364,13 +366,23 @@ export function ChatThread({
     const arquivo = arquivosPendentes.current.get(temp.id)
     if (!jaMostrada) setPendentes((p) => [...p.filter((x) => x.id !== temp.id), { ...temp, status: 'pending' }])
     stickRef.current = true
+    // Arquivo: sobe uma vez só. Se o envio ao WhatsApp falhar, "Tentar de novo"
+    // reaproveita o que já subiu, sem deixar arquivo sobrando no armazenamento.
     const envio = arquivo
-      ? atendimentoService.sendFile(conv, arquivo, temp.body ?? undefined)
+      ? (async () => {
+          let up = jaSubiu.current.get(temp.id)
+          if (!up) {
+            up = await atendimentoService.uploadFile(conv, arquivo)
+            jaSubiu.current.set(temp.id, up)
+          }
+          return atendimentoService.sendUploaded(conv, up, arquivo.name, temp.body ?? undefined)
+        })()
       : atendimentoService.sendText(conv.id, temp.body ?? '')
     return envio
       .then((msg) => {
         setPendentes((p) => p.filter((x) => x.id !== temp.id))
         arquivosPendentes.current.delete(temp.id)
+        jaSubiu.current.delete(temp.id)
         if (msg) merge(msg)
       })
       .catch((err) => {
@@ -382,6 +394,7 @@ export function ChatThread({
 
   const descartarPendente = (id: string) => {
     arquivosPendentes.current.delete(id)
+    jaSubiu.current.delete(id)
     setPendentes((p) => p.filter((x) => x.id !== id))
   }
 

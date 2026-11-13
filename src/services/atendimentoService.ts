@@ -57,6 +57,9 @@ async function invokeChat<T = unknown>(body: Record<string, unknown>): Promise<T
   return data as T
 }
 
+/** Onde um arquivo enviado ficou guardado (antes de ir ao cliente). */
+export type UploadedFile = { path: string; contentType: string }
+
 /** Links de uma mídia: abrir e baixar. */
 export type MediaLinks = { url: string; download: string }
 
@@ -153,7 +156,12 @@ export const atendimentoService = {
    * Anexo da equipe: o servidor diz para onde subir (R2 ou Storage do
    * Supabase), o navegador sobe direto para lá e então pede o envio.
    */
-  async sendFile(conv: WaConversation, file: File, caption?: string): Promise<WaMessage> {
+  /**
+   * Sobe o arquivo para o armazenamento e devolve onde ficou. Separado do
+   * envio para a nova tentativa (quando o WhatsApp falhou) reaproveitar o que
+   * já subiu em vez de subir de novo e deixar o primeiro sem mensagem.
+   */
+  async uploadFile(conv: WaConversation, file: File): Promise<UploadedFile> {
     const contentType = file.type || 'application/octet-stream'
     const alvo = await invokeChat<{ store: 'r2' | 'supabase'; path: string; url?: string }>({
       action: 'upload_url', conversation_id: conv.id, name: file.name,
@@ -166,17 +174,24 @@ export const atendimentoService = {
       const { error } = await supabase.storage.from(BUCKET).upload(alvo.path, file, { contentType })
       if (error) throw new Error(`Falha ao subir o arquivo: ${error.message}`)
     }
-    const path = alvo.path
+    return { path: alvo.path, contentType }
+  },
 
+  /** Manda ao cliente um arquivo que já está no armazenamento (uploadFile). */
+  async sendUploaded(conv: WaConversation, up: UploadedFile, name: string, caption?: string): Promise<WaMessage> {
     const r = await invokeChat<{ message: WaMessage }>({
       action: 'send_media',
       conversation_id: conv.id,
-      path,
-      mime: contentType,
-      name: file.name,
+      path: up.path,
+      mime: up.contentType,
+      name,
       caption: caption || undefined,
     })
     return r.message
+  },
+
+  async sendFile(conv: WaConversation, file: File, caption?: string): Promise<WaMessage> {
+    return this.sendUploaded(conv, await this.uploadFile(conv, file), file.name, caption)
   },
 
   /** Foto do cliente. force = a imagem não carregou (link expirado). */

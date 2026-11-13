@@ -20,6 +20,8 @@ function initial(): Theme {
 
 function apply(t: Theme) {
   document.documentElement.dataset.theme = t
+  // Cor da barra do sistema (Android) acompanha o tema escolhido.
+  document.getElementById('theme-color')?.setAttribute('content', t === 'light' ? '#f4f5f7' : '#0a0a0b')
 }
 
 export const useTheme = create<{ theme: Theme; toggle: () => void }>((set, get) => {

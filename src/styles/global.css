@@ -5005,3 +5005,94 @@ td.col-acao { width: 44px; text-align: right; }
 
 .at-attach-list { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; max-width: 100%; }
 .at-attach-list .at-attach-card { flex-shrink: 0; max-width: 260px; }
+
+
+/* ============================================================
+   Celular e app instalado (PWA): área útil e toque
+
+   viewport-fit=cover faz a página ocupar a tela inteira, inclusive atrás da
+   barra de status, da ilha dinâmica, do entalhe e do indicador inicial. Por
+   isso tudo que fica na borda soma o env(safe-area-inset-*): nada clicável
+   fica sob essas áreas. Em aparelho sem entalhe os valores são 0 e nada muda.
+   ============================================================ */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+button, a, input, select, textarea, label { touch-action: manipulation; }
+
+.crm-shell {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.auth-page {
+  padding-top: max(24px, env(safe-area-inset-top, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+}
+.auth-theme {
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: calc(16px + env(safe-area-inset-right, 0px));
+}
+.drawer {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.modal-page {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.modal-overlay {
+  padding-top: max(20px, env(safe-area-inset-top, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+}
+.modal {
+  max-height: calc(100dvh - max(20px, env(safe-area-inset-top, 0px)) - max(20px, env(safe-area-inset-bottom, 0px)));
+}
+@media (max-width: 860px) {
+  .modal-overlay {
+    padding-top: max(10px, env(safe-area-inset-top, 0px));
+    padding-right: max(10px, env(safe-area-inset-right, 0px));
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(10px, env(safe-area-inset-left, 0px));
+  }
+  .modal {
+    max-height: calc(100dvh - max(10px, env(safe-area-inset-top, 0px)) - max(10px, env(safe-area-inset-bottom, 0px)));
+  }
+}
+.mv {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.toast-container {
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  width: min(380px, calc(100vw - 40px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+}
+@media (max-width: 1100px) {
+  .at-client {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Toque (celular e tablet): alvos de ~40 px e campos que o iPhone não amplia ao focar. */
+@media (pointer: coarse) {
+  input, select, textarea, .input { font-size: 16px; }
+  .icon-btn { width: 40px; height: 40px; }
+  .btn { min-height: 40px; }
+  .btn-sm { min-height: 36px; }
+  .crm-tab, .at-seg-btn { min-height: 40px; }
+  .at-item { padding-top: 14px; padding-bottom: 14px; }
+  .at-msg-more { width: 28px; height: 24px; }
+  .at-attach-menu button, .at-qr button, .at-msg-menu > button { min-height: 40px; }
+}
