@@ -378,12 +378,19 @@ export function CRMPage() {
   return (
     <div className="crm-shell">
       <header className="topbar crm-topbar">
-        <div className="flex">
-          <img src={theme === 'light' ? logoAzul : logoBranco} alt="Infuse" className="logo-img" style={{ width: 24, height: 24 }} />
+        <button
+          type="button"
+          className="crm-brand"
+          title="Ir para o Atendimento"
+          aria-label={`${organizationName || 'CRM'}: ir para o Atendimento`}
+          disabled={!visibleTabs.some((t) => t.id === 'atendimento')}
+          onClick={() => setTab('atendimento')}
+        >
+          <img src={theme === 'light' ? logoAzul : logoBranco} alt="" className="logo-img" style={{ width: 24, height: 24 }} />
           <span className="topbar-title crm-org-name" title={organizationName ?? undefined}>
             {organizationName || 'CRM'}
           </span>
-        </div>
+        </button>
 
         <nav className="crm-tabs">
           {visibleTabs.map(({ id, label, icon: TabIcon }) => (

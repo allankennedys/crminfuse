@@ -5316,3 +5316,9 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
   th, td { padding: 10px 12px; }
   .report-legend { padding: 10px 12px; }
 }
+
+/* Logo + nome da organização: leva ao Atendimento. */
+.crm-brand { display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 4px 8px; margin: -4px -8px; border-radius: 10px; color: inherit; font: inherit; cursor: pointer; }
+.crm-brand:hover:not(:disabled) { background: var(--surface-hover); }
+.crm-brand:disabled { cursor: default; }
+.crm-brand:focus-visible { outline: 2px solid var(--primary-text); outline-offset: 2px; }
