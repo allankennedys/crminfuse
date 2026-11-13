@@ -9,7 +9,7 @@
 import { supabase, FunctionRegion } from '@/lib/supabase'
 import { addDaysISO, spDayStartISO } from '@/lib/datetime'
 import type {
-  WaAgentLimit, WaAttendant, WaClientCard, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport,
+  WaAgentLimit, WaAttendant, WaNote, WaQuickReply, WaTask, WaClientCard, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport,
   WaRoutingRule, WaSession, WaSettings, WaSourceRule,
 } from '@/types'
 
@@ -212,17 +212,109 @@ export const atendimentoService = {
     return data ?? []
   },
 
+  // ---------- Notas internas (138) ----------
+
+  async listNotes(conversationId: string): Promise<WaNote[]> {
+    const { data, error } = await supabase
+      .from('wa_notes')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at')
+      .returns<WaNote[]>()
+    if (error) throw error
+    return data ?? []
+  },
+
+  async addNote(conversationId: string, body: string): Promise<WaNote> {
+    const { data, error } = await supabase.rpc('wa_add_note', { p_conversation: conversationId, p_body: body })
+    if (error) throw error
+    return data as WaNote
+  },
+
+  // ---------- Respostas rápidas (138) ----------
+
+  async listQuickReplies(): Promise<WaQuickReply[]> {
+    const { data, error } = await supabase
+      .from('wa_quick_replies')
+      .select('id, organization_id, shortcut, body')
+      .order('shortcut')
+      .returns<WaQuickReply[]>()
+    if (error) return []
+    return data ?? []
+  },
+
+  async saveQuickReply(organizationId: string, shortcut: string, body: string, userId: string): Promise<void> {
+    const { error } = await supabase.from('wa_quick_replies').insert({
+      organization_id: organizationId, shortcut, body, created_by: userId,
+    })
+    if (error) {
+      throw new Error(error.code === '23505' ? 'Já existe uma resposta com este atalho.' : error.message)
+    }
+  },
+
+  async deleteQuickReply(id: string): Promise<void> {
+    const { error } = await supabase.from('wa_quick_replies').delete().eq('id', id)
+    if (error) throw error
+  },
+
+  // ---------- Lembretes (138) ----------
+
+  async listTasks(conversationId: string): Promise<WaTask[]> {
+    const { data, error } = await supabase
+      .from('wa_tasks')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('due_at')
+      .returns<WaTask[]>()
+    if (error) throw error
+    return data ?? []
+  },
+
+  /** Meus lembretes em aberto, do mais antigo (vencidos primeiro). */
+  async myTasks(userId: string): Promise<WaTask[]> {
+    const { data, error } = await supabase
+      .from('wa_tasks')
+      .select('*, wa_conversations(push_name, phone, crm_contacts(name))')
+      .eq('assigned_to', userId)
+      .is('done_at', null)
+      .order('due_at')
+      .limit(100)
+      .returns<WaTask[]>()
+    if (error) throw error
+    return data ?? []
+  },
+
+  async createTask(conversationId: string, title: string, dueAt: string, assignee?: string): Promise<WaTask> {
+    const { data, error } = await supabase.rpc('wa_task_create', {
+      p_conversation: conversationId, p_title: title, p_due: dueAt, p_assignee: assignee ?? null,
+    })
+    if (error) throw error
+    return data as WaTask
+  },
+
+  async doneTask(id: string, done = true): Promise<void> {
+    const { error } = await supabase.rpc('wa_task_done', { p_id: id, p_done: done })
+    if (error) throw error
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    const { error } = await supabase.rpc('wa_task_delete', { p_id: id })
+    if (error) throw error
+  },
+
   // ---------- Configuração (119) ----------
 
   /** Sem linha salva = padrão: restrito e manual. */
   async getSettings(organizationId: string): Promise<WaSettings> {
     const { data } = await supabase
       .from('wa_settings')
-      .select('organization_id, restrict_to_assigned, auto_conclude_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons')
+      .select('organization_id, restrict_to_assigned, auto_conclude_hours, auto_greeting_on, auto_greeting_text, auto_away_on, auto_away_text, business_hours, assign_mode, fixed_user, pool, max_open_per_agent, conclusion_reasons')
       .eq('organization_id', organizationId)
       .maybeSingle<WaSettings>()
     return data ?? {
-      organization_id: organizationId, restrict_to_assigned: true, auto_conclude_hours: null, assign_mode: 'manual', fixed_user: null, pool: [],
+      organization_id: organizationId, restrict_to_assigned: true, auto_conclude_hours: null, auto_greeting_on: false, auto_greeting_text: null,
+      auto_away_on: false, auto_away_text: null, business_hours: { days: [1, 2, 3, 4, 5], start: '09:00', end: '18:00' },
+      assign_mode: 'manual', fixed_user: null, pool: [],
       max_open_per_agent: null,
       conclusion_reasons: ['Dúvida resolvida', 'Venda realizada', 'Sem retorno do cliente', 'Encaminhado para outro setor'],
     }

@@ -159,6 +159,11 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
       medias.push(() => saveMedia(session, row, item, parsed))
     }
 
+    // Saudação / ausência automáticas (configuradas no atendimento).
+    if (!fromMe && row?.inserted) {
+      medias.push(() => autoReply(session, row.conversation_id, jids))
+    }
+
     // Foto de perfil: confere de novo depois de 3 dias (o link expira).
     if (!fromMe && row?.inserted) {
       medias.push(() => refreshAvatar(session, row.conversation_id))
@@ -166,6 +171,42 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
   }
 
   return medias
+}
+
+/**
+ * Resposta automática: o banco decide se há texto a enviar (horário, limite
+ * de 1 por rodada) e já marca como enviada; aqui só se envia e se grava a
+ * mensagem como "auto", para não contar como resposta humana.
+ */
+async function autoReply(
+  session: Session,
+  conversationId: string,
+  jids: { pn: string | null; lid: string | null },
+) {
+  const { data: text, error } = await admin.rpc('wa_auto_reply_pick', { p_conversation: conversationId })
+  if (error) throw error
+  if (!text || typeof text !== 'string') return
+
+  const number = jids.pn ? jids.pn.split('@')[0] : jids.lid
+  if (!number) return
+  const res = await evolution(`/message/sendText/${encodeURIComponent(session.instance_name)}`, { number, text })
+  const id = res.data?.key?.id
+  if (!res.ok || !id) throw new Error('falha ao enviar a resposta automática')
+
+  const { error: e2 } = await admin.rpc('wa_ingest_message', {
+    p_session: session.id,
+    p_pn_jid: jids.pn,
+    p_lid_jid: jids.lid,
+    p_push_name: null,
+    p_wa_id: String(id),
+    p_from_me: true,
+    p_type: 'text',
+    p_body: text,
+    p_has_media: false,
+    p_ts: new Date().toISOString(),
+    p_status: 'auto',
+  })
+  if (e2) throw e2
 }
 
 /**

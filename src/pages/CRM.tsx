@@ -17,6 +17,7 @@ import { StageDialog } from '@/components/crm/StageDialog'
 import { CrmSettingsPanel } from '@/components/crm/CrmSettings'
 import { CrmReports } from '@/components/crm/CrmReports'
 import { Atendimento } from '@/components/atendimento/Atendimento'
+import { AvisosAtendimento } from '@/components/atendimento/Avisos'
 import { StartConversation } from '@/components/atendimento/StartConversation'
 import { useConversaStore } from '@/store/conversaStore'
 import logoBranco from '@/assets/favicon.png'
@@ -370,6 +371,8 @@ export function CRMPage() {
           </button>
         </div>
       </header>
+
+      {can('atendimento.ver') && <AvisosAtendimento />}
 
       <main className={tab === 'funil' ? 'crm-main crm-main-board' : tab === 'atendimento' ? 'crm-main crm-main-chat' : 'crm-main'}>
         {tab === 'atendimento' ? (

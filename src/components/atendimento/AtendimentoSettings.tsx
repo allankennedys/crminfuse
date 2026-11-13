@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AutoMessagesCard, QuickRepliesCard } from './AtendimentoAutomaticas'
 import { ArrowDown, ArrowUp, CheckCircle2, Eye, Gauge, Megaphone, Plus, Shuffle, Tag, Trash2, Workflow, X as XIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { Loader } from '@/components/ui'
@@ -261,6 +262,9 @@ export function AtendimentoSettings() {
           </button>
         </div>
       </section>
+
+      <AutoMessagesCard settings={settings} set={set} dirty={dirty} saving={saving} save={save} />
+      <QuickRepliesCard />
 
       <section className="card">
         <h3 className="card-title"><Shuffle size={15} /> Distribuição de conversas novas</h3>

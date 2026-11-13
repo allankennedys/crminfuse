@@ -31,6 +31,11 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
   const [name, setName] = useState(stage?.name ?? '')
   const [color, setColor] = useState(stage?.color ?? STAGE_COLORS[1])
   const [isConversion, setIsConversion] = useState(stage?.is_conversion ?? false)
+  const [isLost, setIsLost] = useState(stage?.is_lost ?? false)
+  const [reasonsText, setReasonsText] = useState('')
+  useEffect(() => {
+    crmService.getLostReasons().then((r) => setReasonsText(r.join('\n'))).catch(() => {})
+  }, [])
   // '' = etapa sem papel na jornada (o meio do funil, que é a maioria).
   // '' = ainda não escolheu; '__none__' = tirar do funil; uuid = mover
   const [moveTo, setMoveTo] = useState('')
@@ -61,6 +66,7 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
           color,
           position: stages.length,
           isConversion,
+          isLost,
         })
         toast.success('Etapa criada')
       } else {
@@ -68,11 +74,16 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
           name: name.trim(),
           color,
           is_conversion: isConversion,
+          is_lost: isLost,
           // Conversão e papel de jornada não convivem: a escada do funil
           // (060) exclui os papéis de saída, e uma etapa de conversão
           // marcada como 'perdido' desapareceria do próprio funil.
         })
         toast.success('Etapa atualizada')
+      }
+      if (isLost) {
+        const lista = [...new Set(reasonsText.split('\n').map((l) => l.trim()).filter(Boolean))].slice(0, 30)
+        if (lista.length) await crmService.saveLostReasons(profile!.organization_id, lista)
       }
       onSaved()
       onClose()
@@ -158,7 +169,7 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
               <input
                 type="checkbox"
                 checked={isConversion}
-                onChange={(e) => setIsConversion(e.target.checked)}
+                onChange={(e) => { setIsConversion(e.target.checked); if (e.target.checked) setIsLost(false) }}
               />
               <span>
                 <Trophy size={13} /> Etapa de conversão
@@ -175,6 +186,33 @@ export function StageDialog({ stage, stages, contactCount, onClose, onSaved }: {
             </p>
           </div>
 
+
+          <div className="field">
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={isLost}
+                onChange={(e) => { setIsLost(e.target.checked); if (e.target.checked) setIsConversion(false) }}
+              />
+              <span>Etapa de perdidos</span>
+            </label>
+            <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
+              Mover um contato para esta etapa pede o motivo da perda, que entra nos relatórios.
+              Não pode ser a etapa de conversão.
+            </p>
+            {isLost && (
+              <>
+                <label htmlFor="lost-reasons" style={{ marginTop: 8, display: 'block' }}>Motivos (um por linha)</label>
+                <textarea
+                  id="lost-reasons"
+                  className="input"
+                  rows={5}
+                  value={reasonsText}
+                  onChange={(e) => setReasonsText(e.target.value)}
+                />
+              </>
+            )}
+          </div>
 
           {!isNew && (
             confirmingDelete ? (

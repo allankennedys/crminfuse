@@ -9,6 +9,9 @@ import {
   atendimentoService, conversationName, sessionLabel, LIST_PAGE, type WaListFilters, type WaScope,
 } from '@/services/atendimentoService'
 import { ChatThread } from './ChatThread'
+import { MeusLembretes } from './Lembretes'
+import { SinoAvisos } from './Avisos'
+import { useAvisosStore } from '@/store/avisosStore'
 import { ClientAvatar } from './ClientAvatar'
 import { NumerosAtendimento } from './NumerosAtendimento'
 import { formatListTime } from './format'
@@ -258,6 +261,22 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     [conversations, selectedId, selectedSnapshot],
   )
 
+  // Conversa em foco: quem a está vendo não precisa de aviso dela.
+  const setAvisoAberta = useAvisosStore((s) => s.setAberta)
+  useEffect(() => {
+    setAvisoAberta(selectedId)
+    return () => setAvisoAberta(null)
+  }, [selectedId, setAvisoAberta])
+
+  const abrirPorId = (id: string) => {
+    atendimentoService.getConversation(id).then((c) => {
+      if (!c) return toast.info('Não encontrei mais essa conversa.')
+      if (c.status !== status) setStatus(c.status)
+      setSelectedId(c.id)
+      setSelectedSnapshot(c)
+    })
+  }
+
   const open = (c: WaConversation) => {
     setSelectedId(c.id)
     setSelectedSnapshot(c)
@@ -290,6 +309,8 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
           <div className="at-list-title">
             <span>Conversas</span>
             <div className="flex" style={{ gap: 6 }}>
+              <SinoAvisos />
+              <MeusLembretes userId={userId} onOpenConversation={abrirPorId} />
               {podeConfigurar && (
                 <button className="btn btn-ghost btn-sm" onClick={() => setShowNumeros(true)} title="Números do atendimento">
                   <Smartphone size={14} /> Números

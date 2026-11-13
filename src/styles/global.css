@@ -4385,6 +4385,41 @@ button.at-doc {
   border-top: 1px solid var(--border);
   background: var(--chat-bg);
 }
+.at-composer { position: relative; }
+.at-mode { display: flex; align-items: center; gap: 4px; }
+.at-mode button {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border: none; border-radius: 12px;
+  background: none; color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer;
+}
+.at-mode button:hover { background: var(--surface-hover); }
+.at-mode button.active { background: var(--surface); color: var(--text); font-weight: 600; }
+.at-mode button.nota.active { background: var(--warning-bg, rgba(245, 180, 0, 0.18)); color: var(--text); }
+.at-mode .qr-open { margin-left: auto; }
+.at-qr {
+  position: absolute; left: 16px; right: 16px; bottom: calc(100% + 4px); z-index: 25;
+  display: flex; flex-direction: column; padding: 6px;
+  background: var(--bg-elevated); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-pop);
+  max-height: 260px; overflow-y: auto;
+}
+.at-qr button {
+  display: flex; gap: 10px; align-items: baseline; text-align: left;
+  padding: 8px 10px; border: none; border-radius: 6px; background: none; color: var(--text);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.at-qr button.active { background: var(--surface-hover); }
+.at-qr strong { flex-shrink: 0; color: var(--primary-text); }
+.at-qr span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.at-note {
+  margin: 10px auto; max-width: 78%;
+  padding: 8px 12px; border-radius: 10px;
+  background: var(--warning-bg, rgba(245, 180, 0, 0.16));
+  border: 1px dashed var(--warning, #e0a800);
+  font-size: 13px;
+}
+.at-note-head { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-secondary); margin-bottom: 3px; }
+.at-note-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 .at-composer-locked {
   flex-direction: row;
   align-items: center;
@@ -4441,6 +4476,12 @@ button.at-doc {
   outline: none;
 }
 .at-input:focus { border-color: var(--primary-text); }
+/* Barra só quando o texto passa da altura máxima (o script liga o overflow),
+   e fina, com a ponta arredondada, para acompanhar a curva do campo. */
+.at-input { overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.at-input::-webkit-scrollbar { width: 6px; }
+.at-input::-webkit-scrollbar-track { background: transparent; margin: 10px 0; }
+.at-input::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 .at-input:disabled { opacity: 0.6; }
 .at-send { width: 42px; height: 42px; padding: 0; justify-content: center; border-radius: 50%; flex: none; }
 .at-attach-chip {
@@ -4872,3 +4913,17 @@ td.col-acao { width: 44px; text-align: right; }
 .at-filter-dates .date-input { flex: 1; min-width: 0; }
 
 .at-list-more { display: flex; justify-content: center; padding: 12px; }
+
+/* Lembretes (138) */
+.at-client-sec-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+.at-client-tasks { display: grid; gap: 6px; }
+.at-task { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--surface); }
+.at-task.late { border-left: 3px solid var(--danger); }
+.at-task.done .at-task-title { text-decoration: line-through; color: var(--text-muted); }
+.at-task-main { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 12px; }
+.at-task-title { font-size: 13px; overflow-wrap: anywhere; }
+.at-task-form { display: grid; gap: 6px; margin-top: 4px; }
+.at-task-when { display: flex; gap: 6px; align-items: center; }
+.at-task-when .date-input { flex: 1; min-width: 0; }
+.at-task-presets { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.at-task-presets .btn-primary { margin-left: auto; }

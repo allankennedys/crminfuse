@@ -12,6 +12,7 @@ import { Plus, GripVertical, Pencil, Trophy, ChevronDown } from 'lucide-react'
 import { crmService, formatBRL, isAdContact, type StageStats } from '@/services/crmService'
 import { toast } from '@/store/toastStore'
 import { ContactCard } from './ContactCard'
+import { LostReasonDialog } from './LostReasonDialog'
 import type { CrmContact, CrmStage, CrmStageAutomation } from '@/types'
 
 /**
@@ -56,6 +57,7 @@ export function Pipeline({
   // depois que onChanged recarrega.
   const [localStages, setLocalStages] = useState(stages)
   const [localContacts, setLocalContacts] = useState(contacts)
+  const [perda, setPerda] = useState<{ contact: CrmContact; stageId: string } | null>(null)
   const [dragging, setDragging] = useState<{ type: 'contact' | 'stage'; id: string } | null>(null)
 
   // Recarga vinda do pai (realtime, edição, novo contato) substitui o local.
@@ -207,6 +209,17 @@ export function Pipeline({
       return
     }
 
+    // ETAPA DE PERDIDOS: o motivo é obrigatório. O arrasto abre a pergunta e só
+    // move depois de confirmada; cancelou, o card fica onde estava.
+    if (localStages.find((s) => s.id === targetStageId)?.is_lost) {
+      setPerda({ contact, stageId: targetStageId })
+      return
+    }
+
+    await moverContato(contact, targetStageId)
+  }
+
+  async function moverContato(contact: CrmContact, targetStageId: string, lostReason?: string) {
     const previous = localContacts
     // Carimba a entrada na etapa AGORA: o card já sobe para o topo da coluna
     // de destino (byRecentInStage), igual ao que o trigger vai gravar. Sem
@@ -214,14 +227,14 @@ export function Pipeline({
     const movedAt = new Date().toISOString()
     setLocalContacts((cur) =>
       cur.map((c) =>
-        c.id === contact.id ? { ...c, stage_id: targetStageId, stage_changed_at: movedAt } : c,
+        c.id === contact.id ? { ...c, stage_id: targetStageId, stage_changed_at: movedAt, lost_reason: lostReason ?? null } : c,
       ),
     )
 
     try {
       // A ordem na coluna vem de stage_changed_at (o trigger carimba no
       // banco), não mais da position — por isso ela vai como 0.
-      await crmService.moveContact(contact.id, targetStageId, 0)
+      await crmService.moveContact(contact.id, targetStageId, 0, lostReason)
       const target = localStages.find((s) => s.id === targetStageId)
       if (target?.is_conversion) {
         // Só anúncio gera evento na Meta: clique de Click-to-WhatsApp,
@@ -277,6 +290,19 @@ export function Pipeline({
           <Plus size={16} /> Nova etapa
         </button>
       </div>
+
+      {perda && (
+        <LostReasonDialog
+          contactName={perda.contact.name}
+          stageName={localStages.find((st) => st.id === perda.stageId)?.name ?? 'Perdidos'}
+          onCancel={() => setPerda(null)}
+          onConfirm={async (motivo) => {
+            const { contact, stageId } = perda
+            setPerda(null)
+            await moverContato(contact, stageId, motivo)
+          }}
+        />
+      )}
 
       {/* Segue o cursor durante o arrasto */}
       <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' }}>
