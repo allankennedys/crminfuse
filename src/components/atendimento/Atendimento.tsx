@@ -43,7 +43,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   }, [profile])
   const veTudo = verTodas || !restricted
 
-  const [scope, setScope] = useState<WaScope>(verTodas ? 'todas' : 'minhas')
+  const [scope, setScope] = useState<WaScope>('minhas')
   const [status, setStatus] = useState<WaConversationStatus>('aberta')
   const [assignee, setAssignee] = useState('')
   const [search, setSearch] = useState('')
