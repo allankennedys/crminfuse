@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { BarChart3, Kanban, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { billingService } from '@/services/billingService'
 import { toast } from '@/store/toastStore'
@@ -68,51 +69,64 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-theme"><ThemeToggle /></div>
-      <div className="auth-card">
-        <div className="sidebar-logo" style={{ justifyContent: 'center', paddingBottom: 28 }}>
-          <img src={theme === 'light' ? '/logo-navy.png' : '/logo.png'} alt="Infuse" className="brand-logo" style={{ height: 38 }} />
+    <div className="login-split">
+      <aside className="login-brand" aria-hidden="false">
+        <img src="/logo.png" alt="Infuse" className="login-brand-logo" />
+        <div className="login-brand-body">
+          <h2>Atendimento e vendas da sua empresa, num só lugar.</h2>
+          <p>Converse com clientes pelo WhatsApp, acompanhe o funil e saiba o que está fechando venda.</p>
+          <ul>
+            <li><MessageCircle size={18} /><span><strong>Atendimento em equipe</strong>Várias pessoas, vários números, cada conversa com um responsável.</span></li>
+            <li><Kanban size={18} /><span><strong>Funil de vendas</strong>Do primeiro contato ao fechamento, com histórico completo.</span></li>
+            <li><BarChart3 size={18} /><span><strong>Relatórios claros</strong>Desempenho por atendente, canal e período.</span></li>
+          </ul>
         </div>
+        <span className="login-brand-foot">© {new Date().getFullYear()} Infuse Software</span>
+      </aside>
 
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <label htmlFor="lg-email">E-mail</label>
-            <input id="lg-email" className="input" type="text" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="voce@empresa.com.br" required />
-          </div>
-          <div className="field">
-            <label>Senha</label>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
-            <div style={{ textAlign: 'right', marginTop: 6, fontSize: 12.5 }}>
-              <Link to="/esqueci-senha">Esqueci minha senha</Link>
+      <main className="login-main">
+        <div className="auth-theme"><ThemeToggle /></div>
+        <div className="login-box">
+          <img src={theme === 'light' ? '/logo-navy.png' : '/logo.png'} alt="Infuse" className="login-mobile-logo" />
+          <h1>Entrar no Infuse CRM</h1>
+          <p className="login-sub">Use o e-mail da sua conta para acessar.</p>
+
+          <GoogleButton label="Continuar com o Google" onClick={entrarComGoogle} />
+          <div className="auth-divisor"><span>ou entre com e-mail</span></div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="field">
+              <label htmlFor="lg-email">E-mail</label>
+              <input id="lg-email" className="input" type="text" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="voce@empresa.com.br" required />
             </div>
-          </div>
+            <div className="field">
+              <div className="login-label-row">
+                <label htmlFor="lg-senha">Senha</label>
+                <Link to="/esqueci-senha" className="login-forgot">Esqueci minha senha</Link>
+              </div>
+              <input id="lg-senha" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+            </div>
 
-          {error && <p className="error-text">{error}</p>}
-          {naoConfirmado && (
-            <p className="error-text" style={{ lineHeight: 1.5 }}>
-              Falta confirmar o seu e-mail. Abra o link que enviamos para você.{' '}
-              <button type="button" className="link-btn" onClick={reenviar}>Reenviar o e-mail</button>
-            </p>
-          )}
+            {error && <p className="error-text">{error}</p>}
+            {naoConfirmado && (
+              <p className="error-text" style={{ lineHeight: 1.5 }}>
+                Falta confirmar o seu e-mail. Abra o link que enviamos para você.{' '}
+                <button type="button" className="link-btn" onClick={reenviar}>Reenviar o e-mail</button>
+              </p>
+            )}
 
-          <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} disabled={loading}>
-            {loading ? <span className="spinner" /> : 'Entrar'}
-          </button>
-        </form>
+            <button className="btn btn-primary login-submit" disabled={loading}>
+              {loading ? <span className="spinner" /> : 'Entrar'}
+            </button>
+          </form>
 
-        <div className="auth-divisor"><span>ou</span></div>
-
-        <div style={{ marginBottom: 10 }}><GoogleButton label="Entrar com o Google" onClick={entrarComGoogle} /></div>
-
-        <Link to="/cadastro" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
-          Criar conta da minha empresa
-        </Link>
-        <p className="text-muted" style={{ textAlign: 'center', marginTop: 8, fontSize: 12.5 }}>Teste grátis por 7 dias, sem cartão.</p>
-        <p className="text-muted" style={{ textAlign: 'center', marginTop: 16, fontSize: 12.5, lineHeight: 1.5 }}>
-          Sua empresa já usa o Infuse? Peça o link de convite a um administrador.
-        </p>
-      </div>
+          <p className="login-signup">
+            Ainda não usa o Infuse? <Link to="/cadastro">Criar conta da minha empresa</Link>
+            <span>Teste grátis por 7 dias, sem cartão.</span>
+          </p>
+          <p className="login-invite">Sua empresa já usa o Infuse? Peça o link de convite a um administrador.</p>
+        </div>
+      </main>
     </div>
   )
 }
