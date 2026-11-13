@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BarChart3, Kanban, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { billingService } from '@/services/billingService'
 import { toast } from '@/store/toastStore'
@@ -69,27 +68,17 @@ export function LoginPage() {
   }
 
   return (
-    <div className="login-split">
-      <aside className="login-brand" aria-hidden="false">
-        <img src="/logo.png" alt="Infuse" className="login-brand-logo" />
-        <div className="login-brand-body">
-          <h2>Atendimento e vendas da sua empresa, num só lugar.</h2>
-          <p>Converse com clientes pelo WhatsApp, acompanhe o funil e saiba o que está fechando venda.</p>
-          <ul>
-            <li><MessageCircle size={18} /><span><strong>Atendimento em equipe</strong>Várias pessoas, vários números, cada conversa com um responsável.</span></li>
-            <li><Kanban size={18} /><span><strong>Funil de vendas</strong>Do primeiro contato ao fechamento, com histórico completo.</span></li>
-            <li><BarChart3 size={18} /><span><strong>Relatórios claros</strong>Desempenho por atendente, canal e período.</span></li>
-          </ul>
-        </div>
-        <span className="login-brand-foot">© {new Date().getFullYear()} Infuse Software</span>
-      </aside>
+    <div className="login6">
+      <header className="login6-top">
+        <img src={theme === 'light' ? '/logo-navy.png' : '/logo.png'} alt="Infuse" />
+        <ThemeToggle />
+      </header>
 
-      <main className="login-main">
-        <div className="auth-theme"><ThemeToggle /></div>
-        <div className="login-box">
-          <img src={theme === 'light' ? '/logo-navy.png' : '/logo.png'} alt="Infuse" className="login-mobile-logo" />
-          <h1>Entrar no Infuse CRM</h1>
-          <p className="login-sub">Use o e-mail da sua conta para acessar.</p>
+      <main className="login6-mid">
+        <div className="login6-box">
+          <span className="login6-bar" aria-hidden="true" />
+          <h1>Entrar<span>.</span></h1>
+          <p className="login6-lead">Atendimento e vendas num só lugar.</p>
 
           <GoogleButton label="Continuar com o Google" onClick={entrarComGoogle} />
           <div className="auth-divisor"><span>ou entre com e-mail</span></div>
@@ -127,6 +116,11 @@ export function LoginPage() {
           <p className="login-invite">Sua empresa já usa o Infuse? Peça o link de convite a um administrador.</p>
         </div>
       </main>
+
+      <footer className="login6-bot">
+        <span>© {new Date().getFullYear()} Infuse Software</span>
+        <span><Link to="/privacidade">Privacidade</Link> · <Link to="/termos">Termos</Link></span>
+      </footer>
     </div>
   )
 }
