@@ -18,6 +18,7 @@
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { usuarioGoogle } from '../_shared/google.ts'
+import { chaveServidor } from '../_shared/servidor.ts'
 import { acessoDaOrganizacao, MSG_SEM_ACESSO } from '../_shared/assinatura.ts'
 import { enviarEmailMarca, novoCodigo, sha256 } from '../_shared/email.ts'
 
@@ -96,8 +97,7 @@ Deno.serve(async (req) => {
         email,
         password,
         email_confirm: true,
-        app_metadata: { servidor: true },
-        user_metadata: { username: email, full_name: fullName },
+        user_metadata: { servidor_key: await chaveServidor(admin), username: email, full_name: fullName },
       })
       if (createErr || !created?.user) {
         await desfazer()

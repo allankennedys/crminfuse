@@ -18,6 +18,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { enviarEmailMarca, novoCodigo, sha256 } from '../_shared/email.ts'
 import { cnpjValido, cpfValido } from '../_shared/doc.ts'
 import { usuarioGoogle } from '../_shared/google.ts'
+import { chaveServidor } from '../_shared/servidor.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -97,8 +98,7 @@ Deno.serve(async (req) => {
       password,
       email_confirm: false,
       // Marca de "criado pelo servidor": o banco recusa cadastro direto sem ela (153).
-      app_metadata: { servidor: true },
-      user_metadata: { username: email, full_name: fullName, organization_name: organizationName },
+      user_metadata: { servidor_key: await chaveServidor(admin), username: email, full_name: fullName, organization_name: organizationName },
     })
     if (createErr || !created?.user) {
       const jaExiste = /already been registered|already exists|duplicate/i.test(createErr?.message ?? '')
