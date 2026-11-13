@@ -7,6 +7,7 @@
  */
 
 import { supabase, FunctionRegion } from '@/lib/supabase'
+import { addDaysISO, spDayStartISO } from '@/lib/datetime'
 import type {
   WaAgentLimit, WaAttendant, WaClientCard, WaConversation, WaConversationStatus, WaEvent, WaMessage, WaReport,
   WaRoutingRule, WaSession, WaSettings, WaSourceRule,
@@ -27,6 +28,8 @@ export interface WaListFilters {
   compra?: 'com' | 'sem'
   /** Veio de anúncio ou não. */
   anuncio?: 'sim' | 'nao'
+  /** Recorte por data (dias "AAAA-MM-DD", inclusivos, em São Paulo). */
+  data?: { tipo: 'abertura' | 'conclusao' | 'interacao'; de?: string; ate?: string }
 }
 
 const BUCKET = 'wa-media'
@@ -57,10 +60,14 @@ export const atendimentoService = {
   async listConversations(f: WaListFilters): Promise<WaConversation[]> {
     // Com filtro de contato, o recorte roda no banco (o atendente sem acesso
     // ao CRM não lê os contatos); sem filtro, leitura direta como sempre.
-    const porContato = Boolean(f.tags?.length || f.compra || f.anuncio)
+    const porData = Boolean(f.data && (f.data.de || f.data.ate))
+    const porContato = Boolean(f.tags?.length || f.compra || f.anuncio || porData)
     const base = porContato
       ? supabase.rpc('wa_conversas_filtradas', {
           p_tags: f.tags?.length ? f.tags : null, p_compra: f.compra ?? null, p_anuncio: f.anuncio ?? null,
+          p_data_tipo: porData ? f.data!.tipo : null,
+          p_de: porData && f.data!.de ? spDayStartISO(f.data!.de) : null,
+          p_ate: porData && f.data!.ate ? spDayStartISO(addDaysISO(f.data!.ate, 1)) : null,
         })
       : supabase.from('wa_conversations')
     let q = base

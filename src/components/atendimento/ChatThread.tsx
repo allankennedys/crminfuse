@@ -599,93 +599,110 @@ export function ChatThread({
         )}
       </div>
 
-      <form className="at-composer" onSubmit={onSubmit}>
-        {file && (
-          <div className="at-attach-chip">
-            <Paperclip size={13} />
-            <span className="at-attach-name">{file.name}</span>
-            <span className="text-muted">{formatBytes(file.size)}</span>
-            <button type="button" className="icon-btn" onClick={() => setFile(null)} aria-label="Remover anexo">
-              <XIcon size={13} />
+      {!conv.assigned_to ? (
+        // Sem atendente não há campo de texto, anexo nem áudio: primeiro
+        // alguém assume a conversa.
+        <div className="at-composer at-composer-locked">
+          <span className="text-muted">
+            {conv.status === 'resolvida'
+              ? 'Atendimento concluído e sem atendente. Assuma a conversa e reabra o atendimento para responder.'
+              : 'Esta conversa está sem atendente. Assuma para responder.'}
+          </span>
+          {canTake && !semNumero && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={take} disabled={busy}>
+              <Hand size={14} /> Assumir
             </button>
-          </div>
-        )}
-        {voice.phase !== 'idle' ? (
-          <VoiceComposer voice={voice} />
-        ) : (
-          <div className="at-composer-row">
-            <div className="at-attach-wrap" ref={anexoRef}>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => setMenuAnexo((v) => !v)}
-                disabled={semNumero}
-                title="Anexar"
-                aria-label="Anexar"
-                aria-haspopup="menu"
-                aria-expanded={menuAnexo}
-              >
-                <Paperclip size={17} />
+          )}
+        </div>
+      ) : (
+      <form className="at-composer" onSubmit={onSubmit}>
+          {file && (
+            <div className="at-attach-chip">
+              <Paperclip size={13} />
+              <span className="at-attach-name">{file.name}</span>
+              <span className="text-muted">{formatBytes(file.size)}</span>
+              <button type="button" className="icon-btn" onClick={() => setFile(null)} aria-label="Remover anexo">
+                <XIcon size={13} />
               </button>
-              {menuAnexo && (
-                <div className="at-attach-menu" role="menu">
-                  <button type="button" role="menuitem" onClick={() => escolherAnexo('image/*,video/*')}>
-                    <ImageIcon size={16} /> Foto ou vídeo
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => escolherAnexo('')}>
-                    <FileText size={16} /> Documento
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => escolherAnexo('audio/*')}>
-                    <Headphones size={16} /> Áudio
-                  </button>
-                </div>
+            </div>
+          )}
+          {voice.phase !== 'idle' ? (
+            <VoiceComposer voice={voice} />
+          ) : (
+            <div className="at-composer-row">
+              <div className="at-attach-wrap" ref={anexoRef}>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => setMenuAnexo((v) => !v)}
+                  disabled={semNumero}
+                  title="Anexar"
+                  aria-label="Anexar"
+                  aria-haspopup="menu"
+                  aria-expanded={menuAnexo}
+                >
+                  <Paperclip size={17} />
+                </button>
+                {menuAnexo && (
+                  <div className="at-attach-menu" role="menu">
+                    <button type="button" role="menuitem" onClick={() => escolherAnexo('image/*,video/*')}>
+                      <ImageIcon size={16} /> Foto ou vídeo
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => escolherAnexo('')}>
+                      <FileText size={16} /> Documento
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => escolherAnexo('audio/*')}>
+                      <Headphones size={16} /> Áudio
+                    </button>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                hidden
+                onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = '' }}
+              />
+              <textarea
+                ref={inputRef}
+                className="at-input"
+                rows={1}
+                value={text}
+                disabled={semNumero}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={onKeyDown}
+                onPaste={(e) => {
+                  const f = e.clipboardData.files?.[0]
+                  if (f) { e.preventDefault(); pickFile(f) }
+                }}
+                placeholder={semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem'}
+                aria-label="Mensagem"
+              />
+              {podeGravar ? (
+                <button
+                  type="button"
+                  className="btn btn-primary at-send"
+                  onClick={voice.start}
+                  disabled={semNumero}
+                  title="Gravar mensagem de voz"
+                  aria-label="Gravar mensagem de voz"
+                >
+                  <Mic size={16} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="btn btn-primary at-send"
+                  disabled={semNumero || (!text.trim() && !file)}
+                  aria-label="Enviar"
+                >
+                  <Send size={16} />
+                </button>
               )}
             </div>
-            <input
-              ref={fileRef}
-              type="file"
-              hidden
-              onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = '' }}
-            />
-            <textarea
-              ref={inputRef}
-              className="at-input"
-              rows={1}
-              value={text}
-              disabled={semNumero}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={onKeyDown}
-              onPaste={(e) => {
-                const f = e.clipboardData.files?.[0]
-                if (f) { e.preventDefault(); pickFile(f) }
-              }}
-              placeholder={semNumero ? 'Conversa só para leitura' : file ? 'Legenda (opcional)' : 'Escreva uma mensagem'}
-              aria-label="Mensagem"
-            />
-            {podeGravar ? (
-              <button
-                type="button"
-                className="btn btn-primary at-send"
-                onClick={voice.start}
-                disabled={semNumero}
-                title="Gravar mensagem de voz"
-                aria-label="Gravar mensagem de voz"
-              >
-                <Mic size={16} />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                className="btn btn-primary at-send"
-                disabled={semNumero || (!text.trim() && !file)}
-                aria-label="Enviar"
-              >
-                <Send size={16} />
-              </button>
-            )}
-          </div>
-        )}
-      </form>
+          )}
+        </form>
+      )}
       {mediaAberta && <MediaViewer items={galeria} startId={mediaAberta} onClose={fecharMidia} />}
       {showTransfer && (
         <TransferDialog

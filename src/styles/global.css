@@ -4378,6 +4378,13 @@ button.at-doc {
   border-top: 1px solid var(--border);
   background: var(--chat-bg);
 }
+.at-composer-locked {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
 .at-composer-row { display: flex; align-items: flex-end; gap: 8px; }
 .at-attach-wrap { position: relative; flex-shrink: 0; display: flex; }
 /* Mesma altura do campo de uma linha e do botão de enviar (42px), para o clipe
@@ -4853,3 +4860,6 @@ td.col-acao { width: 44px; text-align: right; }
 /* Campo de data em dia/mês/ano (ui.tsx > DateInput). */
 .date-input { min-width: 128px; }
 .date-input .input { width: 100%; }
+
+.at-filter-dates { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.at-filter-dates .date-input { flex: 1; min-width: 0; }
