@@ -6,13 +6,14 @@ import {
   crmService, formatBRL, DEFAULT_PAGE_SIZE,
   type ContactSort, type ContactFilters, type ChannelCount, type OrigemCount,
 } from '@/services/crmService'
-import { Loader, EmptyState } from '@/components/ui'
+import { DateInput, Loader, EmptyState } from '@/components/ui'
 import { useDebounced } from '@/hooks/useDebounced'
 import { toast } from '@/store/toastStore'
+import { formatCustomValue } from './CustomFields'
 import { ContactDrawer } from './ContactDrawer'
 import { toCSV, csvMoney, downloadCSV } from '@/lib/csv'
 import { formatSP } from '@/lib/datetime'
-import type { CrmContact, CrmStage } from '@/types'
+import type { CrmContact, CrmCustomField, CrmStage } from '@/types'
 
 /** Valor do seletor de Origem para "campo vazio" — não colide com origem real. */
 const NO_ORIGEM = '__none__'
@@ -42,6 +43,9 @@ export function ContactsTable({ stages, onChanged }: {
   // '' = todas; NO_ORIGEM = campo vazio, a lista de trabalho (Relatórios
   // mostra o resumo; aqui dá para abrir e preencher); outro = aquela origem.
   const [origemFilter, setOrigemFilter] = useState('')
+  // Filtro por campo personalizado (141): qual campo e o valor exato.
+  const [customFieldId, setCustomFieldId] = useState('')
+  const [customValue, setCustomValue] = useState('')
   const noOrigem = origemFilter === NO_ORIGEM
   const [channels, setChannels] = useState<ChannelCount[]>([])
   const [origens, setOrigens] = useState<OrigemCount[]>([])
@@ -94,9 +98,10 @@ export function ContactsTable({ stages, onChanged }: {
       noOrigem: noOrigem || undefined,
       origem: origemFilter && !noOrigem ? origemFilter : undefined,
       sales: convertido ? 'with' : undefined,
+      custom: customFieldId && customValue ? { fieldId: customFieldId, value: customValue } : undefined,
       sort,
     }
-  }, [debouncedSearch, stageFilter, conversionStage, channelFilter, origemFilter, noOrigem, sort])
+  }, [debouncedSearch, stageFilter, conversionStage, channelFilter, origemFilter, noOrigem, sort, customFieldId, customValue])
 
   // `atual` descarta a resposta de uma busca já substituída: sem isso, uma
   // resposta lenta e antiga chegava depois da nova e sobrescrevia a lista.
@@ -133,9 +138,9 @@ export function ContactsTable({ stages, onChanged }: {
 
   // Qualquer mudança de filtro volta para a primeira página, senão o usuário
   // fica numa página que não existe mais no novo resultado.
-  useEffect(() => { setPage(0) }, [debouncedSearch, stageFilter, channelFilter, origemFilter, sort])
+  useEffect(() => { setPage(0) }, [debouncedSearch, stageFilter, channelFilter, origemFilter, sort, customFieldId, customValue])
 
-  const activeFilters = (stageFilter ? 1 : 0) + (channelFilter ? 1 : 0) + (origemFilter ? 1 : 0)
+  const activeFilters = (stageFilter ? 1 : 0) + (channelFilter ? 1 : 0) + (origemFilter ? 1 : 0) + (customFieldId && customValue ? 1 : 0)
   const filtering = !!debouncedSearch.trim() || activeFilters > 0
 
   // Quanto o filtro vendeu, somado no total de vendas de cada contato. Não
@@ -180,6 +185,10 @@ export function ContactsTable({ stages, onChanged }: {
     })
   }
 
+  // Campos personalizados (140) viram colunas extras no fim do arquivo.
+  const [camposExtras, setCamposExtras] = useState<CrmCustomField[]>([])
+  useEffect(() => { crmService.listCustomFields().then(setCamposExtras) }, [])
+
   /** Monta e baixa o arquivo. Uma função só, para os dois caminhos abaixo
       produzirem exatamente as mesmas colunas. */
   function baixar(contatos: CrmContact[]) {
@@ -188,6 +197,7 @@ export function ContactsTable({ stages, onChanged }: {
         'Nome', 'Telefone', 'E-mail', 'Etapa', 'Canal', 'Origem', 'Etiquetas',
         'Total em vendas', 'Nº de vendas',
         'ID da conversa', 'Criado em', 'Última mudança de etapa',
+        ...camposExtras.map((f) => f.name),
       ],
       contatos.map((c) => [
         c.name,
@@ -204,6 +214,7 @@ export function ContactsTable({ stages, onChanged }: {
         c.conversation_id ?? '',
         formatSP(c.created_at),
         formatSP(c.stage_changed_at),
+        ...camposExtras.map((f) => formatCustomValue(f, c.custom?.[f.id])),
       ]),
     )
     // Data no nome para não sobrescrever a exportação da semana passada
@@ -350,10 +361,51 @@ export function ContactsTable({ stages, onChanged }: {
               ))}
             </select>
           </div>
+          {camposExtras.length > 0 && (
+            <div className="field">
+              <label>Campo personalizado</label>
+              <select
+                className="input"
+                value={customFieldId}
+                onChange={(e) => { setCustomFieldId(e.target.value); setCustomValue('') }}
+              >
+                <option value="">Nenhum</option>
+                {camposExtras.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+              {(() => {
+                const f = camposExtras.find((x) => x.id === customFieldId)
+                if (!f) return null
+                if (f.kind === 'lista') {
+                  return (
+                    <select className="input" style={{ marginTop: 6 }} value={customValue} onChange={(e) => setCustomValue(e.target.value)} aria-label={`Valor de ${f.name}`}>
+                      <option value="">Escolha o valor</option>
+                      {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  )
+                }
+                if (f.kind === 'data') {
+                  return <div style={{ marginTop: 6 }}><DateInput value={customValue} onChange={setCustomValue} ariaLabel={`Valor de ${f.name}`} /></div>
+                }
+                return (
+                  <input
+                    className="input"
+                    style={{ marginTop: 6 }}
+                    placeholder={f.kind === 'numero' ? 'Valor exato (ex.: 12.5)' : 'Valor exato'}
+                    value={customValue}
+                    onChange={(e) => {
+                      const v = e.target.value.trim()
+                      setCustomValue(f.kind === 'numero' ? v.replace(',', '.') : v)
+                    }}
+                    aria-label={`Valor de ${f.name}`}
+                  />
+                )
+              })()}
+            </div>
+          )}
           {activeFilters > 0 && (
             <button
               className="btn btn-ghost btn-sm"
-              onClick={() => { setStageFilter(''); setChannelFilter(''); setOrigemFilter('') }}
+              onClick={() => { setStageFilter(''); setChannelFilter(''); setOrigemFilter(''); setCustomFieldId(''); setCustomValue('') }}
             >
               Limpar filtros
             </button>

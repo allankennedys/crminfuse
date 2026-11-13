@@ -9,6 +9,7 @@ import { MoveSalesChannelDialog } from './MoveSalesChannelDialog'
 import { RefundDetailDialog, refundTargetFromDetail } from './RefundDetailDialog'
 import { RefundEditDialog, type RefundTarget } from './RefundEditDialog'
 import { DateInput, Modal } from '../ui'
+import { CustomFieldsEditor } from './CustomFields'
 import {
   canalLabel, channelKey, crmService, formatBRL, hasAdClick, isAdOrigem, parseBRL, paymentLabel,
   PAYMENT_METHODS, STAGE_COLORS,
@@ -20,7 +21,7 @@ import {
   formatSP, nowSPDatetimeLocal, spDatetimeLocal, spWallTimeToUtcISO,
 } from '@/lib/datetime'
 import type {
-  CrmContact, CrmMergeResult, CrmPaymentMethod, CrmSale, CrmStage, CrmStageHistory,
+  CrmContact, CrmCustomField, CrmMergeResult, CrmPaymentMethod, CrmSale, CrmStage, CrmStageHistory,
 } from '@/types'
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -104,6 +105,11 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
 
   // Etiquetas: exibidas e editáveis como chips. Também aparecem no card do kanban.
   const [tags, setTags] = useState<string[]>(contact?.tags ?? [])
+
+  // Campos personalizados (140): definidos pela organização, valores por contato.
+  const [customFields, setCustomFields] = useState<CrmCustomField[]>([])
+  const [custom, setCustom] = useState<Record<string, string>>(contact?.custom ?? {})
+  useEffect(() => { crmService.listCustomFields().then(setCustomFields) }, [])
 
   // Listas dos campos de escolha. Carregadas aqui, e não recebidas por
   // prop, porque o drawer abre de três telas (funil, contatos, relatórios) e
@@ -546,6 +552,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
           sourceId: sourceId.trim(),
           origem: origem.trim(),
           tags,
+          custom,
           description: description.trim(),
         })
 
@@ -593,6 +600,7 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
           sourceId: sourceId.trim(),
           origem: origem.trim(),
           tags,
+          custom,
           description: description.trim(),
           stageId: stageFinal || null,
         })
@@ -805,6 +813,10 @@ export function ContactDrawer({ contact, stages, onClose, onSaved }: {
               placeholder="Ex.: vip, base-antiga"
             />
           </div>
+
+          {customFields.length > 0 && (
+            <CustomFieldsEditor fields={customFields} values={custom} onChange={setCustom} idPrefix="drawer-cf" />
+          )}
 
           <div className="drawer-grid">
             {/* Linha inteira: dividia a linha com o Valor, que saiu. */}

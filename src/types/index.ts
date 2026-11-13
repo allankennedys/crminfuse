@@ -239,6 +239,8 @@ export interface CrmContact {
    */
   ads_inherited_from: string | null
   tags: string[]
+  /** Valores dos campos personalizados: { id do campo: valor em texto } (140). */
+  custom: Record<string, string>
   /**
    * Valor da PRIMEIRA venda, em centavos — é o que vira conversão na Meta e
    * o que os relatórios de conversão somam. Mantido pelo banco quando o
@@ -1022,6 +1024,16 @@ export interface WaEvent {
   created_at: string
 }
 
+/** Campo personalizado do contato, definido pela organização (140). */
+export interface CrmCustomField {
+  id: string
+  name: string
+  kind: 'texto' | 'numero' | 'data' | 'lista'
+  options: string[]
+  /** Aparece no cartão do kanban (141). */
+  show_on_card?: boolean
+}
+
 /** Nota interna da conversa (138): a equipe vê, o cliente não. */
 export interface WaNote {
   id: string
@@ -1075,9 +1087,11 @@ export interface WaClientCard {
     from_ad: boolean
     has_click: boolean
     tags: string[]
+    custom: Record<string, string>
     created_at: string
   } | null
   tag_options: string[]
+  custom_fields: CrmCustomField[]
   ad: { app: string | null; title: string | null; url: string | null; at: string | null } | null
   sales: { id: string; value_cents: number; sold_at: string; payment_method: string | null }[]
   origens: string[]

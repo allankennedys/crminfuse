@@ -1,7 +1,9 @@
+import { useContext } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Phone } from 'lucide-react'
 import { formatBRL } from '@/services/crmService'
+import { CardFieldsContext, formatCustomValue } from './CustomFields'
 import type { CrmContact, CrmStageAutomation } from '@/types'
 
 function daysStalled(stageChangedAt: string): number {
@@ -53,6 +55,7 @@ export function ContactCard({ contact, onOpen, overlay = false, hideStalled = fa
     data: { type: 'contact', stageId: contact.stage_id },
     disabled: overlay,
   })
+  const cardFields = useContext(CardFieldsContext)
   const stalledDays = daysStalled(contact.stage_changed_at)
   const hasRepeat = (contact.sales_count ?? 0) > 1
   const cardValue = hasRepeat ? contact.sales_total_cents : contact.value_cents
@@ -96,6 +99,11 @@ export function ContactCard({ contact, onOpen, overlay = false, hideStalled = fa
       {contact.channel && (
         <p className="kanban-channel">{contact.channel}</p>
       )}
+
+      {cardFields.map((f) => {
+        const v = formatCustomValue(f, contact.custom?.[f.id])
+        return v ? <p key={f.id} className="kanban-custom"><span>{f.name}:</span> {v}</p> : null
+      })}
 
       {!hideStalled && stalledDays >= 3 && (
         <span className={`badge ${stalledDays >= 7 ? 'badge-red' : 'badge-yellow'}`} style={{ marginBottom: 6 }}>

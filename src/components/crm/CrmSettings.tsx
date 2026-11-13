@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { KeyRound, Megaphone, Plus, ShieldCheck, Trash2, Users as UsersIcon, Building2, MessageCircle } from 'lucide-react'
+import { CustomFieldsSettings } from './CustomFields'
 import { AtendimentoSettings } from '@/components/atendimento/AtendimentoSettings'
 import { supabase } from '@/lib/supabase'
 import { crmService } from '@/services/crmService'
@@ -131,6 +132,7 @@ export function CrmSettingsPanel() {
           Só para admin da organização. Usuários "crm_only" nunca são admin,
           então a gestão de acessos não aparece para eles (a aba nem existe). */}
       {tab === 'org' && isAdmin && <OrganizationSection />}
+      {tab === 'org' && isAdmin && <CustomFieldsSettings />}
 
       {tab === 'atendimento' && podeConfigurarAtendimento && <AtendimentoSettings />}
 
