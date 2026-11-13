@@ -156,7 +156,7 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
 
         <div className="plano-usos">
           <Uso icon={<Smartphone size={13} />} label="WhatsApps conectados" usado={sub.uso.whatsapps} max={sub.plan.max_whatsapps} />
-          <Uso icon={<Users size={13} />} label="Atendentes (administradores não contam)" usado={sub.uso.agents} max={sub.plan.max_agents} />
+          <Uso icon={<Users size={13} />} label="Usuários" usado={sub.uso.agents} max={sub.plan.max_agents} />
         </div>
 
         <div className="flex" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -219,7 +219,7 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
                 <strong>{p.name}</strong>
                 <span className="plano-preco">{formatPrice(p.price_cents)}<small>/mês</small></span>
                 <span>{p.max_whatsapps} WhatsApp{p.max_whatsapps > 1 ? 's' : ''}</span>
-                <span>{p.max_agents} atendentes</span>
+                <span>{p.max_agents} usuários</span>
                 <button
                   className={`btn btn-sm ${atual && noCartao ? 'btn-ghost' : 'btn-primary'}`}
                   disabled={(atual && noCartao) || busy !== null || cartaoOk === false}
@@ -235,10 +235,6 @@ export function PlanoCobranca({ sub, onChanged }: { sub: MySubscription; onChang
             )
           })}
         </div>
-        <p className="text-muted" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>
-          Cartão: cobrado automaticamente todo mês, em página segura do Stripe. A primeira cobrança só vem no fim do teste grátis.
-          Pix: você paga todo mês pela chave da empresa e a liberação é manual.
-        </p>
       </section>
     </>
   )

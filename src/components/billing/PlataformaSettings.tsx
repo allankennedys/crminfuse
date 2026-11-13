@@ -95,7 +95,7 @@ export function PlataformaSettings() {
                         <span>Cortesia</span>
                       </label>
                     </td>
-                    <td>{o.uso.whatsapps} núm. · {o.uso.agents} atend.</td>
+                    <td>{o.uso.whatsapps} núm. · {o.uso.agents} usuários</td>
                     <td><span className={`badge ${o.acesso === 'total' ? 'badge-green' : 'badge-yellow'}`}>{o.acesso}</span></td>
                     <td>{o.subscription?.trial_ends_at ? formatSP(o.subscription.trial_ends_at).slice(0, 10) : '—'}</td>
                     <td>
@@ -183,7 +183,7 @@ function PlanoEditor({ plan, onSave }: { plan: Plan; onSave: (p: Plan) => void }
         <input className="input" style={{ width: 110 }} inputMode="numeric" value={p.price_cents} onChange={(e) => setP({ ...p, price_cents: num(e.target.value) })} /></div>
       <div className="field" style={{ margin: 0 }}><label>WhatsApps</label>
         <input className="input" style={{ width: 80 }} inputMode="numeric" value={p.max_whatsapps} onChange={(e) => setP({ ...p, max_whatsapps: num(e.target.value) })} /></div>
-      <div className="field" style={{ margin: 0 }}><label>Atendentes</label>
+      <div className="field" style={{ margin: 0 }}><label>Usuários</label>
         <input className="input" style={{ width: 80 }} inputMode="numeric" value={p.max_agents} onChange={(e) => setP({ ...p, max_agents: num(e.target.value) })} /></div>
       <label className="checkbox-row"><input type="checkbox" checked={p.active !== false} onChange={(e) => setP({ ...p, active: e.target.checked })} /><span>À venda</span></label>
       <span className="text-muted" style={{ fontSize: 12 }}>{formatPrice(p.price_cents)}</span>

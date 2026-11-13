@@ -267,7 +267,7 @@ Deno.serve(async (req) => {
       // Não deixa auth user solto se o vínculo falhou.
       await admin.auth.admin.deleteUser(newId)
       // Limite do plano (gatilho limite_atendentes): a mensagem já é para o usuário.
-      if (/Limite de atendentes/.test(updErr.message ?? '')) return json({ error: updErr.message }, 402)
+      if (/Limite de usuários/.test(updErr.message ?? '')) return json({ error: updErr.message }, 402)
       return json({ error: 'Falha ao vincular o usuário à organização' }, 500)
     }
 

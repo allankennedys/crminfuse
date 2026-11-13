@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
         await admin.auth.admin.deleteUser(newId)
         if (orfa && orfa !== inv.organization_id) await admin.from('organizations').delete().eq('id', orfa)
         await desfazer()
-        if (/Limite de atendentes/.test(updErr.message ?? '')) throw new HttpError(402, 'A empresa atingiu o limite de atendentes do plano. Avise o administrador.')
+        if (/Limite de usuários/.test(updErr.message ?? '')) throw new HttpError(402, 'A empresa atingiu o limite de usuários do plano. Avise o administrador.')
         throw new HttpError(500, 'Não foi possível entrar na empresa.')
       }
 
@@ -198,19 +198,17 @@ Deno.serve(async (req) => {
       const acesso = await acessoDaOrganizacao(admin, org)
       if (acesso !== 'total') throw new HttpError(402, MSG_SEM_ACESSO[acesso] ?? MSG_SEM_ACESSO.bloqueado)
 
-      // Atendente: o limite do plano conta os que já existem e os convites pendentes.
-      if (role === 'atendente') {
-        const { data: ass } = await admin.from('subscriptions').select('plans(max_agents)').eq('organization_id', org).maybeSingle()
-        // deno-lint-ignore no-explicit-any
-        const max = (ass as any)?.plans?.max_agents as number | undefined
-        if (max !== undefined) {
-          const { data: uso } = await admin.rpc('org_uso', { p_org: org })
-          const { count: pend } = await admin.from('invitations').select('id', { count: 'exact', head: true })
-            .eq('organization_id', org).eq('role', 'atendente').is('used_at', null).is('revoked_at', null).gt('expires_at', new Date().toISOString())
-          const total = (uso?.agents ?? 0) + (pend ?? 0)
-          if (total >= max) {
-            throw new HttpError(402, `Limite de atendentes do seu plano atingido (${total} de ${max}, contando convites pendentes). Faça upgrade em Configurações → Plano e cobrança.`)
-          }
+      // O limite do plano conta todos os usuários (administradores inclusive) e os convites pendentes.
+      const { data: ass } = await admin.from('subscriptions').select('plans(max_agents)').eq('organization_id', org).maybeSingle()
+      // deno-lint-ignore no-explicit-any
+      const max = (ass as any)?.plans?.max_agents as number | undefined
+      if (max !== undefined) {
+        const { data: uso } = await admin.rpc('org_uso', { p_org: org })
+        const { count: pend } = await admin.from('invitations').select('id', { count: 'exact', head: true })
+          .eq('organization_id', org).is('used_at', null).is('revoked_at', null).gt('expires_at', new Date().toISOString())
+        const total = (uso?.agents ?? 0) + (pend ?? 0)
+        if (total >= max) {
+          throw new HttpError(402, `Limite de usuários do seu plano atingido (${total} de ${max}, contando convites pendentes). Faça upgrade em Configurações → Plano e cobrança.`)
         }
       }
 
