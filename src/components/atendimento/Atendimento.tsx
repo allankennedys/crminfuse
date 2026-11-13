@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MessageCircle, MessageCirclePlus, Search, Smartphone, X as XIcon } from 'lucide-react'
 import { useConversaStore } from '@/store/conversaStore'
 import { supabase } from '@/lib/supabase'
@@ -87,17 +87,30 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   const selectedIdRef = useRef<string | null>(null)
   selectedIdRef.current = selectedId
 
+  // Cache por filtro: trocar de aba mostra na hora o que já foi visto e
+  // atualiza por baixo, em vez de esperar a rede com a lista antiga na tela.
+  const cacheRef = useRef<Map<string, WaConversation[]>>(new Map())
+  const keyRef = useRef('')
+  const filtroKey = `${scope}|${status}|${scope === 'todas' ? assignee : ''}|${debouncedSearch}`
+  keyRef.current = filtroKey
+  useLayoutEffect(() => {
+    const cached = cacheRef.current.get(filtroKey)
+    if (cached) setConversations(cached)
+    else setConversations(null)
+  }, [filtroKey])
+
   const load = useCallback(async () => {
     if (!userId) return
+    const key = filtroKey
     try {
-      const [list, fila] = await Promise.all([
-        atendimentoService.listConversations({
-          scope, status, userId, assignee: scope === 'todas' ? assignee || undefined : undefined, search: debouncedSearch,
-        }),
-        veTudo ? atendimentoService.queueCount() : Promise.resolve(0),
-      ])
+      if (veTudo) atendimentoService.queueCount().then(setQueueCount)
+      else setQueueCount(0)
+      const list = await atendimentoService.listConversations({
+        scope, status, userId, assignee: scope === 'todas' ? assignee || undefined : undefined, search: debouncedSearch,
+      })
+      cacheRef.current.set(key, list)
+      if (keyRef.current !== key) return // trocou de aba enquanto buscava
       setConversations(list)
-      setQueueCount(fila)
 
       // A conversa aberta sumiu da lista: filtro, ou o usuário perdeu o
       // acesso (foi transferida para outro atendente). No segundo caso fecha.
@@ -121,9 +134,21 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
       toast.error(err instanceof Error ? err.message : 'Falha ao carregar as conversas')
       setConversations((cur) => cur ?? [])
     }
-  }, [scope, status, assignee, debouncedSearch, userId, veTudo])
+  }, [scope, status, assignee, debouncedSearch, userId, veTudo, filtroKey])
 
   useEffect(() => { load() }, [load])
+
+  // Aquece as outras abas: a primeira troca também já é instantânea.
+  useEffect(() => {
+    if (!userId || debouncedSearch) return
+    const outras = (['minhas', 'fila', 'todas'] as WaScope[]).filter((sc) => sc !== scope && (veTudo || sc === 'minhas'))
+    outras.forEach((sc) => {
+      const k = `${sc}|${status}||`
+      atendimentoService.listConversations({ scope: sc, status, userId, search: '' })
+        .then((l) => { cacheRef.current.set(k, l) })
+        .catch(() => {})
+    })
+  }, [userId, status, veTudo, debouncedSearch, scope])
 
   // Ao vivo: qualquer mudança visível (mensagem nova, atribuição) recarrega a
   // lista — 300 linhas leves, e assim filtro e ordem nunca saem do lugar.
