@@ -3,7 +3,7 @@ import { ListFilter, MessageCircle, MessageCirclePlus, Search, Smartphone, X as 
 import { useConversaStore } from '@/store/conversaStore'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore, useCan } from '@/store/authStore'
-import { EmptyState, Loader } from '@/components/ui'
+import { DateInput, EmptyState, Loader } from '@/components/ui'
 import { toast } from '@/store/toastStore'
 import {
   atendimentoService, conversationName, sessionLabel, type WaScope,
@@ -49,6 +49,9 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   const [tagFiltro, setTagFiltro] = useState('')
   const [compra, setCompra] = useState<'' | 'com' | 'sem'>('')
   const [anuncio, setAnuncio] = useState<'' | 'sim' | 'nao'>('')
+  const [dataTipo, setDataTipo] = useState<'abertura' | 'conclusao' | 'interacao'>('interacao')
+  const [dataDe, setDataDe] = useState('')
+  const [dataAte, setDataAte] = useState('')
   const [filtrosAbertos, setFiltrosAbertos] = useState(false)
   const filtrosRef = useRef<HTMLDivElement>(null)
   const [tagOptions, setTagOptions] = useState<string[]>([])
@@ -98,7 +101,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
   // atualiza por baixo, em vez de esperar a rede com a lista antiga na tela.
   const cacheRef = useRef<Map<string, WaConversation[]>>(new Map())
   const keyRef = useRef('')
-  const filtroKey = `${scope}|${status}|${scope === 'todas' ? assignee : ''}|${debouncedSearch}|${tagFiltro}|${compra}|${anuncio}`
+  const filtroKey = `${scope}|${status}|${scope === 'todas' ? assignee : ''}|${debouncedSearch}|${tagFiltro}|${compra}|${anuncio}|${dataDe || dataAte ? `${dataTipo}:${dataDe}:${dataAte}` : ''}`
   keyRef.current = filtroKey
   useLayoutEffect(() => {
     const cached = cacheRef.current.get(filtroKey)
@@ -115,6 +118,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
       const list = await atendimentoService.listConversations({
         scope, status, userId, assignee: scope === 'todas' ? assignee || undefined : undefined, search: debouncedSearch,
         tags: tagFiltro ? [tagFiltro] : undefined, compra: compra || undefined, anuncio: anuncio || undefined,
+        data: dataDe || dataAte ? { tipo: dataTipo, de: dataDe || undefined, ate: dataAte || undefined } : undefined,
       })
       cacheRef.current.set(key, list)
       if (keyRef.current !== key) return // trocou de aba enquanto buscava
@@ -148,15 +152,15 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
 
   // Aquece as outras abas: a primeira troca também já é instantânea.
   useEffect(() => {
-    if (!userId || debouncedSearch || tagFiltro || compra || anuncio) return
+    if (!userId || debouncedSearch || tagFiltro || compra || anuncio || dataDe || dataAte) return
     const outras = (['minhas', 'fila', 'todas'] as WaScope[]).filter((sc) => sc !== scope && (veTudo || sc === 'minhas'))
     outras.forEach((sc) => {
-      const k = `${sc}|${status}|||||`
+      const k = `${sc}|${status}||||||`
       atendimentoService.listConversations({ scope: sc, status, userId, search: '' })
         .then((l) => { cacheRef.current.set(k, l) })
         .catch(() => {})
     })
-  }, [userId, status, veTudo, debouncedSearch, scope, tagFiltro, compra, anuncio])
+  }, [userId, status, veTudo, debouncedSearch, scope, tagFiltro, compra, anuncio, dataDe, dataAte])
 
   // Ao vivo: qualquer mudança visível (mensagem nova, atribuição) recarrega a
   // lista — 300 linhas leves, e assim filtro e ordem nunca saem do lugar.
@@ -212,7 +216,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     setSelectedSnapshot(c)
   }
 
-  const filtrosAtivos = [tagFiltro, compra, anuncio, scope === 'todas' ? assignee : ''].filter(Boolean).length
+  const filtrosAtivos = [tagFiltro, compra, anuncio, dataDe || dataAte, scope === 'todas' ? assignee : ''].filter(Boolean).length
 
   // Fecha o painel de filtros ao clicar fora ou com Esc.
   useEffect(() => {
@@ -326,6 +330,24 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
                     <option value="nao">Não veio de anúncio</option>
                   </select>
                 </div>
+                <div className="field">
+                  <label htmlFor="f-data-tipo">Data do atendimento</label>
+                  <select id="f-data-tipo" className="input" value={dataTipo} onChange={(e) => setDataTipo(e.target.value as 'abertura' | 'conclusao' | 'interacao')}>
+                    <option value="interacao">Última interação</option>
+                    <option value="abertura">Abertura</option>
+                    <option value="conclusao">Conclusão</option>
+                  </select>
+                  <div className="at-filter-dates">
+                    <DateInput value={dataDe} max={dataAte || undefined} onChange={setDataDe} ariaLabel="Data inicial" />
+                    <span className="text-muted">até</span>
+                    <DateInput value={dataAte} min={dataDe || undefined} onChange={setDataAte} ariaLabel="Data final" />
+                  </div>
+                  {dataTipo === 'conclusao' && status === 'aberta' && (dataDe || dataAte) && (
+                    <span className="text-muted" style={{ fontSize: 11 }}>
+                      Atendimento concluído aparece em "Concluídas": troque a situação acima.
+                    </span>
+                  )}
+                </div>
                 {veTudo && scope === 'todas' && attendants.length > 0 && (
                   <div className="field">
                     <label htmlFor="f-atendente">Atendente</label>
@@ -339,7 +361,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
-                    onClick={() => { setTagFiltro(''); setCompra(''); setAnuncio(''); setAssignee('') }}
+                    onClick={() => { setTagFiltro(''); setCompra(''); setAnuncio(''); setAssignee(''); setDataDe(''); setDataAte('') }}
                   >
                     Limpar filtros
                   </button>
@@ -356,7 +378,7 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
             <EmptyState
               icon={<MessageCircle />}
               text={
-                (debouncedSearch || tagFiltro || compra || anuncio) ? 'Nenhuma conversa encontrada.'
+                (debouncedSearch || tagFiltro || compra || anuncio || dataDe || dataAte) ? 'Nenhuma conversa encontrada.'
                   : scope === 'minhas' ? (status === 'aberta' ? 'Nenhuma conversa atribuída a você.' : 'Nenhum atendimento concluído.')
                   : scope === 'fila' ? 'Fila vazia. Toda conversa tem atendente.'
                   : 'Nenhuma conversa ainda.'
