@@ -129,8 +129,8 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
   const [pwError, setPwError] = useState('')
 
   const refresh = useCallback(() => {
-    supabase.from('users').select('*').order('created_at').returns<UserProfile[]>()
-      .then(({ data }) => setUsers(data ?? []))
+    supabase.rpc('org_members')
+      .then(({ data }) => setUsers((data as UserProfile[] | null) ?? []))
   }, [])
 
   // Só o dono vê a lista global (todas as organizações), via Edge Function.
@@ -274,7 +274,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       setDeactTarget(user)
       return
     }
-    await supabase.from('users').update({ is_active: true }).eq('id', user.id)
+    await supabase.rpc('update_member', { p_user: user.id, p_active: true })
     refresh()
   }
 
@@ -289,7 +289,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
       })
       if (fnError) throw new Error(fnErrorMessage(fnError))
       if (data?.error) throw new Error(String(data.error))
-      const { error: upErr } = await supabase.from('users').update({ is_active: false }).eq('id', deactTarget.id)
+      const { error: upErr } = await supabase.rpc('update_member', { p_user: deactTarget.id, p_active: false })
       if (upErr) throw new Error('Não foi possível desativar o usuário.')
       setDeactTarget(null)
       refresh()
@@ -326,7 +326,7 @@ export function UserAccess({ crm = false }: { crm?: boolean } = {}) {
   }
 
   async function handleChangeRole(user: UserProfile, role: UserRole) {
-    await supabase.from('users').update({ role }).eq('id', user.id)
+    await supabase.rpc('update_member', { p_user: user.id, p_role: role })
     refresh()
   }
 

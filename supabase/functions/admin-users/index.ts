@@ -147,7 +147,10 @@ Deno.serve(async (req) => {
         return json({ error: 'A conta do dono da plataforma não pode ser excluída.' }, 403)
       }
 
-      const crossOrg = target.organization_id !== profile.organization_id
+      // Membro desta empresa (mesmo que esteja ativo em outra): sair daqui não apaga a conta se ele tem outras empresas.
+      const { data: vinculo } = await adminDel
+        .from('memberships').select('user_id').eq('user_id', targetId).eq('organization_id', profile.organization_id).maybeSingle()
+      const crossOrg = !vinculo && target.organization_id !== profile.organization_id
       if (crossOrg && !isOwner) {
         return json({ error: 'Sem permissão para excluir usuários de outra organização.' }, 403)
       }
@@ -155,6 +158,11 @@ Deno.serve(async (req) => {
       if (body?.mode) {
         const r = await reassign(targetId, body.mode, body.to)
         if (r.error) return json({ error: r.error }, r.status ?? 400)
+      }
+
+      if (vinculo) {
+        const { data: restou } = await adminDel.rpc('remover_vinculo', { p_user: targetId, p_org: profile.organization_id })
+        if (restou) return json({ ok: true })
       }
 
       const { error: delErr } = await adminDel.auth.admin.deleteUser(targetId)
@@ -209,6 +217,13 @@ Deno.serve(async (req) => {
       const crossOrg = target.organization_id !== profile.organization_id
       if (crossOrg && !isOwner) {
         return json({ error: 'Sem permissão para alterar a senha de usuários de outra organização.' }, 403)
+      }
+
+      // Quem participa de mais de uma empresa tem a mesma senha em todas: um admin não pode
+      // redefini-la (daria acesso às outras empresas). A própria pessoa usa "Esqueci minha senha".
+      const { count: nEmpresas } = await adminPw.from('memberships').select('user_id', { count: 'exact', head: true }).eq('user_id', targetId)
+      if ((nEmpresas ?? 0) > 1 && !isOwner) {
+        return json({ error: 'Esta pessoa participa de outras empresas. Ela mesma precisa redefinir a senha ("Esqueci minha senha").' }, 403)
       }
 
       const { error: pwErr } = await adminPw.auth.admin.updateUserById(targetId, { password: newPassword })
