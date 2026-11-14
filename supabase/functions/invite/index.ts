@@ -68,7 +68,11 @@ Deno.serve(async (req) => {
       const inv = await convitePorCodigo(String(body?.token ?? ''))
       // deno-lint-ignore no-explicit-any
       const org = (inv as any).organizations
-      return json({ organization: (Array.isArray(org) ? org[0]?.name : org?.name) ?? '', role: inv.role, email: inv.email })
+      // A tela usa isto para pedir "entre para aceitar" a quem já tem conta (em vez de pedir senha nova).
+      const { data: conta } = inv.email
+        ? await admin.from('users').select('id').ilike('email', String(inv.email)).maybeSingle()
+        : { data: null }
+      return json({ organization: (Array.isArray(org) ? org[0]?.name : org?.name) ?? '', role: inv.role, email: inv.email, has_account: !!conta })
     }
 
     if (action === 'accept') {
@@ -102,7 +106,7 @@ Deno.serve(async (req) => {
       if (createErr || !created?.user) {
         await desfazer()
         const jaExiste = /already been registered|already exists|duplicate/i.test(createErr?.message ?? '')
-        throw new HttpError(400, jaExiste ? 'Este e-mail já tem uma conta. Entre com ela, ou peça um convite para outro e-mail.' : 'Não foi possível criar a conta.')
+        throw new HttpError(400, jaExiste ? 'Este e-mail já tem uma conta. Entre com ela e aceite o convite pelo mesmo link.' : 'Não foi possível criar a conta.')
       }
       const newId = created.user.id
 
@@ -130,6 +134,40 @@ Deno.serve(async (req) => {
       }
       await admin.from('invitations').update({ used_by: newId }).eq('id', inv.id)
       return json({ ok: true, email })
+    }
+
+    // Convite aceito por quem JÁ TEM conta e empresa (e-mail ou Google): entra como mais um vínculo,
+    // com o papel do convite. A pessoa continua nas outras empresas e alterna pelo seletor.
+    if (action === 'accept_existing') {
+      const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
+      const { data: { user: caller } } = jwt ? await admin.auth.getUser(jwt) : { data: { user: null } }
+      if (!caller) throw new HttpError(401, 'Entre na sua conta para aceitar o convite.')
+      const inv = await convitePorCodigo(String(body?.token ?? ''))
+      if (String(inv.email ?? '').toLowerCase() !== String(caller.email ?? '').toLowerCase()) {
+        throw new HttpError(400, 'Este convite é para outro e-mail. Entre com a conta do e-mail que foi convidado.')
+      }
+      const { data: perfil } = await admin.from('users').select('id').eq('id', caller.id).maybeSingle()
+      if (!perfil) throw new HttpError(400, 'Sua conta ainda não tem empresa. Aceite o convite pela tela do convite, sem entrar antes.')
+      const { data: jaTem } = await admin.from('memberships').select('user_id').eq('user_id', caller.id).eq('organization_id', inv.organization_id).maybeSingle()
+      if (jaTem) throw new HttpError(409, 'Você já faz parte desta empresa.')
+      const acesso = await acessoDaOrganizacao(admin, inv.organization_id)
+      if (acesso !== 'total') throw new HttpError(402, 'A assinatura desta empresa não está em dia. Avise o administrador.')
+      const { data: reservado } = await admin
+        .from('invitations').update({ used_at: new Date().toISOString() })
+        .eq('id', inv.id).is('used_at', null).is('revoked_at', null).select('id')
+      if (!reservado?.length) throw new HttpError(410, 'Este convite já foi usado.')
+      const { error: insErr } = await admin.from('memberships').insert({
+        user_id: caller.id, organization_id: inv.organization_id, role: inv.role,
+        ...(inv.permissions && inv.role !== 'admin' ? { permissions: inv.permissions } : {}),
+      })
+      if (insErr) {
+        await admin.from('invitations').update({ used_at: null }).eq('id', inv.id)
+        if (/Limite de usuários/.test(insErr.message ?? '')) throw new HttpError(402, 'A empresa atingiu o limite de usuários do plano. Avise o administrador.')
+        console.error('[invite accept_existing]', insErr.message)
+        throw new HttpError(500, 'Não foi possível entrar na empresa.')
+      }
+      await admin.from('invitations').update({ used_by: caller.id }).eq('id', inv.id)
+      return json({ ok: true, organization_id: inv.organization_id })
     }
 
     // Convite aceito por quem entrou com o Google (conta já existe, sem empresa).

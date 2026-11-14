@@ -21,6 +21,19 @@ export function identifierToEmail(identifier: string): string {
   return id.includes('@') ? id : `${id}@${AUTH_EMAIL_DOMAIN}`
 }
 
+export interface MinhaOrganizacao {
+  organization_id: string
+  name: string
+  role: 'admin' | 'atendente' | string
+  is_current: boolean
+}
+
+async function fetchOrganizations(profile: UserProfile | null): Promise<MinhaOrganizacao[]> {
+  if (!profile) return []
+  const { data } = await supabase.rpc('my_organizations')
+  return (data as MinhaOrganizacao[] | null) ?? []
+}
+
 interface AuthState {
   session: Session | null
   profile: UserProfile | null
@@ -28,6 +41,10 @@ interface AuthState {
   permissions: string[]
   /** Nome da organização — aparece no cabeçalho do CRM, ao lado da logo. */
   organizationName: string | null
+  /** Empresas em que o usuário tem acesso (uma só = sem seletor). */
+  organizations: MinhaOrganizacao[]
+  /** Troca a empresa ativa e recarrega o app (estado, realtime e telas vêm da empresa nova). */
+  trocarOrganizacao: (organizationId: string) => Promise<void>
   setOrganizationName: (name: string) => void
   loading: boolean
   initialize: () => Promise<void>
@@ -111,19 +128,25 @@ export const useAuthStore = create<AuthState>((set) => ({
   profile: null,
   permissions: [],
   organizationName: null,
+  organizations: [],
+  trocarOrganizacao: async (organizationId) => {
+    const { error } = await supabase.rpc('switch_organization', { p_org: organizationId })
+    if (error) throw new Error('Não foi possível trocar de empresa.')
+    window.location.assign('/crm')
+  },
   setOrganizationName: (name) => set({ organizationName: name }),
   loading: true,
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession()
     const profile = session ? await fetchProfile(session.user.id) : null
-    const [permissions, organizationName] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile)])
-    set({ session, profile, permissions, organizationName, loading: false })
+    const [permissions, organizationName, organizations] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile), fetchOrganizations(profile)])
+    set({ session, profile, permissions, organizationName, organizations, loading: false })
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
       const profile = session ? await fetchProfile(session.user.id) : null
-      const [permissions, organizationName] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile)])
-      set({ session, profile, permissions, organizationName })
+      const [permissions, organizationName, organizations] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile), fetchOrganizations(profile)])
+      set({ session, profile, permissions, organizationName, organizations })
     })
   },
 
@@ -146,8 +169,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   recarregarPerfil: async () => {
     const { data: { session } } = await supabase.auth.getSession()
     const profile = session ? await fetchProfile(session.user.id) : null
-    const [permissions, organizationName] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile)])
-    set({ session, profile, permissions, organizationName })
+    const [permissions, organizationName, organizations] = await Promise.all([resolvePermissions(profile), fetchOrganizationName(profile), fetchOrganizations(profile)])
+    set({ session, profile, permissions, organizationName, organizations })
   },
 
   concluirTour: async () => {
@@ -157,6 +180,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut()
-    set({ session: null, profile: null, permissions: [], organizationName: null })
+    set({ session: null, profile: null, permissions: [], organizationName: null, organizations: [] })
   },
 }))

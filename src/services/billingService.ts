@@ -108,7 +108,7 @@ export const billingService = {
   async revokeInvite(id: string): Promise<void> {
     await call('invite', { action: 'revoke', id })
   },
-  async inviteInfo(token: string): Promise<{ organization: string; role: 'admin' | 'atendente'; email: string | null }> {
+  async inviteInfo(token: string): Promise<{ organization: string; role: 'admin' | 'atendente'; email: string | null; has_account?: boolean }> {
     return await call('invite', { action: 'info', token })
   },
   async acceptInvite(p: { token: string; full_name: string; password: string }): Promise<{ email: string }> {
@@ -118,6 +118,10 @@ export const billingService = {
   /** Cadastro da empresa por quem entrou com o Google (a conta já existe, sem empresa). */
   async completeGoogleSignup(p: { organization_name: string; full_name: string; doc: string; plan_id: string }): Promise<void> {
     await call('signup', { action: 'google', ...p })
+  },
+  /** Convite aceito por quem já tem conta e empresa: entra como mais um vínculo. */
+  async acceptInviteExisting(token: string): Promise<{ organization_id: string }> {
+    return await call('invite', { action: 'accept_existing', token })
   },
   /** Convite aceito por quem entrou com o Google. */
   async acceptInviteGoogle(token: string): Promise<void> {

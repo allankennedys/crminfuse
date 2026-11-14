@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { ToastContainer } from '@/components/Toast'
@@ -9,7 +9,9 @@ import { SignupPage } from '@/pages/Signup'
 import { ConvitePage } from '@/pages/Convite'
 import { ConfirmarEmailPage, EsqueciSenhaPage, RedefinirSenhaPage } from '@/pages/EmailLinks'
 import { CRMPage } from '@/pages/CRM'
-import { CompletarCadastroPage } from '@/pages/CompletarCadastro'
+import { CompletarCadastroPage, CONVITE_PENDENTE } from '@/pages/CompletarCadastro'
+import { billingService } from '@/services/billingService'
+import { toast } from '@/store/toastStore'
 import { PrivacidadePage, TermosPage } from '@/pages/Legal'
 
 export default function App() {
@@ -18,6 +20,22 @@ export default function App() {
   useEffect(() => {
     initialize()
   }, [initialize])
+
+  // Entrou com o Google a partir do link de um convite e já tem empresa: aceita o convite
+  // como mais um vínculo e passa para a empresa nova (quem não tem empresa segue em Completar cadastro).
+  const conviteTratado = useRef(false)
+  const trocarOrganizacao = useAuthStore((s) => s.trocarOrganizacao)
+  useEffect(() => {
+    if (loading || !session || !profile || conviteTratado.current) return
+    let token = ''
+    try { token = localStorage.getItem(CONVITE_PENDENTE) ?? '' } catch { /* sem armazenamento */ }
+    if (!token) return
+    conviteTratado.current = true
+    try { localStorage.removeItem(CONVITE_PENDENTE) } catch { /* ok */ }
+    billingService.acceptInviteExisting(token)
+      .then((r) => { toast.success('Convite aceito.'); return trocarOrganizacao(r.organization_id) })
+      .catch((e) => toast.error(e instanceof Error ? e.message : 'Não foi possível aceitar o convite'))
+  }, [loading, session, profile, trocarOrganizacao])
 
   if (loading) return <div className="auth-page"><Loader /></div>
 

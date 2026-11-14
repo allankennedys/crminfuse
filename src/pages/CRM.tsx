@@ -35,6 +35,7 @@ import { useConversaStore } from '@/store/conversaStore'
 import logoBranco from '@/assets/favicon.png'
 import logoAzul from '@/assets/symbol-navy.png'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { OrgSwitcher } from '@/components/OrgSwitcher'
 import { useTheme } from '@/lib/theme'
 import type { CrmContact, CrmStage } from '@/types'
 
@@ -391,6 +392,7 @@ export function CRMPage() {
             {organizationName || 'CRM'}
           </span>
         </button>
+        <OrgSwitcher />
 
         <nav className="crm-tabs">
           {visibleTabs.map(({ id, label, icon: TabIcon }) => (
