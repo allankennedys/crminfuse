@@ -180,12 +180,12 @@ function jidsOf(conv: Conversation) {
 
 async function sendText(userClient: SupabaseClient, userId: string, body: Json) {
   const conv = await loadConversation(userClient, body?.conversation_id)
-  await exigirAcesso(conv.organization_id)
   const text = String(body?.text ?? '').trim()
   if (!text) throw new HttpError(400, 'Mensagem vazia')
   if (text.length > 4096) throw new HttpError(400, 'Mensagem longa demais (máx. 4096 caracteres)')
 
-  const instance = await instanceOf(conv)
+  // Assinatura e número conferidos ao mesmo tempo (duas idas ao banco em paralelo).
+  const [, instance] = await Promise.all([exigirAcesso(conv.organization_id), instanceOf(conv)])
   const res = await evolution('POST', `/message/sendText/${encodeURIComponent(instance)}`, {
     number: target(conv),
     text,

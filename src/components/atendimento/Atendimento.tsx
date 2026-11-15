@@ -224,17 +224,19 @@ export function Atendimento({ onOpenContact }: { onOpenContact?: (contactId: str
     let timer: ReturnType<typeof setTimeout> | undefined
     const bump = () => {
       clearTimeout(timer)
-      timer = setTimeout(() => loadRef.current(), 400)
+      timer = setTimeout(() => loadRef.current(), 150)
     }
     const channel = supabase
       .channel(`at-conversations:${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wa_conversations' }, bump)
-      .subscribe()
+      .subscribe((st) => { if (st === 'SUBSCRIBED') bump() }) // reconectou: recupera o que passou
     // Conversa tirada de alguém não gera evento para ele (a RLS esconde a
     // linha nova). O relógio e a volta à aba cobrem esse caso.
-    const interval = setInterval(bump, 60_000)
+    const interval = setInterval(bump, 30_000)
     window.addEventListener('focus', bump)
+    window.addEventListener('online', bump)
     return () => {
+      window.removeEventListener('online', bump)
       clearTimeout(timer)
       clearInterval(interval)
       window.removeEventListener('focus', bump)
