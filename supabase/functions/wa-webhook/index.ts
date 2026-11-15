@@ -107,6 +107,13 @@ Deno.serve(async (req) => {
     }
   } catch (err) {
     logErr(err)
+    // Guarda o evento: se a Evolution desistir de reenviar, a mensagem não some.
+    await admin.from('wa_webhook_failures').insert({
+      session_id: session.id,
+      event,
+      error: String((err as { message?: string })?.message ?? err).slice(0, 500),
+      payload,
+    }).then(() => {}, () => {})
     // 500 deixa a Evolution reenviar; a gravação é idempotente.
     return new Response('erro ao processar', { status: 500 })
   }
@@ -122,7 +129,9 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
   const items: Json[] = Array.isArray(data) ? data : Array.isArray(data?.messages) ? data.messages : [data]
   const medias: Array<() => Promise<void>> = []
 
+  let primeiroErro: unknown = null
   for (const item of items) {
+   try {
     const key = item?.key
     if (!key?.id || !key?.remoteJid) continue
 
@@ -193,8 +202,16 @@ async function onMessages(session: Session, data: Json): Promise<Array<() => Pro
     if (!fromMe && row?.inserted) {
       medias.push(() => refreshAvatar(session, row.conversation_id))
     }
+   } catch (err) {
+    // Uma mensagem com problema não pode barrar as outras do mesmo lote.
+    logErr(err)
+    primeiroErro ??= err
+   }
   }
 
+  // Depois de tentar todas: se alguma falhou, o 500 faz a Evolution reenviar o
+  // evento (a gravação é idempotente, as que já entraram não duplicam).
+  if (primeiroErro) throw primeiroErro
   return medias
 }
 

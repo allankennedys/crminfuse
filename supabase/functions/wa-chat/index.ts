@@ -141,7 +141,16 @@ async function instanceOf(conv: Conversation): Promise<string> {
   // Desconectado: avisa na hora. Mandar mesmo assim só fazia a tela esperar
   // a Evolution desistir.
   if (data.status === 'disconnected') {
-    throw new HttpError(409, 'O número está desconectado do WhatsApp. Reconecte em Atendimento → Números.')
+    // O status pode estar velho (aviso de conexão perdido, worker só a cada 30 min):
+    // confere ao vivo antes de barrar o envio e corrige o painel se já voltou.
+    const live = await evolution('GET', `/instance/connectionState/${encodeURIComponent(data.instance_name)}`)
+    const state = String(live.data?.instance?.state ?? live.data?.state ?? '')
+    if (state !== 'open') {
+      throw new HttpError(409, 'O número está desconectado do WhatsApp. Reconecte em Atendimento → Números.')
+    }
+    await admin.from('whatsapp_sessions')
+      .update({ status: 'connected', last_seen_at: new Date().toISOString() })
+      .eq('id', conv.session_id)
   }
   return data.instance_name
 }
@@ -469,9 +478,15 @@ async function record(
     p_status: 'sent',
     p_sent_by: userId,
   }).single<{ message_id: string }>()
-  if (error) throw error
+  // A mensagem JÁ saiu para o cliente. Falhar aqui faria a tela mostrar erro e a
+  // pessoa reenviar (mensagem em dobro). O eco do envio (webhook) grava a linha
+  // e a tela a recebe ao vivo, então só registramos o problema.
+  if (error || !data) {
+    console.error('[wa-chat] mensagem enviada mas não gravada', error?.message)
+    return null
+  }
 
-  const { data: row } = await admin.from('wa_messages').select('*').eq('id', data!.message_id).single()
+  const { data: row } = await admin.from('wa_messages').select('*').eq('id', data.message_id).maybeSingle()
   return row
 }
 
@@ -759,7 +774,7 @@ function evolutionError(res: { status: number; data: Json }, what: string): stri
   const msg = d?.response?.message ?? d?.message ?? d?.error
   const text = Array.isArray(msg) ? msg.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ') : msg
   // Mensagem para a tela: sem nome de fornecedor.
-  if (res.status === 0) return `Não foi possível falar com o WhatsApp para ${what}. Tente de novo em instantes.`
+  if (res.status === 0) return `Sem resposta do WhatsApp ao ${what}. Confira na conversa se foi enviada antes de tentar de novo.`
   return `O WhatsApp recusou ${what} (${res.status}${text ? `: ${text}` : ''})`
 }
 

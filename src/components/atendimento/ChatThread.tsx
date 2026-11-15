@@ -239,8 +239,34 @@ export function ChatThread({
           if (row?.id) setNotes((cur) => (cur.some((n) => n.id === row.id) ? cur : [...cur, row]))
         },
       )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+      .subscribe((status) => {
+        // Voltou a conectar depois de uma queda: busca o que passou enquanto estava fora.
+        if (status === 'SUBSCRIBED') sincronizar()
+      })
+
+    // Rede de segurança: se o websocket cair (notebook suspenso, wifi trocando,
+    // proxy), as mensagens não podem ficar escondidas até recarregar a página.
+    // Confere as últimas mensagens ao voltar para a aba, ao voltar a internet
+    // e de tempos em tempos enquanto a aba está visível.
+    let vivo = true
+    function sincronizar() {
+      atendimentoService.listMessages(conv.id)
+        .then(({ items }) => { if (vivo) items.forEach(merge) })
+        .catch(() => { /* a próxima tentativa cobre */ })
+    }
+    const aoVoltar = () => { if (document.visibilityState === 'visible') sincronizar() }
+    const intervalo = setInterval(aoVoltar, 20_000)
+    document.addEventListener('visibilitychange', aoVoltar)
+    window.addEventListener('online', sincronizar)
+    window.addEventListener('focus', aoVoltar)
+    return () => {
+      vivo = false
+      clearInterval(intervalo)
+      document.removeEventListener('visibilitychange', aoVoltar)
+      window.removeEventListener('online', sincronizar)
+      window.removeEventListener('focus', aoVoltar)
+      supabase.removeChannel(channel)
+    }
   }, [conv.id, merge, userId])
 
   // Links temporários das mídias (1 h), gerados pelo servidor depois de

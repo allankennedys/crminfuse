@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     if (!(cpfValido(doc) || cnpjValido(doc))) return json({ error: 'CPF ou CNPJ inválido.' }, 400)
 
     // Freio por IP.
-    const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'desconhecido'
+    const ip = (req.headers.get('cf-connecting-ip') ?? req.headers.get('x-real-ip') ?? req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'desconhecido'
     const desde = new Date(Date.now() - 3600_000).toISOString()
     const { count } = await admin.from('signup_attempts').select('id', { count: 'exact', head: true }).eq('ip', ip).gte('created_at', desde)
     if ((count ?? 0) >= 5) return json({ error: 'Muitas tentativas. Tente de novo mais tarde.' }, 429)
