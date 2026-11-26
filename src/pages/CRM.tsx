@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Contact, KanbanSquare, Settings2, Plus, BarChart3, CalendarRange, LogOut, Receipt, Search, X as XIcon, MessageCircle } from 'lucide-react'
+import { Contact, KanbanSquare, Settings2, Plus, BarChart3, CalendarRange, LogOut, Receipt, Search, X as XIcon, MessageCircle, Send } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import {
   crmService, type BoardFilters, type StageStats, type ChannelCount,
@@ -25,6 +25,7 @@ import { desativarPush } from '@/lib/push'
 import { billingService, type MySubscription } from '@/services/billingService'
 import { AssinaturaBanner } from '@/components/billing/AssinaturaBanner'
 import { BloqueioAssinatura } from '@/components/billing/BloqueioAssinatura'
+import { Disparos } from '@/components/disparos/Disparos'
 import { CartaoNoTeste } from '@/components/billing/CartaoNoTeste'
 import { useConfigNav } from '@/store/configNav'
 import { Tour } from '@/components/tour/Tour'
@@ -84,6 +85,7 @@ const TABS = [
   { id: 'atendimento', label: 'Atendimento', icon: MessageCircle, perm: 'atendimento.ver' },
   { id: 'funil', label: 'Funil', icon: KanbanSquare, perm: 'crm.funil.ver' },
   { id: 'contatos', label: 'Contatos', icon: Contact, perm: 'crm.contatos.ver' },
+  { id: 'disparos', label: 'Campanhas', icon: Send, perm: 'crm.contatos.editar' },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart3, perm: 'crm.relatorios.ver' },
   { id: 'config', label: 'Configurações', icon: Settings2, perm: 'crm.chaves.ver' },
 ] as const
@@ -549,6 +551,8 @@ export function CRMPage() {
           )
         ) : tab === 'contatos' ? (
           <ContactsTable stages={stages} onChanged={refresh} />
+        ) : tab === 'disparos' ? (
+          <Disparos stages={stages} />
         ) : tab === 'relatorios' ? (
           <CrmReports stages={stages} />
         ) : (

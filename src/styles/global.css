@@ -3371,7 +3371,7 @@ body.no-sidebar { --sidebar-w: 0px; }
   position: relative;
   max-width: 85%;
   min-width: 92px;
-  background: #1d4f91;
+  background: #005c4b;
   color: #e9edef;
   border-radius: 7.5px 0 7.5px 7.5px;
   padding: 6px 7px 8px 9px;
@@ -3387,7 +3387,7 @@ body.no-sidebar { --sidebar-w: 0px; }
   right: -8px;
   width: 8px;
   height: 13px;
-  background: #1d4f91;
+  background: #005c4b;
   clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 .wa-bubble-media { padding: 3px 3px 8px; }
@@ -3602,7 +3602,7 @@ body.no-sidebar { --sidebar-w: 0px; }
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: #2f8cff;
+  background: #00a884;
   color: #0b141a;
   display: flex;
   align-items: center;
@@ -5341,3 +5341,24 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 .org-switch-item:hover:not(:disabled) { background: var(--surface-hover); }
 .org-switch-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .org-switch-role { font-size: 11.5px; flex-shrink: 0; }
+
+/* Envio em massa: formulário à esquerda, celular com a prévia à direita. */
+.disparo-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.disparo-form .field { margin-bottom: 14px; }
+.disparo-previa { position: sticky; top: 0; }
+.disparo-radio { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin: 4px 0; cursor: pointer; }
+.disparo-anexo { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+.disparo-anexo .truncate { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 860px) {
+  .disparo-grid { grid-template-columns: minmax(0, 1fr); }
+  .disparo-previa { position: static; max-width: 340px; margin: 0 auto; }
+}
+
+/* Situação do envio: texto comum com um ponto pequeno, sem etiqueta colorida. */
+.disparo-status { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-secondary); }
+.disparo-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted, #7c8089); opacity: .7; }
+.disparo-status.enviando { color: var(--text); }
+.disparo-status.enviando::before { opacity: 1; background: var(--text); }
+.disparo-status.falhou::before { background: var(--danger); opacity: 1; }
+.disparo-barra { height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; margin-bottom: 4px; }
+.disparo-barra > div { height: 100%; background: var(--text-secondary); opacity: .75; }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Plus, Users, ChevronLeft, ChevronRight, Filter, Download, MessageCirclePlus, Upload } from 'lucide-react'
+import { Search, Plus, Users, ChevronLeft, ChevronRight, Filter, Download, MessageCirclePlus, Upload, Send } from 'lucide-react'
 import { useCan } from '@/store/authStore'
 import { useConversaStore } from '@/store/conversaStore'
 import {
@@ -12,6 +12,7 @@ import { toast } from '@/store/toastStore'
 import { formatCustomValue } from './CustomFields'
 import { ContactDrawer } from './ContactDrawer'
 import { ImportarContatos } from './ImportarContatos'
+import { NovoDisparo } from '@/components/disparos/NovoDisparo'
 import { toCSV, csvMoney, downloadCSV } from '@/lib/csv'
 import { formatSP } from '@/lib/datetime'
 import type { CrmContact, CrmCustomField, CrmStage } from '@/types'
@@ -52,6 +53,7 @@ export function ContactsTable({ stages, onChanged }: {
   const [origens, setOrigens] = useState<OrigemCount[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [importando, setImportando] = useState(false)
+  const [disparando, setDisparando] = useState(false)
 
   // null = fechado; undefined = aberto para criar; objeto = editando
   const [editing, setEditing] = useState<CrmContact | null | undefined>(null)
@@ -432,6 +434,11 @@ export function ContactsTable({ stages, onChanged }: {
           <span className="text-muted">
             a seleção atravessa páginas e filtros
           </span>
+          {can('crm.contatos.editar') && (
+            <button className="btn btn-primary btn-sm" onClick={() => setDisparando(true)}>
+              <Send size={13} /> Enviar mensagem em massa
+            </button>
+          )}
           <button className="btn btn-ghost btn-sm" onClick={() => setSelecionados(new Map())}>
             Limpar seleção
           </button>
@@ -600,6 +607,15 @@ export function ContactsTable({ stages, onChanged }: {
           stages={stages}
           onClose={() => setEditing(null)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {disparando && (
+        <NovoDisparo
+          stages={stages}
+          contatos={[...selecionados.values()].filter((c) => c.phone).map((c) => ({ id: c.id, name: c.name }))}
+          onClose={() => setDisparando(false)}
+          onCreated={() => setSelecionados(new Map())}
         />
       )}
 
