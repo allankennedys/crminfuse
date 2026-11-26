@@ -5,9 +5,6 @@
  */
 import { supabase, FunctionRegion } from '@/lib/supabase'
 
-/** Plano único à venda por enquanto (R$ 200). Para voltar aos demais, remova o filtro em listPlans. */
-const PLANO_UNICO = 'profissional'
-
 export interface Plan {
   id: string
   name: string
@@ -130,9 +127,8 @@ export const billingService = {
 
   /** Planos à venda (leitura pública: a tela de cadastro também usa). */
   async listPlans(): Promise<Plan[]> {
-    const { data } = await supabase.from('plans').select('*').order('position')
-    // Por enquanto só o plano de R$ 200 é vendido; os outros continuam no banco.
-    return ((data as Plan[] | null) ?? []).filter((p) => p.id === PLANO_UNICO)
+    const { data } = await supabase.from('plans').select('*').eq('active', true).order('position')
+    return (data as Plan[] | null) ?? []
   },
 
   async mySubscription(): Promise<MySubscription | null> {
