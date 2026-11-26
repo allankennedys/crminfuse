@@ -64,7 +64,7 @@ export function SignupPage() {
         ) : (<>
         <h1 style={{ fontSize: 18, textAlign: 'center', marginBottom: 4 }}>{dias ? `Teste grátis por ${dias} dias` : 'Criar conta da empresa'}</h1>
         <p className="text-secondary" style={{ textAlign: 'center', fontSize: 13, marginBottom: 16 }}>
-          {dias ? 'Sem cartão. Você escolhe o plano depois, se gostar.' : 'Depois de confirmar o e-mail, você escolhe o plano e começa a usar.'}
+          {dias ? 'Escolha o plano abaixo. Nada é cobrado hoje: a cobrança começa sozinha só depois dos dias grátis, e você cancela quando quiser.' : 'Depois de confirmar o e-mail, você escolhe o plano e começa a usar.'}
         </p>
 
         {plans.length > 0 && (

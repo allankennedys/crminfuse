@@ -25,6 +25,7 @@ import { desativarPush } from '@/lib/push'
 import { billingService, type MySubscription } from '@/services/billingService'
 import { AssinaturaBanner } from '@/components/billing/AssinaturaBanner'
 import { BloqueioAssinatura } from '@/components/billing/BloqueioAssinatura'
+import { CartaoNoTeste } from '@/components/billing/CartaoNoTeste'
 import { useConfigNav } from '@/store/configNav'
 import { Tour } from '@/components/tour/Tour'
 import { useTour } from '@/store/tourStore'
@@ -431,6 +432,9 @@ export function CRMPage() {
 
       {assinatura && (
         <AssinaturaBanner sub={assinatura} onOpenPlano={() => { pedirConfig('plano'); setTab('config') }} />
+      )}
+      {assinatura && (
+        <CartaoNoTeste sub={assinatura} onOpenPlano={() => { pedirConfig('plano'); setTab('config') }} />
       )}
       {assinatura?.acesso === 'bloqueado' && (
         <BloqueioAssinatura sub={assinatura} onChanged={carregarAssinatura} onSignOut={sair} />

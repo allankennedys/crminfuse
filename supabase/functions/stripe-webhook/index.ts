@@ -50,7 +50,13 @@ Deno.serve(async (req) => {
       const s = ev.data.object as Stripe.Checkout.Session
       const org = s.client_reference_id
       if (org && s.subscription) {
+        // O teste do Stripe é contado em dias cheios e pode acabar horas depois do nosso:
+        // alinha o fim do teste ao dele, para não haver um buraco de leitura antes da cobrança.
+        const subId = typeof s.subscription === 'string' ? s.subscription : s.subscription.id
+        const stripeSub = await stripe.subscriptions.retrieve(subId)
+        const fimTeste = stripeSub.trial_end ? new Date(stripeSub.trial_end * 1000).toISOString() : null
         await admin.from('subscriptions').update({
+          ...(fimTeste ? { trial_ends_at: fimTeste } : {}),
           stripe_customer_id: typeof s.customer === 'string' ? s.customer : s.customer?.id ?? null,
           stripe_subscription_id: typeof s.subscription === 'string' ? s.subscription : s.subscription.id,
           payment_mode: 'cartao',

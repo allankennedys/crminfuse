@@ -83,7 +83,7 @@ export function CompletarCadastroPage() {
           <>
             <h1 style={{ fontSize: 18, textAlign: 'center', marginBottom: 4 }}>Complete seu cadastro</h1>
             <p className="text-secondary" style={{ textAlign: 'center', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-              Você entrou como <strong>{session?.user.email}</strong>. Para criar a conta da sua empresa{dias ? `, ${dias} dias grátis e sem cartão,` : ''} preencha abaixo.
+              Você entrou como <strong>{session?.user.email}</strong>. Para criar a conta da sua empresa{dias ? `, ${dias} dias grátis (nada é cobrado hoje),` : ''} preencha abaixo.
               Foi convidado para uma empresa que já usa o Infuse? Abra o link do convite que recebeu por e-mail.
             </p>
 
