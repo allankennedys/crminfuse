@@ -49,10 +49,7 @@ export function Disparos({ stages }: { stages: CrmStage[] }) {
   return (
     <div style={{ padding: '0 0 24px' }}>
       <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', margin: '4px 0 14px', gap: 8, flexWrap: 'wrap' }}>
-        <p className="text-secondary" style={{ fontSize: 13, maxWidth: 560 }}>
-          Mande uma mensagem (com imagem, vídeo, arquivo ou áudio) para vários contatos, agora ou em outro horário.
-          Para escolher contatos específicos, marque-os na aba Contatos.
-        </p>
+        <span />
         <button className="btn btn-primary" onClick={() => setNovo(true)}><Plus size={14} /> Novo envio</button>
       </div>
 
