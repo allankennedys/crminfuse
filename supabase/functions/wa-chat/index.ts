@@ -166,9 +166,14 @@ async function currentUser(userClient: SupabaseClient, authHeader: string | null
   return user ? { id: user.id } : null
 }
 
-/** Para onde mandar: o telefone quando conhecido, senão o próprio jid (LID). */
+/**
+ * Para onde mandar: o LID quando conhecido (é como o WhatsApp endereça parte
+ * dos contatos hoje, e o telefone pode falhar para eles), senão o telefone,
+ * senão o próprio jid. Se um texto falhar, a wa-webhook reenvia uma vez pelo
+ * outro endereço.
+ */
 function target(conv: Conversation): string {
-  return conv.phone ?? conv.remote_jid
+  return conv.lid_jid ?? conv.phone ?? conv.remote_jid
 }
 
 function jidsOf(conv: Conversation) {

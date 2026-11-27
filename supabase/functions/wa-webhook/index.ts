@@ -532,7 +532,71 @@ async function onStatus(session: Session, data: Json) {
       p_status: status,
     })
     if (error) throw error
+
+    // Texto que falhou: tenta uma vez pelo outro endereço (telefone ↔ LID).
+    // Nunca derruba o evento — o status já foi gravado.
+    if (status === 'failed') await reenviarPeloOutroEndereco(session, String(waId), jid).catch(logErr)
   }
+}
+
+/**
+ * O WhatsApp identifica parte dos contatos por LID (...@lid) e, para alguns,
+ * o envio pelo telefone falha (ERROR) enquanto pelo LID funciona — ou o
+ * contrário. Quando um texto falha, manda de novo (uma vez só, o banco
+ * controla) pelo endereço que NÃO foi usado:
+ *   - foi pelo LID  → tenta o telefone;
+ *   - foi pelo fone → tenta o LID, guardado na conversa ou descoberto na
+ *     Evolution (mensagem em que o contato aparece com o telefone ao lado).
+ * Sem outro endereço conhecido, não há o que tentar: fica "falhou".
+ */
+async function reenviarPeloOutroEndereco(session: Session, waId: string, usedJid: string) {
+  if (!usedJid || usedJid.endsWith('@g.us')) return
+
+  const { data, error } = await admin.rpc('wa_retry_begin', { p_session: session.id, p_wa_id: waId })
+  if (error) throw error
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { message_id: string; conversation_id: string; body: string; lid_jid: string | null; phone: string | null }
+    | undefined
+  if (!row) return // não é texto nosso, já foi reenviado ou já foi entregue
+
+  let destino: string | null
+  if (usedJid.endsWith('@lid')) {
+    destino = row.phone
+  } else {
+    let lid = row.lid_jid
+    if (!lid && row.phone) {
+      lid = await descobrirLid(session.instance_name, row.phone)
+      if (lid) {
+        await admin.from('wa_conversations').update({ lid_jid: lid }).eq('id', row.conversation_id).is('lid_jid', null)
+      }
+    }
+    destino = lid
+  }
+  if (!destino) return
+
+  const res = await evolution(`/message/sendText/${encodeURIComponent(session.instance_name)}`, {
+    number: destino,
+    text: row.body,
+  })
+  const novoId = res.data?.key?.id
+  if (!res.ok || !novoId) return
+
+  const { error: e2 } = await admin.rpc('wa_retry_commit', { p_message: row.message_id, p_new_wa_id: String(novoId) })
+  if (e2) throw e2
+}
+
+/** LID de um telefone, pela Evolution: uma mensagem em que o contato aparece nos dois formatos. */
+async function descobrirLid(instance: string, phone: string): Promise<string | null> {
+  const res = await evolution(`/chat/findMessages/${encodeURIComponent(instance)}`, {
+    where: { key: { remoteJidAlt: `${phone}@s.whatsapp.net` } },
+    page: 1,
+    offset: 1,
+  })
+  if (!res.ok) return null
+  const r = res.data?.messages ?? res.data
+  const rec: Json[] = Array.isArray(r?.records) ? r.records : Array.isArray(r) ? r : []
+  const lid = rec[0]?.key?.remoteJid
+  return typeof lid === 'string' && lid.endsWith('@lid') ? lid : null
 }
 
 /** Status da Evolution/Baileys (texto ou número) → o nosso. */
